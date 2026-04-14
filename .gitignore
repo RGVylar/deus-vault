@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.env
+node_modules/
+build/
+.svelte-kit/
+android/
+ios/
+dist/

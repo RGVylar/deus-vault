@@ -1,0 +1,15 @@
+:80 {
+	encode gzip
+
+	# API — reverse proxy to backend
+	handle /api/* {
+		reverse_proxy 127.0.0.1:__BACKEND_PORT__
+	}
+
+	# Static SvelteKit build
+	handle {
+		root * __APP_DIR__/frontend/build
+		try_files {path} /index.html
+		file_server
+	}
+}

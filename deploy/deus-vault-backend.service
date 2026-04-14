@@ -1,0 +1,23 @@
+[Unit]
+Description=Deus Vault backend (FastAPI)
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=deusvault
+Group=deusvault
+WorkingDirectory=/opt/deus-vault/backend
+EnvironmentFile=/opt/deus-vault/backend/.env
+ExecStart=/opt/deus-vault/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=3
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/deus-vault
+
+[Install]
+WantedBy=multi-user.target

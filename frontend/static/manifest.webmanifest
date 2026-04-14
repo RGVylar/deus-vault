@@ -1,0 +1,17 @@
+{
+  "name": "Deus Vault",
+  "short_name": "Deus Vault",
+  "description": "Bóveda de contenido por consumir antes de morir",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a12",
+  "theme_color": "#0a0a12",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

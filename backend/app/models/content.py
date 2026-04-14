@@ -1,0 +1,46 @@
+import enum
+from datetime import datetime
+
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    func,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.database import Base
+
+
+class ContentType(str, enum.Enum):
+    youtube = "youtube"
+    movie = "movie"
+    book = "book"
+    game = "game"
+
+
+class Content(Base):
+    __tablename__ = "contents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    content_type: Mapped[ContentType] = mapped_column(Enum(ContentType), nullable=False)
+    url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    thumbnail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    consumed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    # Extra metadata
+    source_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # youtube id, imdb id, etc.
+    author: Mapped[str | None] = mapped_column(String(255), nullable=True)  # channel, director, author, studio
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="contents")  # noqa: F821
