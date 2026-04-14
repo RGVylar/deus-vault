@@ -47,7 +47,27 @@ npm run dev
 
 El proxy de Vite redirige `/api` a `http://127.0.0.1:8000`.
 
-## Deploy (Debian 12 LXC)
+## Deploy (Debian 12 LXC en Proxmox)
+
+### Opción 1: Crear LXC desde cero (en host Proxmox)
+
+```bash
+# En el host Proxmox:
+bash create-lxc.sh
+# O con variables personalizadas:
+CT_ID=210 CT_NAME=deusvault DOMAIN=vault.mugrelore.com bash create-lxc.sh
+```
+
+Variables disponibles:
+- `CT_ID`: ID único del contenedor (default: 210)
+- `CT_NAME`: nombre del hostname (default: deusvault)
+- `CT_MEMORY`: RAM en MB (default: 2048)
+- `CT_CORES`: CPUs (default: 2)
+- `CT_DISK`: disco en GB (default: 20)
+- `CT_STORAGE`: storage Proxmox (default: local-lvm)
+- `DOMAIN`: dominio (default: vault.mugrelore.com)
+
+### Opción 2: Instalar en LXC existente
 
 ```bash
 # Dentro del LXC como root:
@@ -57,7 +77,9 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/RGVylar/deus-vault/main/
 GITHUB_TOKEN=ghp_xxx bash -c "$(curl -fsSL ...)"
 ```
 
-Apunta tu Cloudflare Tunnel a `127.0.0.1:80`.
+### Configurar Cloudflare Tunnel
+
+Apunta tu Cloudflare Tunnel a `http://<CT_IP>:80` o `http://127.0.0.1:80` si estás en la misma red.
 
 ## Mobile (Capacitor)
 
