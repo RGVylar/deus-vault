@@ -41,6 +41,21 @@
 			const storedPages = localStorage.getItem('deus_vault_words_per_page');
 			if (storedPages) readingWordsPerPage = Number(storedPages) || readingWordsPerPage;
 		} catch (e) {}
+
+		// Listen for settings changes from /settings page or modal
+		const handler = (ev: Event) => {
+			try {
+				// @ts-ignore
+				const d = (ev as CustomEvent).detail || {};
+				if (d.readingWpm) readingWpm = Number(d.readingWpm) || readingWpm;
+				if (d.readingWordsPerPage) readingWordsPerPage = Number(d.readingWordsPerPage) || readingWordsPerPage;
+			} catch (e) {}
+		};
+		window.addEventListener('deus_vault_settings_changed', handler as EventListener);
+
+		return () => {
+			window.removeEventListener('deus_vault_settings_changed', handler as EventListener);
+		};
 	});
 
 	async function load() {
@@ -171,6 +186,17 @@
 			localStorage.setItem('deus_vault_words_per_page', String(readingWordsPerPage));
 		} catch (e) {}
 		showSettings = false;
+		dispatchSettingsChanged();
+	}
+
+	// dispatch settings change for other windows/components
+	function dispatchSettingsChanged() {
+		try {
+			const ev = new CustomEvent('deus_vault_settings_changed', {
+				detail: { readingWpm, readingWordsPerPage }
+			});
+			window.dispatchEvent(ev);
+		} catch (e) {}
 	}
 
 	function resetForm() {
