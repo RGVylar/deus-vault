@@ -300,6 +300,33 @@ async def lookup_book(url: str) -> dict:
                         thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
                     page_count = int(doc.get("number_of_pages_median") or doc.get("number_of_pages") or 0)
 
+    # If this is an Open Library work page and we still don't have page_count,
+    # try fetching editions for the work and derive a median page count from editions.
+    if provider == "openlibrary" and page_count == 0:
+        try:
+            parsed = urlparse(url)
+            parts = [p for p in parsed.path.split("/") if p]
+            if parts and parts[0] == "works" and len(parts) >= 2:
+                work_id = parts[1]
+                async with httpx.AsyncClient(timeout=10) as client:
+                    editions_resp = await client.get(f"https://openlibrary.org/works/{work_id}/editions.json", params={"limit": 50})
+                if editions_resp.status_code == 200:
+                    entries = editions_resp.json().get("entries") or editions_resp.json().get("docs") or []
+                    counts: list[int] = []
+                    for e in entries:
+                        try:
+                            np = int(e.get("number_of_pages") or 0)
+                        except Exception:
+                            np = 0
+                        if np and np > 0:
+                            counts.append(np)
+                    if counts:
+                        counts.sort()
+                        mid = len(counts) // 2
+                        page_count = int(counts[mid] if len(counts) % 2 == 1 else (counts[mid - 1] + counts[mid]) // 2)
+        except Exception:
+            pass
+
     # Estimate reading time from page count using configured reading speed.
     duration_minutes = 0
     if page_count and page_count > 0:
