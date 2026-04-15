@@ -12,6 +12,9 @@ MAX_URL="https://play.hbomax.com/show/57660b16-a32a-476f-89da-3302ac379e91?utm_s
 STREMIO_URL="https://app.strem.io/shell-v4.4/#/detail/movie/tt0780504/tt0780504"
 STEAM_URL="https://store.steampowered.com/app/620/Portal_2/"
 SPOTIFY_URL="https://open.spotify.com/track/7ouMYWpwJ422jRcDASZB7P"
+OPENLIBRARY_URL="https://openlibrary.org/works/OL45883W"
+GOODREADS_URL="https://www.goodreads.com/book/show/5907.The_Hobbit"
+GOOGLEBOOKS_URL="https://books.google.com/books?id=zyTCDAAAQBAJ"
 
 # Función para probar una URL
 probar() {
@@ -29,3 +32,6 @@ probar "Max" "$MAX_URL"
 probar "Stremio" "$STREMIO_URL"
 probar "Steam" "$STEAM_URL"
 probar "Spotify" "$SPOTIFY_URL"
+probar "OpenLibrary" "$OPENLIBRARY_URL"
+probar "Goodreads" "$GOODREADS_URL"
+probar "GoogleBooks" "$GOOGLEBOOKS_URL"
