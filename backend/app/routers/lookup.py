@@ -322,27 +322,27 @@ async def lookup_book(url: str) -> dict:
                 s = await client.get("https://openlibrary.org/search.json", params={"q": q})
             if s.status_code == 200:
                 docs = s.json().get("docs", [])
-                    if docs:
-                        doc = docs[0]
-                        title = doc.get("title") or title
-                        author = ", ".join(doc.get("author_name", []) or [])
-                        cover_id = doc.get("cover_i")
-                        if cover_id:
-                            thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
-                        # Try numeric page fields first, then parse pagination text
-                        try:
-                            page_count = int(doc.get("number_of_pages_median") or doc.get("number_of_pages") or 0)
-                        except Exception:
-                            page_count = 0
-                        if page_count == 0:
-                            pag = doc.get("pagination") or doc.get("pages") or ""
-                            if pag:
-                                m = re.search(r"(\d{2,5})", str(pag))
-                                if m:
-                                    try:
-                                        page_count = int(m.group(1))
-                                    except Exception:
-                                        page_count = 0
+                if docs:
+                    doc = docs[0]
+                    title = doc.get("title") or title
+                    author = ", ".join(doc.get("author_name", []) or [])
+                    cover_id = doc.get("cover_i")
+                    if cover_id:
+                        thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
+                    # Try numeric page fields first, then parse pagination text
+                    try:
+                        page_count = int(doc.get("number_of_pages_median") or doc.get("number_of_pages") or 0)
+                    except Exception:
+                        page_count = 0
+                    if page_count == 0:
+                        pag = doc.get("pagination") or doc.get("pages") or ""
+                        if pag:
+                            m = re.search(r"(\d{2,5})", str(pag))
+                            if m:
+                                try:
+                                    page_count = int(m.group(1))
+                                except Exception:
+                                    page_count = 0
 
     # If this is an Open Library work page and we still don't have page_count,
     # try fetching editions for the work and derive a median page count from editions.
