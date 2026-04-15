@@ -63,7 +63,8 @@
 				host.includes('hbomax.com') ||
 				host.includes('disneyplus.com') ||
 				host.includes('strem.io') ||
-				host.includes('stremio.com')
+				host.includes('stremio.com') ||
+				host.includes('open.spotify.com')
 			);
 		} catch {
 			return false;
