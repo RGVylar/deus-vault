@@ -15,7 +15,7 @@
 	// Settings
 	let showSettings = $state(false);
 	let readingWpm = $state(200);
-	const DEFAULT_WORDS_PER_PAGE = 300;
+	let readingWordsPerPage = $state(300);
 
 	// Add form
 	let addTitle = $state('');
@@ -38,6 +38,8 @@
 		try {
 			const stored = localStorage.getItem('deus_vault_reading_wpm');
 			if (stored) readingWpm = Number(stored) || readingWpm;
+			const storedPages = localStorage.getItem('deus_vault_words_per_page');
+			if (storedPages) readingWordsPerPage = Number(storedPages) || readingWordsPerPage;
 		} catch (e) {}
 	});
 
@@ -125,10 +127,10 @@
 				addType = 'game';
 			}
 
-			// If it's a book and we have page_count, compute duration using user WPM
+			// If it's a book and we have page_count, compute duration using user WPM and words/page
 			if (addType === 'book') {
 				if (data.page_count && Number(data.page_count) > 0) {
-					addDuration = Math.ceil(Number(data.page_count) * DEFAULT_WORDS_PER_PAGE / Math.max(1, Number(readingWpm)));
+					addDuration = Math.ceil(Number(data.page_count) * Number(readingWordsPerPage) / Math.max(1, Number(readingWpm)));
 				} else if (data.duration_minutes) {
 					addDuration = data.duration_minutes;
 				}
@@ -164,7 +166,10 @@
 	}
 
 	function saveSettings() {
-		try { localStorage.setItem('deus_vault_reading_wpm', String(readingWpm)); } catch (e) {}
+		try {
+			localStorage.setItem('deus_vault_reading_wpm', String(readingWpm));
+			localStorage.setItem('deus_vault_words_per_page', String(readingWordsPerPage));
+		} catch (e) {}
 		showSettings = false;
 	}
 
