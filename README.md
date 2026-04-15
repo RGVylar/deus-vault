@@ -16,7 +16,7 @@ Bóveda de contenido por consumir antes de morir. Registra vídeos de YouTube, p
 
 - **Contador total**: muestra la suma de duración de todo el contenido pendiente
 - **Librería de contenido**: YouTube, películas, libros, juegos
-- **Autodetección**: pega una URL de YouTube o Steam y se rellena automáticamente
+- **Autodetección**: pega una URL de YouTube, Steam, Netflix, Prime Video, Max/HBO, Disney+ o Stremio y se rellena automáticamente
 - **Enlaces directos**: abre en YouTube, Stremio, Steam o lanza el juego
 - **Duración**: cada contenido muestra su tiempo estimado
 - **Consumido**: marca como consumido y pasa a la colección de consumido
@@ -153,6 +153,8 @@ deus-vault/
 | GET | `/api/contents/stats` | Estadísticas de la bóveda |
 | GET | `/api/lookup/youtube?url=` | Auto-rellenar desde YouTube |
 | GET | `/api/lookup/steam?url=` | Auto-rellenar desde Steam |
+| GET | `/api/lookup/streaming?url=` | Auto-rellenar desde Netflix/Prime/Max/Disney/Stremio |
+| GET | `/api/lookup/auto?url=` | Auto-detectar proveedor y auto-rellenar |
 
 ## Useful commands
 ```

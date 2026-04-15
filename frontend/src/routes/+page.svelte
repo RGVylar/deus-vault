@@ -51,10 +51,19 @@
 	function isLookupCandidate(url: string): boolean {
 		try {
 			const parsed = new URL(url);
+			const host = parsed.hostname.toLowerCase();
 			return (
-				parsed.hostname.includes('youtube.com') ||
-				parsed.hostname.includes('youtu.be') ||
-				parsed.hostname.includes('store.steampowered.com')
+				host.includes('youtube.com') ||
+				host.includes('youtu.be') ||
+				host.includes('store.steampowered.com') ||
+				host.includes('netflix.com') ||
+				host.includes('primevideo.com') ||
+				host.includes('amazon.com') ||
+				host.includes('max.com') ||
+				host.includes('hbomax.com') ||
+				host.includes('disneyplus.com') ||
+				host.includes('strem.io') ||
+				host.includes('stremio.com')
 			);
 		} catch {
 			return false;
@@ -84,23 +93,24 @@
 		addError = '';
 		lookupLoading = true;
 		try {
-			let endpoint = '';
-			if (targetUrl.includes('youtube.com') || targetUrl.includes('youtu.be')) {
-				endpoint = `/lookup/youtube?url=${encodeURIComponent(targetUrl)}`;
+			const endpoint = `/lookup/auto?url=${encodeURIComponent(targetUrl)}`;
+			const data = await api.get<any>(endpoint);
+
+			addTitle = data.title || addTitle;
+			addAuthor = data.author || addAuthor;
+			addThumbnail = data.thumbnail || '';
+			addSourceId = data.source_id || '';
+			if (data.duration_minutes) addDuration = data.duration_minutes;
+
+			if (data.suggested_content_type) {
+				addType = data.suggested_content_type;
+			} else if (targetUrl.includes('youtube.com') || targetUrl.includes('youtu.be')) {
 				addType = 'youtube';
 			} else if (targetUrl.includes('store.steampowered.com')) {
-				endpoint = `/lookup/steam?url=${encodeURIComponent(targetUrl)}`;
 				addType = 'game';
 			}
-			if (endpoint) {
-				const data = await api.get<any>(endpoint);
-				addTitle = data.title || addTitle;
-				addAuthor = data.author || addAuthor;
-				addThumbnail = data.thumbnail || '';
-				addSourceId = data.source_id || '';
-				if (data.duration_minutes) addDuration = data.duration_minutes;
-				lastLookupUrl = targetUrl;
-			}
+
+			lastLookupUrl = targetUrl;
 		} catch (e: unknown) {
 			addError = e instanceof Error ? e.message : 'Lookup failed';
 		} finally { lookupLoading = false; }
