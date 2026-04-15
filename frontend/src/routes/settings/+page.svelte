@@ -5,6 +5,7 @@
 
 	let readingWpm = 200;
 	let readingWordsPerPage = 300;
+	let saved = false;
 
 	onMount(() => {
 		if (!auth.isLoggedIn) goto('/login');
@@ -31,6 +32,8 @@
 	function saveLocalSettings() {
 		try { localStorage.setItem('deus_vault_reading_wpm', String(readingWpm)); localStorage.setItem('deus_vault_words_per_page', String(readingWordsPerPage)); } catch(e){}
 		dispatchSettingsChanged();
+		saved = true;
+		setTimeout(() => { saved = false; }, 2500);
 	}
 
 	function resetLocalSettings() {
@@ -56,9 +59,12 @@
 		<label for="settings-pages" style="display:block; font-weight:600; margin:0.5rem 0 0.25rem;">Palabras por página (promedio)</label>
 		<input id="settings-pages" type="number" bind:value={readingWordsPerPage} min="50" max="1000" />
 		<p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.5rem;">Estos ajustes se guardan localmente en tu navegador y se usan para estimar la duración de libros.</p>
-		<div style="display:flex; gap:0.5rem; margin-top:1rem;">
+		<div style="display:flex; gap:0.5rem; margin-top:1rem; align-items:center;">
 			<button class="" onclick={saveLocalSettings} style="flex:1;">Guardar ajustes</button>
 			<button class="btn-secondary" onclick={resetLocalSettings} style="flex:1;">Restablecer</button>
+			{#if saved}
+				<span style="color:var(--game); margin-left:0.5rem; font-weight:600;">Ajustes guardados ✓</span>
+			{/if}
 		</div>
 	</div>
 
