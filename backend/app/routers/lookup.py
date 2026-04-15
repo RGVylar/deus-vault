@@ -140,7 +140,7 @@ async def lookup_spotify(url: str) -> dict:
     import base64
     import time
     # Soportar track URLs con o sin prefijo de idioma
-    match = re.search(r"open\\.spotify\\.com/(?:[a-zA-Z0-9-]+/)?track/([A-Za-z0-9]+)", url)
+    match = re.search(r"open\.spotify\.com/(?:[a-zA-Z0-9-]+/)?track/([A-Za-z0-9]+)", url)
     if not match:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Invalid Spotify track URL: {url}")
     track_id = match.group(1)
