@@ -1,6 +1,5 @@
 import re
 import json
-import sys
 from html import unescape
 from urllib.parse import unquote, urlparse
 
@@ -157,10 +156,55 @@ def _clean_title(title: str, provider: str) -> str:
     provider_label = PROVIDER_LABELS.get(provider, "")
     if provider_label:
         cleaned = re.sub(rf"\s*[|\-–—]\s*{re.escape(provider_label)}\s*$", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\s*[|\-–—]\s*(Watch|Streaming|Official Site).*$", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*[|\-–—]\s*(Watch|Streaming|Official Site|Prime Video|Netflix|HBO\s*Max|Max|Disney\+).*$", "", cleaned, flags=re.IGNORECASE)
     # Common streaming CTA prefixes that hurt TMDb matching.
-    cleaned = re.sub(r"^(watch|ver|voir|guarda|regarder|assistir)\s+", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(
+        r"^(watch|ver|voir|guarda|regarder|assistir|disfruta|los\s+episodios\s+completos\s+de|episodios\s+completos\s+de)\s+",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r"^(prime\s*video|netflix|hbo\s*max|max|disney\+)\s*[:\-]\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+", " ", cleaned)
     return cleaned.strip()
+
+
+def _normalize_text_for_match(value: str) -> str:
+    normalized = (value or "").lower().strip()
+    normalized = re.sub(r"[\'\"`´]", "", normalized)
+    normalized = re.sub(r"[^a-z0-9\s]", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized)
+    return normalized.strip()
+
+
+def _build_tmdb_query_candidates(title: str, provider: str | None = None) -> list[str]:
+    base = (title or "").strip()
+    if not base:
+        return []
+
+    candidates: list[str] = []
+
+    def add_candidate(value: str) -> None:
+        cleaned = re.sub(r"\s+", " ", (value or "").strip())
+        if cleaned and cleaned not in candidates:
+            candidates.append(cleaned)
+
+    add_candidate(base)
+    add_candidate(_clean_title(base, provider or ""))
+    add_candidate(re.sub(r"^(prime\s*video|netflix|hbo\s*max|max|disney\+)\s*[:\-]\s*", "", base, flags=re.IGNORECASE))
+    add_candidate(
+        re.sub(
+            r"^(watch|ver|voir|guarda|regarder|assistir|disfruta|los\s+episodios\s+completos\s+de|episodios\s+completos\s+de)\s+",
+            "",
+            base,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    if ":" in base:
+        add_candidate(base.split(":", 1)[1])
+
+    return [c for c in candidates if c]
 
 
 def _extract_source_id(url: str, provider: str) -> str:
@@ -187,74 +231,70 @@ def _extract_source_id(url: str, provider: str) -> str:
     return ""
 
 
-async def _tmdb_fallback(query: str) -> dict:
+async def _tmdb_fallback(query: str, provider: str | None = None) -> dict:
     if not settings.tmdb_api_key or not query:
-        print(f"[TMDB] No key or query: key={bool(settings.tmdb_api_key)}, query={query}", file=sys.stderr)
         return {}
 
-    query = query.strip()
-    alt_query = re.sub(r"^(watch|ver|voir|guarda|regarder|assistir)\s+", "", query, flags=re.IGNORECASE).strip()
-    print(f"[TMDB] Searching: query='{query}' | alt='{alt_query}'", file=sys.stderr)
+    search_queries = _build_tmdb_query_candidates(query, provider)
+    if not search_queries:
+        return {}
 
-    params = {
-        "api_key": settings.tmdb_api_key,
-        "query": query,
-        "language": "en-US",
-        "include_adult": "false",
-    }
+    languages = ("es-ES", "en-US")
+    best_match: dict | None = None
+    best_score = -1.0
+    selected_language = "en-US"
 
     async with httpx.AsyncClient(timeout=10) as client:
-        search_resp = await client.get("https://api.themoviedb.org/3/search/multi", params=params)
-        if search_resp.status_code != 200:
-            print(f"[TMDB] First search failed: {search_resp.status_code}", file=sys.stderr)
+        for search_query in search_queries:
+            normalized_query = _normalize_text_for_match(search_query)
+            for language in languages:
+                resp = await client.get(
+                    "https://api.themoviedb.org/3/search/multi",
+                    params={
+                        "api_key": settings.tmdb_api_key,
+                        "query": search_query,
+                        "language": language,
+                        "include_adult": "false",
+                    },
+                )
+                if resp.status_code != 200:
+                    continue
+
+                results = [r for r in resp.json().get("results", []) if r.get("media_type") in {"movie", "tv"}]
+                for candidate in results:
+                    candidate_title = candidate.get("title") or candidate.get("name") or ""
+                    normalized_title = _normalize_text_for_match(candidate_title)
+                    exact_score = 120.0 if normalized_title == normalized_query else 0.0
+                    contains_score = 50.0 if normalized_query and (normalized_query in normalized_title or normalized_title in normalized_query) else 0.0
+                    popularity_score = min(float(candidate.get("popularity") or 0), 60.0)
+                    votes_score = min(float(candidate.get("vote_count") or 0) / 200.0, 20.0)
+                    total_score = exact_score + contains_score + popularity_score + votes_score
+
+                    if total_score > best_score:
+                        best_score = total_score
+                        best_match = candidate
+                        selected_language = language
+
+        if not best_match:
             return {}
 
-        results = search_resp.json().get("results", [])
-        print(f"[TMDB] First search: {len(results)} results", file=sys.stderr)
-        if not results and alt_query and alt_query.lower() != query.lower():
-            print(f"[TMDB] Retrying with: '{alt_query}'", file=sys.stderr)
-            retry_resp = await client.get(
-                "https://api.themoviedb.org/3/search/multi",
-                params={**params, "query": alt_query},
-            )
-            if retry_resp.status_code == 200:
-                results = retry_resp.json().get("results", [])
-                print(f"[TMDB] Retry: {len(results)} results", file=sys.stderr)
-
-        selected = next((r for r in results if r.get("media_type") in {"movie", "tv"}), None)
-        if not selected:
-            print(f"[TMDB] No movie/tv selected from {len(results)} results", file=sys.stderr)
-            if results:
-                types = [r.get("media_type", "unknown") for r in results[:5]]
-                print(f"[TMDB] Sample types: {types}", file=sys.stderr)
-            return {}
-
-        # Prefer results by popularity to avoid wrong matches
-        candidates = [r for r in results if r.get("media_type") in {"movie", "tv"}]
-        candidates.sort(key=lambda r: float(r.get("popularity", 0)), reverse=True)
-        selected = candidates[0]
-        
-        media_type = selected.get("media_type")
-        item_id = selected.get("id")
-        print(f"[TMDB] Selected: {media_type} id={item_id}, title={selected.get('title') or selected.get('name')}, pop={selected.get('popularity')}", file=sys.stderr)
+        media_type = best_match.get("media_type")
+        item_id = best_match.get("id")
         details_resp = await client.get(
             f"https://api.themoviedb.org/3/{media_type}/{item_id}",
-            params={"api_key": settings.tmdb_api_key, "language": "en-US"},
+            params={"api_key": settings.tmdb_api_key, "language": selected_language},
         )
         details = details_resp.json() if details_resp.status_code == 200 else {}
-        print(f"[TMDB] Details response: {details_resp.status_code}", file=sys.stderr)
 
     runtime = 0
     if media_type == "movie":
         runtime = int(details.get("runtime") or 0)
-        print(f"[TMDB] Movie runtime: {runtime}", file=sys.stderr)
     else:
         episodes_runtime = details.get("episode_run_time") or []
         runtime = int(episodes_runtime[0]) if episodes_runtime else 0
-        print(f"[TMDB] TV runtime: {runtime}", file=sys.stderr)
 
-    title = selected.get("title") or selected.get("name") or query
-    poster_path = selected.get("poster_path") or details.get("poster_path")
+    title = best_match.get("title") or best_match.get("name") or query
+    poster_path = best_match.get("poster_path") or details.get("poster_path")
     thumbnail = f"https://image.tmdb.org/t/p/w780{poster_path}" if poster_path else ""
 
     return {
@@ -262,6 +302,7 @@ async def _tmdb_fallback(query: str) -> dict:
         "duration_minutes": runtime,
         "thumbnail": thumbnail,
         "source_id": f"tmdb:{media_type}:{item_id}",
+        "media_type": media_type,
     }
 
 
@@ -397,10 +438,10 @@ async def lookup_streaming(url: str) -> dict:
     if not title:
         title = _guess_title_from_url(url)
 
-    tmdb = await _tmdb_fallback(title)
+    tmdb = await _tmdb_fallback(title, provider)
     if tmdb:
-        if not title:
-            title = tmdb.get("title", "")
+        # Prefer canonical title from TMDb when available.
+        title = tmdb.get("title", title)
         tmdb_duration = int(tmdb.get("duration_minutes") or 0)
         # Replace suspiciously short scraped durations with TMDb runtime when available.
         if tmdb_duration > 0 and (duration_minutes <= 0 or duration_minutes < 15):
