@@ -229,9 +229,14 @@ async def _tmdb_fallback(query: str) -> dict:
                 print(f"[TMDB] Sample types: {types}", file=sys.stderr)
             return {}
 
+        # Prefer results by popularity to avoid wrong matches
+        candidates = [r for r in results if r.get("media_type") in {"movie", "tv"}]
+        candidates.sort(key=lambda r: float(r.get("popularity", 0)), reverse=True)
+        selected = candidates[0]
+        
         media_type = selected.get("media_type")
         item_id = selected.get("id")
-        print(f"[TMDB] Selected: {media_type} id={item_id}, title={selected.get('title') or selected.get('name')}", file=sys.stderr)
+        print(f"[TMDB] Selected: {media_type} id={item_id}, title={selected.get('title') or selected.get('name')}, pop={selected.get('popularity')}", file=sys.stderr)
         details_resp = await client.get(
             f"https://api.themoviedb.org/3/{media_type}/{item_id}",
             params={"api_key": settings.tmdb_api_key, "language": "en-US"},
