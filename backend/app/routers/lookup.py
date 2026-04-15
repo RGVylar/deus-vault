@@ -23,6 +23,14 @@ STREAMING_HOST_PATTERNS: dict[str, tuple[str, ...]] = {
     "spotify": ("open.spotify.com",),
 }
 
+# Hosts that should be treated as books for autodetection
+BOOK_HOST_PATTERNS: dict[str, tuple[str, ...]] = {
+    "openlibrary": ("openlibrary.org",),
+    "goodreads": ("goodreads.com",),
+    "amazon": ("amazon.com", "amazon.co.uk", "amazon.es", "amazon.de", "amazon.fr", "amazon.it"),
+    "googlebooks": ("books.google.com",),
+}
+
 PROVIDER_LABELS: dict[str, str] = {
     "netflix": "Netflix",
     "prime": "Prime Video",
@@ -30,6 +38,10 @@ PROVIDER_LABELS: dict[str, str] = {
     "disney": "Disney+",
     "stremio": "Stremio",
     "spotify": "Spotify",
+    "openlibrary": "Open Library",
+    "goodreads": "Goodreads",
+    "amazon": "Amazon",
+    "googlebooks": "Google Books",
 }
 
 
@@ -128,6 +140,10 @@ def _detect_provider(url: str) -> str | None:
         if any(pattern in host for pattern in patterns):
             return provider
 
+    for provider, patterns in BOOK_HOST_PATTERNS.items():
+        if any(pattern in host for pattern in patterns):
+            return provider
+
     if "youtube.com" in host or "youtu.be" in host:
         return "youtube"
     if "store.steampowered.com" in host:
@@ -186,6 +202,117 @@ async def lookup_spotify(url: str) -> dict:
         "duration_minutes": duration_minutes,
         "suggested_content_type": "music",
         "provider": "spotify",
+    }
+
+
+@router.get("/book")
+async def lookup_book(url: str) -> dict:
+    """Lookup book info using Open Library / Google Books as fallbacks."""
+    provider = _detect_provider(url)
+    if provider not in BOOK_HOST_PATTERNS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unsupported book URL")
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0"}, follow_redirects=True)
+
+    html = resp.text if resp.status_code == 200 else ""
+
+    # Prefer structured JSON-LD isbn/title/author if present
+    isbn = None
+    blocks = re.findall(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, flags=re.IGNORECASE | re.DOTALL)
+    for block in blocks:
+        try:
+            parsed = json.loads(block.strip())
+        except Exception:
+            continue
+        items = parsed if isinstance(parsed, list) else [parsed]
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            if item.get("isbn"):
+                isbn = str(item.get("isbn")).replace("-", "").strip()
+                break
+        if isbn:
+            break
+
+    # meta tags
+    if not isbn:
+        isbn_meta = _extract_meta_content(html, "isbn") or _extract_meta_content(html, "books:isbn")
+        if isbn_meta:
+            isbn = isbn_meta.replace("-", "").strip()
+
+    # fallback regex for ISBN-13/10
+    if not isbn:
+        m = re.search(r"(97[89][\- ]?\d[\d\- ]{8,}\d|\b\d{9}[\dX]\b)", html)
+        if m:
+            isbn = re.sub(r"[^0-9X]", "", m.group(0))
+
+    title = _extract_meta_content(html, "og:title") or _extract_title_tag(html) or _guess_title_from_url(url)
+    author = ""
+    thumbnail = ""
+    page_count = 0
+
+    # If we have an ISBN, try Open Library first
+    if isbn:
+        async with httpx.AsyncClient(timeout=10) as client:
+            ol = await client.get("https://openlibrary.org/search.json", params={"isbn": isbn})
+        if ol.status_code == 200:
+            docs = ol.json().get("docs", [])
+            if docs:
+                doc = docs[0]
+                title = doc.get("title") or title
+                author = ", ".join(doc.get("author_name", []) or [])
+                cover_id = doc.get("cover_i")
+                if cover_id:
+                    thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
+                page_count = int(doc.get("number_of_pages_median") or doc.get("number_of_pages") or 0)
+
+    # If still missing info, try Google Books as fallback (no API key required for simple queries)
+    if (not title or not author) and isbn:
+        async with httpx.AsyncClient(timeout=10) as client:
+            gb = await client.get("https://www.googleapis.com/books/v1/volumes", params={"q": f"isbn:{isbn}"})
+        if gb.status_code == 200:
+            items = gb.json().get("items") or []
+            if items:
+                info = items[0].get("volumeInfo", {})
+                title = info.get("title") or title
+                authors = info.get("authors") or []
+                author = ", ".join(authors) if authors else author
+                page_count = page_count or int(info.get("pageCount") or 0)
+                image_links = info.get("imageLinks") or {}
+                thumbnail = thumbnail or image_links.get("thumbnail", "")
+
+    # Last resort: search Open Library by title
+    if not title and html:
+        q = _guess_title_from_url(url)
+        if q:
+            async with httpx.AsyncClient(timeout=10) as client:
+                s = await client.get("https://openlibrary.org/search.json", params={"q": q})
+            if s.status_code == 200:
+                docs = s.json().get("docs", [])
+                if docs:
+                    doc = docs[0]
+                    title = doc.get("title") or title
+                    author = ", ".join(doc.get("author_name", []) or [])
+                    cover_id = doc.get("cover_i")
+                    if cover_id:
+                        thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
+                    page_count = int(doc.get("number_of_pages_median") or doc.get("number_of_pages") or 0)
+
+    # Estimate reading time from page count (approx 1.2 min/page)
+    duration_minutes = int(page_count * 1.2) if page_count and page_count > 0 else 0
+
+    source_id = isbn or _extract_source_id(url, provider) or (title or "").replace(" ", "_")
+
+    return {
+        "title": title or "",
+        "author": author or PROVIDER_LABELS.get(provider, ""),
+        "thumbnail": thumbnail,
+        "source_id": source_id,
+        "url": url,
+        "duration_minutes": duration_minutes,
+        "suggested_content_type": "book",
+        "provider": provider,
     }
 
 
