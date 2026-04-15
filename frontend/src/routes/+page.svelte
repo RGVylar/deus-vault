@@ -249,6 +249,12 @@
 							{lookupLoading ? '…' : '🔍'}
 						</button>
 					</div>
+					{#if lookupLoading}
+						<p class="lookup-status" aria-live="polite">
+							<span class="lookup-dot" aria-hidden="true"></span>
+							Buscando informacion del enlace...
+						</p>
+					{/if}
 				</div>
 
 				<div class="form-group">

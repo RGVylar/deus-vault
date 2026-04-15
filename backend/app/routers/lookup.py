@@ -1,5 +1,4 @@
 import re
-from math import ceil
 
 import httpx
 from fastapi import APIRouter, HTTPException, status
@@ -30,7 +29,7 @@ def _extract_duration_minutes(html: str) -> int:
         value = int(match.group(1))
         seconds = value // 1000 if "DurationMs" in pattern else value
         if seconds > 0:
-            return max(1, ceil(seconds / 60))
+            return seconds // 60
 
     return 0
 
@@ -67,7 +66,7 @@ async def _get_hltb_duration_minutes(game_name: str) -> int:
         hours = float(best_match.main_story or 0)
         if hours <= 0:
             return 0
-        return max(1, ceil(hours * 60))
+        return int(hours * 60)
     except Exception:
         return 0
 

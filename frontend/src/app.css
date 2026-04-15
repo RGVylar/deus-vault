@@ -105,6 +105,27 @@ label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bot
 .form-group { margin-bottom: 0.75rem; }
 .form-group input, .form-group select, .form-group textarea { width: 100%; }
 .error { color: var(--danger); font-size: 0.85rem; margin-top: 0.5rem; }
+.lookup-status {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	font-size: 0.78rem;
+	color: var(--text-muted);
+	margin-top: 0.4rem;
+}
+.lookup-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 999px;
+	background: var(--primary);
+	box-shadow: 0 0 10px var(--primary-glow);
+	animation: lookup-pulse 1s ease-in-out infinite;
+}
+
+@keyframes lookup-pulse {
+	0%, 100% { opacity: 0.35; transform: scale(0.85); }
+	50% { opacity: 1; transform: scale(1); }
+}
 
 /* Type badges */
 .badge {

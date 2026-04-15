@@ -153,3 +153,19 @@ deus-vault/
 | GET | `/api/contents/stats` | Estadísticas de la bóveda |
 | GET | `/api/lookup/youtube?url=` | Auto-rellenar desde YouTube |
 | GET | `/api/lookup/steam?url=` | Auto-rellenar desde Steam |
+
+## Useful commands
+```
+pct exec 210 -- bash -lc '
+cd /opt/deus-vault &&
+sudo -u deusvault git pull &&
+cd backend &&
+sudo -u deusvault .venv/bin/pip install -e . &&
+sudo -u deusvault .venv/bin/alembic upgrade head &&
+cd ../frontend &&
+sudo -u deusvault npm install --silent &&
+sudo -u deusvault npm run build --silent &&
+systemctl restart deus-vault-backend &&
+systemctl reload caddy
+'
+```
