@@ -2,25 +2,24 @@
 # Ejecuta pruebas de lookup para varias plataformas y muestra los resultados
 # Requiere: curl, backend corriendo en http://localhost:8000
 
-# Ejemplos de títulos/URLs para cada plataforma
-NETFLIX_TITLE="El Irlandés"
-DISNEY_TITLE="The Mandalorian"
-PRIME_TITLE="The Boys"
-MAX_TITLE="Dune"
-STREMIO_TITLE="Arcane"
 
-# Puedes cambiar los títulos por URLs si tu endpoint los acepta
+# URLs de ejemplo para cada plataforma
+NETFLIX_URL="https://www.netflix.com/watch/1181732?source=35"
+DISNEY_URL="https://www.disneyplus.com/video/mandalorian"
+PRIME_URL="https://www.primevideo.com/-/es/detail/0LCOF5S7YR0UEA8EYW31TA7OF7/ref=atv_mv_hom_c_OB3e7ea8_brws_10_5?jic=8%7CEgR0dm9k"
+MAX_URL="https://play.hbomax.com/show/57660b16-a32a-476f-89da-3302ac379e91?utm_source=universal_search"
+STREMIO_URL="https://app.strem.io/shell-v4.4/#/detail/movie/tt0780504/tt0780504"
 
-# Función para probar un título
+# Función para probar una URL
 probar() {
   PLATAFORMA="$1"
-  TITULO="$2"
+  URL="$2"
   echo "\n==== $PLATAFORMA ===="
-  curl -s -X POST "http://localhost:8000/lookup" -H "Content-Type: application/json" -d "{\"title\": \"$TITULO\"}" | jq
+  curl -s "http://127.0.0.1:8000/api/lookup/auto?url=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["URL"]))')" | jq
 }
 
-probar "Netflix" "$NETFLIX_TITLE"
-probar "Disney+" "$DISNEY_TITLE"
-probar "Prime Video" "$PRIME_TITLE"
-probar "Max" "$MAX_TITLE"
-probar "Stremio" "$STREMIO_TITLE"
+probar "Netflix" "$NETFLIX_URL"
+probar "Disney+" "$DISNEY_URL"
+probar "Prime Video" "$PRIME_URL"
+probar "Max" "$MAX_URL"
+probar "Stremio" "$STREMIO_URL"
