@@ -18,6 +18,7 @@ export interface Content {
 	url: string | null;
 	thumbnail: string | null;
 	duration_minutes: number;
+	page_count?: number;
 	consumed: boolean;
 	consumed_at: string | null;
 	created_at: string;
