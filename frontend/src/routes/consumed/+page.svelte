@@ -73,6 +73,7 @@
 	{:else}
 		<div style="display:flex; flex-direction:column; gap:0.5rem;">
 			{#each contents as c (c.id)}
+				{@const link = buildConsumeUrl(c)}
 				<div class="content-card" style="opacity:0.75;">
 					{#if c.thumbnail}
 						<img class="thumb" src={c.thumbnail} alt="" />
@@ -93,14 +94,11 @@
 							{/if}
 						</div>
 						<div class="actions">
-						<svelte:fragment>
-							{@const link = buildConsumeUrl(c)}
 							{#if link}
 								<a href={link} target="_blank" rel="noopener">
 									<button class="btn-secondary">Abrir</button>
 								</a>
 							{/if}
-						</svelte:fragment>
 							<button class="btn-secondary" onclick={() => unconsume(c.id)}>↩ Devolver</button>
 						</div>
 					</div>
