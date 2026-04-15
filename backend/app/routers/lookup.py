@@ -365,8 +365,14 @@ async def lookup_streaming(url: str) -> dict:
     title = _clean_title(title, provider)
     thumbnail = _extract_meta_content(html, "og:image")
 
-    duration_seconds = int(_extract_meta_content(html, "og:video:duration") or 0)
-    duration_minutes = duration_seconds // 60 if duration_seconds > 0 else _extract_jsonld_duration_minutes(html)
+    # Streaming providers often expose trailer/preview lengths in og:video:duration.
+    # Prefer JSON-LD first; treat very short OG durations as low confidence.
+    jsonld_duration_minutes = _extract_jsonld_duration_minutes(html)
+    og_duration_seconds = int(_extract_meta_content(html, "og:video:duration") or 0)
+    og_duration_minutes = og_duration_seconds // 60 if og_duration_seconds > 0 else 0
+    duration_minutes = jsonld_duration_minutes
+    if duration_minutes <= 0 and og_duration_minutes >= 15:
+        duration_minutes = og_duration_minutes
 
     if not title:
         title = _guess_title_from_url(url)
@@ -375,8 +381,10 @@ async def lookup_streaming(url: str) -> dict:
     if tmdb:
         if not title:
             title = tmdb.get("title", "")
-        if duration_minutes <= 0:
-            duration_minutes = int(tmdb.get("duration_minutes") or 0)
+        tmdb_duration = int(tmdb.get("duration_minutes") or 0)
+        # Replace suspiciously short scraped durations with TMDb runtime when available.
+        if tmdb_duration > 0 and (duration_minutes <= 0 or duration_minutes < 15):
+            duration_minutes = tmdb_duration
         if not thumbnail:
             thumbnail = tmdb.get("thumbnail", "")
 
