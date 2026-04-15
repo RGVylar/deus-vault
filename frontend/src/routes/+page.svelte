@@ -12,6 +12,11 @@
 	let showAdd = $state(false);
 	let loading = $state(true);
 
+	// Settings
+	let showSettings = $state(false);
+	let readingWpm = $state(200);
+	const DEFAULT_WORDS_PER_PAGE = 300;
+
 	// Add form
 	let addTitle = $state('');
 	let addType: ContentType = $state('youtube');
@@ -29,6 +34,11 @@
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
 		load();
+		// Load user setting from localStorage (client-only)
+		try {
+			const stored = localStorage.getItem('deus_vault_reading_wpm');
+			if (stored) readingWpm = Number(stored) || readingWpm;
+		} catch (e) {}
 	});
 
 	async function load() {
@@ -104,14 +114,26 @@
 			addAuthor = data.author || addAuthor;
 			addThumbnail = data.thumbnail || '';
 			addSourceId = data.source_id || '';
-			if (data.duration_minutes) addDuration = data.duration_minutes;
 
-			if (data.suggested_content_type) {
-				addType = data.suggested_content_type;
+			// Determine type
+			const suggestedType = data.suggested_content_type;
+			if (suggestedType) {
+				addType = suggestedType;
 			} else if (targetUrl.includes('youtube.com') || targetUrl.includes('youtu.be')) {
 				addType = 'youtube';
 			} else if (targetUrl.includes('store.steampowered.com')) {
 				addType = 'game';
+			}
+
+			// If it's a book and we have page_count, compute duration using user WPM
+			if (addType === 'book') {
+				if (data.page_count && Number(data.page_count) > 0) {
+					addDuration = Math.ceil(Number(data.page_count) * DEFAULT_WORDS_PER_PAGE / Math.max(1, Number(readingWpm)));
+				} else if (data.duration_minutes) {
+					addDuration = data.duration_minutes;
+				}
+			} else {
+				if (data.duration_minutes) addDuration = data.duration_minutes;
 			}
 
 			lastLookupUrl = targetUrl;
@@ -139,6 +161,11 @@
 		} catch (e: unknown) {
 			addError = e instanceof Error ? e.message : 'Error';
 		}
+	}
+
+	function saveSettings() {
+		try { localStorage.setItem('deus_vault_reading_wpm', String(readingWpm)); } catch (e) {}
+		showSettings = false;
 	}
 
 	function resetForm() {
@@ -254,6 +281,7 @@
 	{/if}
 
 	<!-- FAB -->
+	<button class="fab settings" onclick={() => showSettings = true} title="Ajustes">⚙️</button>
 	<button class="fab" onclick={() => showAdd = true}>+</button>
 
 	<!-- Add modal -->
@@ -316,6 +344,24 @@
 				<div style="display:flex; gap:0.5rem; margin-top:1rem;">
 					<button onclick={submitAdd} style="flex:1;">Guardar</button>
 					<button class="btn-secondary" onclick={() => { showAdd = false; resetForm(); }} style="flex:1;">Cancelar</button>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if showSettings}
+		<div class="overlay" onclick={() => showSettings = false} role="presentation">
+			<div class="modal" onclick={e => e.stopPropagation()} role="dialog">
+				<h2>Ajustes</h2>
+
+				<div class="form-group">
+					<label for="reading-wpm">Velocidad de lectura (palabras/minuto)</label>
+					<input id="reading-wpm" type="number" bind:value={readingWpm} min="50" max="2000" />
+				</div>
+
+				<div style="display:flex; gap:0.5rem; margin-top:1rem;">
+					<button onclick={saveSettings} style="flex:1;">Guardar</button>
+					<button class="btn-secondary" onclick={() => { showSettings = false; }} style="flex:1;">Cancelar</button>
 				</div>
 			</div>
 		</div>
