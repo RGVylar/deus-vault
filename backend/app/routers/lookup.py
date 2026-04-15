@@ -666,8 +666,11 @@ async def lookup_auto(url: str) -> dict:
         return await lookup_spotify(url)
     if provider in STREAMING_HOST_PATTERNS:
         return await lookup_streaming(url)
+    # Book providers (OpenLibrary, Goodreads, Google Books, Amazon book pages)
+    if provider in globals().get("BOOK_HOST_PATTERNS", {}):
+        return await lookup_book(url)
 
     raise HTTPException(
         status.HTTP_400_BAD_REQUEST,
-        "Unsupported URL. Try YouTube, Steam, Spotify, Netflix, Prime Video, Max, Disney+, or Stremio.",
+        "Unsupported URL. Try YouTube, Steam, Spotify, Netflix, Prime Video, Max, Disney+, Spotify, Stremio, or book links (OpenLibrary/Goodreads/GoogleBooks).",
     )
