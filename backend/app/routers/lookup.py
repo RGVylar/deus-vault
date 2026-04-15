@@ -397,6 +397,7 @@ async def lookup_book(url: str) -> dict:
         "title": title or "",
         "author": author or PROVIDER_LABELS.get(provider, ""),
         "thumbnail": thumbnail,
+        "page_count": page_count,
         "source_id": source_id,
         "url": url,
         "duration_minutes": duration_minutes,
