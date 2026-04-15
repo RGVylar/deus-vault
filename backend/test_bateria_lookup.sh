@@ -4,7 +4,7 @@
 
 
 # URLs de ejemplo para cada plataforma
-NETFLIX_URL="https://www.netflix.com/watch/1181732?source=35"
+NETFLIX_URL="https://www.netflix.com/watch/60000861?source=35"
 DISNEY_URL="https://www.disneyplus.com/video/mandalorian"
 PRIME_URL="https://www.primevideo.com/-/es/detail/0LCOF5S7YR0UEA8EYW31TA7OF7/ref=atv_mv_hom_c_OB3e7ea8_brws_10_5?jic=8%7CEgR0dm9k"
 MAX_URL="https://play.hbomax.com/show/57660b16-a32a-476f-89da-3302ac379e91?utm_source=universal_search"
