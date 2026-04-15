@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7  # 7 days
     tmdb_api_key: str | None = None
+    spotify_client_id: str | None = None
+    spotify_client_secret: str | None = None
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

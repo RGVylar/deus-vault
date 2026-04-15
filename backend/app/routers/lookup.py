@@ -20,6 +20,7 @@ STREAMING_HOST_PATTERNS: dict[str, tuple[str, ...]] = {
     "max": ("max.com", "hbomax.com"),
     "disney": ("disneyplus.com",),
     "stremio": ("strem.io", "stremio.com", "stremio"),
+    "spotify": ("open.spotify.com",),
 }
 
 PROVIDER_LABELS: dict[str, str] = {
@@ -28,6 +29,7 @@ PROVIDER_LABELS: dict[str, str] = {
     "max": "Max",
     "disney": "Disney+",
     "stremio": "Stremio",
+    "spotify": "Spotify",
 }
 
 
@@ -130,7 +132,61 @@ def _detect_provider(url: str) -> str | None:
         return "youtube"
     if "store.steampowered.com" in host:
         return "steam"
+    if "open.spotify.com" in host:
+        return "spotify"
     return None
+async def lookup_spotify(url: str) -> dict:
+    """Lookup Spotify track info using Spotify API."""
+    import base64
+    import time
+    # Only support track URLs for now
+    match = re.search(r"open\.spotify\.com/track/([A-Za-z0-9]+)", url)
+    if not match:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid Spotify track URL")
+    track_id = match.group(1)
+
+    # Get OAuth token
+    client_id = settings.spotify_client_id
+    client_secret = settings.spotify_client_secret
+    if not client_id or not client_secret:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Spotify credentials not configured")
+    token_url = "https://accounts.spotify.com/api/token"
+    auth_header = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
+    headers = {"Authorization": f"Basic {auth_header}"}
+    data = {"grant_type": "client_credentials"}
+    async with httpx.AsyncClient(timeout=10) as client:
+        token_resp = await client.post(token_url, data=data, headers=headers)
+    if token_resp.status_code != 200:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Failed to authenticate with Spotify API")
+    token = token_resp.json().get("access_token")
+    if not token:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No access token from Spotify API")
+
+    # Get track info
+    api_url = f"https://api.spotify.com/v1/tracks/{track_id}"
+    headers = {"Authorization": f"Bearer {token}"}
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(api_url, headers=headers)
+    if resp.status_code != 200:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Track not found on Spotify")
+    data = resp.json()
+    duration_ms = int(data.get("duration_ms", 0))
+    duration_minutes = duration_ms // 60000 if duration_ms > 0 else 0
+    artists = ", ".join(artist["name"] for artist in data.get("artists", []))
+    thumbnail = ""
+    images = data.get("album", {}).get("images", [])
+    if images:
+        thumbnail = images[0]["url"]
+    return {
+        "title": data.get("name", ""),
+        "author": artists,
+        "thumbnail": thumbnail,
+        "source_id": track_id,
+        "url": url,
+        "duration_minutes": duration_minutes,
+        "suggested_content_type": "music",
+        "provider": "spotify",
+    }
 
 
 def _guess_title_from_url(url: str) -> str:
@@ -470,10 +526,12 @@ async def lookup_auto(url: str) -> dict:
         return await lookup_youtube(url)
     if provider == "steam":
         return await lookup_steam(url)
+    if provider == "spotify":
+        return await lookup_spotify(url)
     if provider in STREAMING_HOST_PATTERNS:
         return await lookup_streaming(url)
 
     raise HTTPException(
         status.HTTP_400_BAD_REQUEST,
-        "Unsupported URL. Try YouTube, Steam, Netflix, Prime Video, Max, Disney+, or Stremio.",
+        "Unsupported URL. Try YouTube, Steam, Spotify, Netflix, Prime Video, Max, Disney+, or Stremio.",
     )
