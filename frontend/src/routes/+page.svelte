@@ -292,6 +292,9 @@
 							{#if c.duration_minutes > 0}
 								<span>⏱ {formatDuration(c.duration_minutes)}</span>
 							{/if}
+							{#if c.content_type === 'book' && c.page_count && Number(c.page_count) > 0}
+								<span>📚 {c.page_count} pág</span>
+							{/if}
 							{#if c.author}
 								<span>{c.author}</span>
 							{/if}
