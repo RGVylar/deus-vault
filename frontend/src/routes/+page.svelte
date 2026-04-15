@@ -181,12 +181,14 @@
 							{/if}
 						</div>
 						<div class="actions">
+						<svelte:fragment>
 							{@const link = buildConsumeUrl(c)}
 							{#if link}
 								<a href={link} target="_blank" rel="noopener">
 									<button class="btn-secondary">Abrir</button>
 								</a>
 							{/if}
+						</svelte:fragment>
 							<button onclick={() => consume(c.id)} style="background:rgba(79,255,170,0.15); color:var(--game); box-shadow:none;">✓</button>
 							<button class="btn-danger" onclick={() => remove(c.id)}>✕</button>
 						</div>

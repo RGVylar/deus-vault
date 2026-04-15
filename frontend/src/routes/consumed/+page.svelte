@@ -93,12 +93,14 @@
 							{/if}
 						</div>
 						<div class="actions">
+						<svelte:fragment>
 							{@const link = buildConsumeUrl(c)}
 							{#if link}
 								<a href={link} target="_blank" rel="noopener">
 									<button class="btn-secondary">Abrir</button>
 								</a>
 							{/if}
+						</svelte:fragment>
 							<button class="btn-secondary" onclick={() => unconsume(c.id)}>↩ Devolver</button>
 						</div>
 					</div>

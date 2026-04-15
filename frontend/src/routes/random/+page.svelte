@@ -83,12 +83,14 @@
 						{/if}
 					</div>
 					<div class="actions" style="margin-top:0.6rem;">
+					<svelte:fragment>
 						{@const link = buildConsumeUrl(pick)}
 						{#if link}
 							<a href={link} target="_blank" rel="noopener">
 								<button>🚀 Consumir</button>
 							</a>
 						{/if}
+					</svelte:fragment>
 						<button onclick={() => consume(pick!.id)} style="background:rgba(79,255,170,0.15); color:var(--game); box-shadow:none;">✓ Hecho</button>
 						<button class="btn-secondary" onclick={roll}>🔄 Otro</button>
 					</div>
