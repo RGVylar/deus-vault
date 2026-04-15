@@ -12,6 +12,7 @@ export const TYPE_ICONS: Record<string, string> = {
 	youtube: '▶️',
 	movie: '🎬',
 	series: '📺',
+	music: '🎵',
 	book: '📖',
 	game: '🎮'
 };
@@ -20,6 +21,7 @@ export const TYPE_LABELS: Record<string, string> = {
 	youtube: 'YouTube',
 	movie: 'Películas',
 	series: 'Series',
+	music: 'Música',
 	book: 'Libro',
 	game: 'Juego'
 };
