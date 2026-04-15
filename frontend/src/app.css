@@ -174,16 +174,39 @@ label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bot
 .content-card .actions button {
 	padding: 0.3rem 0.6rem; font-size: 0.75rem; border-radius: 8px;
 }
+.content-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 0.55rem;
+}
 
 /* Big number hero */
 .hero-number {
 	text-align: center; padding: 1.5rem 0 1rem;
+}
+.hero-number .kicker {
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	color: rgba(255, 255, 255, 0.58);
+	margin-bottom: 0.35rem;
 }
 .hero-number .number {
 	font-size: 3rem; font-weight: 800; letter-spacing: -0.03em;
 	background: linear-gradient(135deg, var(--primary), var(--game));
 	-webkit-background-clip: text; -webkit-text-fill-color: transparent;
 	background-clip: text;
+}
+.hero-number.ominous .number {
+	font-size: clamp(3.4rem, 16vw, 6.6rem);
+	font-weight: 900;
+	letter-spacing: -0.04em;
+	background: linear-gradient(180deg, #ffb4b4 0%, #ff6b6b 30%, #c9a0ff 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	text-shadow: 0 0 36px rgba(255, 90, 90, 0.28);
+	line-height: 0.95;
 }
 .hero-number .unit {
 	font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;
@@ -268,4 +291,32 @@ h2 { font-size: 1.05rem; margin-bottom: 0.75rem; font-weight: 600; }
 	background: var(--bg2); border: 1px solid var(--border);
 	border-radius: 20px; padding: 1.5rem; width: 100%; max-width: 420px;
 	max-height: 85dvh; overflow-y: auto;
+}
+
+@media (min-width: 980px) {
+	.container {
+		max-width: 1080px;
+	}
+
+	.content-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.9rem;
+	}
+
+	.content-card {
+		padding: 1rem;
+		border-radius: 16px;
+		min-height: 142px;
+	}
+
+	.content-card .thumb {
+		width: 108px;
+		height: 108px;
+		border-radius: 12px;
+	}
+
+	.content-card .title {
+		font-size: 1rem;
+		-webkit-line-clamp: 3;
+	}
 }

@@ -142,6 +142,11 @@
 		await api.del(`/contents/${id}`);
 		load();
 	}
+
+	function formatHeroTime(minutes: number): string {
+		if (minutes < 60) return `${minutes} min`;
+		return `${Math.floor(minutes / 60)} h`;
+	}
 </script>
 
 {#if !auth.isLoggedIn}
@@ -149,9 +154,10 @@
 {:else}
 	<!-- Hero: total pending time -->
 	{#if stats}
-		<div class="hero-number">
-			<div class="number">{formatDuration(stats.total_pending_minutes)}</div>
-			<div class="unit">de contenido por consumir</div>
+		<div class="hero-number ominous">
+			<div class="kicker">DEUDA DE CONTENIDO</div>
+			<div class="number">{formatHeroTime(stats.total_pending_minutes)}</div>
+			<div class="unit">{formatDuration(stats.total_pending_minutes)} totales por consumir</div>
 		</div>
 
 		<div class="stat-row">
@@ -194,7 +200,7 @@
 			<p style="color:var(--text-muted);">La bóveda está vacía. ¡Añade contenido!</p>
 		</div>
 	{:else}
-		<div style="display:flex; flex-direction:column; gap:0.5rem;">
+		<div class="content-grid">
 			{#each contents as c (c.id)}
 				{@const link = buildConsumeUrl(c)}
 				<div class="content-card">
