@@ -267,7 +267,7 @@
 					<label for="add-url">URL (pega un enlace para autodetectar)</label>
 					<div style="display:flex; gap:0.5rem;">
 						<input id="add-url" bind:value={addUrl} placeholder="https://..." style="flex:1;" />
-						<button class="btn-secondary" onclick={lookupUrl} disabled={lookupLoading} style="white-space:nowrap;">
+						<button class="btn-secondary" onclick={() => lookupUrl()} disabled={lookupLoading} style="white-space:nowrap;">
 							{lookupLoading ? '…' : '🔍'}
 						</button>
 					</div>
