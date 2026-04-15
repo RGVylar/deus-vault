@@ -23,6 +23,8 @@
 	let addSourceId = $state('');
 	let addError = $state('');
 	let lookupLoading = $state(false);
+	let lastLookupUrl = $state('');
+	let autoLookupTimer: ReturnType<typeof setTimeout> | null = null;
 
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
@@ -46,17 +48,48 @@
 		api.get<Content[]>(url).then(r => contents = r);
 	});
 
-	async function lookupUrl() {
-		if (!addUrl) return;
+	function isLookupCandidate(url: string): boolean {
+		try {
+			const parsed = new URL(url);
+			return (
+				parsed.hostname.includes('youtube.com') ||
+				parsed.hostname.includes('youtu.be') ||
+				parsed.hostname.includes('store.steampowered.com')
+			);
+		} catch {
+			return false;
+		}
+	}
+
+	$effect(() => {
+		const url = addUrl.trim();
+		if (!showAdd || !url || !isLookupCandidate(url) || lookupLoading || url === lastLookupUrl) return;
+
+		if (autoLookupTimer) clearTimeout(autoLookupTimer);
+		autoLookupTimer = setTimeout(() => {
+			void lookupUrl(url);
+		}, 350);
+
+		return () => {
+			if (autoLookupTimer) {
+				clearTimeout(autoLookupTimer);
+				autoLookupTimer = null;
+			}
+		};
+	});
+
+	async function lookupUrl(overrideUrl?: string) {
+		const targetUrl = (overrideUrl ?? addUrl).trim();
+		if (!targetUrl) return;
 		addError = '';
 		lookupLoading = true;
 		try {
 			let endpoint = '';
-			if (addUrl.includes('youtube.com') || addUrl.includes('youtu.be')) {
-				endpoint = `/lookup/youtube?url=${encodeURIComponent(addUrl)}`;
+			if (targetUrl.includes('youtube.com') || targetUrl.includes('youtu.be')) {
+				endpoint = `/lookup/youtube?url=${encodeURIComponent(targetUrl)}`;
 				addType = 'youtube';
-			} else if (addUrl.includes('store.steampowered.com')) {
-				endpoint = `/lookup/steam?url=${encodeURIComponent(addUrl)}`;
+			} else if (targetUrl.includes('store.steampowered.com')) {
+				endpoint = `/lookup/steam?url=${encodeURIComponent(targetUrl)}`;
 				addType = 'game';
 			}
 			if (endpoint) {
@@ -66,6 +99,7 @@
 				addThumbnail = data.thumbnail || '';
 				addSourceId = data.source_id || '';
 				if (data.duration_minutes) addDuration = data.duration_minutes;
+				lastLookupUrl = targetUrl;
 			}
 		} catch (e: unknown) {
 			addError = e instanceof Error ? e.message : 'Lookup failed';
@@ -96,6 +130,7 @@
 	function resetForm() {
 		addTitle = ''; addUrl = ''; addDuration = 0; addAuthor = '';
 		addNotes = ''; addThumbnail = ''; addSourceId = ''; addType = 'youtube';
+		lastLookupUrl = '';
 	}
 
 	async function consume(id: number) {
