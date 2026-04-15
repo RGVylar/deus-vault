@@ -49,6 +49,8 @@
 			<button class:btn-secondary={filter !== 'all'} onclick={() => filter = 'all'}>Todo</button>
 			<button class:btn-secondary={filter !== 'youtube'} onclick={() => filter = 'youtube'}>▶️</button>
 			<button class:btn-secondary={filter !== 'movie'} onclick={() => filter = 'movie'}>🎬</button>
+			<button class:btn-secondary={filter !== 'series'} onclick={() => filter = 'series'}>📺</button>
+			<button class:btn-secondary={filter !== 'music'} onclick={() => filter = 'music'}>🎵</button>
 			<button class:btn-secondary={filter !== 'book'} onclick={() => filter = 'book'}>📖</button>
 			<button class:btn-secondary={filter !== 'game'} onclick={() => filter = 'game'}>🎮</button>
 		</div>
