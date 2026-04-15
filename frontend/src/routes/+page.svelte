@@ -64,7 +64,10 @@
 				host.includes('disneyplus.com') ||
 				host.includes('strem.io') ||
 				host.includes('stremio.com') ||
-				host.includes('open.spotify.com')
+				host.includes('open.spotify.com') ||
+				host.includes('openlibrary.org') ||
+				host.includes('goodreads.com') ||
+				host.includes('books.google.com')
 			);
 		} catch {
 			return false;
