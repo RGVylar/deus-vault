@@ -157,6 +157,8 @@ def _clean_title(title: str, provider: str) -> str:
     if provider_label:
         cleaned = re.sub(rf"\s*[|\-–—]\s*{re.escape(provider_label)}\s*$", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\s*[|\-–—]\s*(Watch|Streaming|Official Site).*$", "", cleaned, flags=re.IGNORECASE)
+    # Common streaming CTA prefixes that hurt TMDb matching.
+    cleaned = re.sub(r"^(watch|ver|voir|guarda|regarder|assistir)\s+", "", cleaned, flags=re.IGNORECASE)
     return cleaned.strip()
 
 
@@ -188,6 +190,9 @@ async def _tmdb_fallback(query: str) -> dict:
     if not settings.tmdb_api_key or not query:
         return {}
 
+    query = query.strip()
+    alt_query = re.sub(r"^(watch|ver|voir|guarda|regarder|assistir)\s+", "", query, flags=re.IGNORECASE).strip()
+
     params = {
         "api_key": settings.tmdb_api_key,
         "query": query,
@@ -201,6 +206,14 @@ async def _tmdb_fallback(query: str) -> dict:
             return {}
 
         results = search_resp.json().get("results", [])
+        if not results and alt_query and alt_query.lower() != query.lower():
+            retry_resp = await client.get(
+                "https://api.themoviedb.org/3/search/multi",
+                params={**params, "query": alt_query},
+            )
+            if retry_resp.status_code == 200:
+                results = retry_resp.json().get("results", [])
+
         selected = next((r for r in results if r.get("media_type") in {"movie", "tv"}), None)
         if not selected:
             return {}
