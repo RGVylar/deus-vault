@@ -11,13 +11,15 @@ export function formatDuration(minutes: number): string {
 export const TYPE_ICONS: Record<string, string> = {
 	youtube: '▶️',
 	movie: '🎬',
+	series: '📺',
 	book: '📖',
 	game: '🎮'
 };
 
 export const TYPE_LABELS: Record<string, string> = {
 	youtube: 'YouTube',
-	movie: 'Película',
+	movie: 'Películas',
+	series: 'Series',
 	book: 'Libro',
 	game: 'Juego'
 };
@@ -32,6 +34,9 @@ export function buildConsumeUrl(content: { content_type: string; url: string | n
 	}
 	if (content.content_type === 'movie' && content.source_id) {
 		return `stremio://detail/movie/${content.source_id}`;
+	}
+	if (content.content_type === 'series' && content.source_id) {
+		return `stremio://detail/series/${content.source_id}`;
 	}
 	return null;
 }

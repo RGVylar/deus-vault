@@ -19,8 +19,10 @@ from app.database import Base
 class ContentType(str, enum.Enum):
     youtube = "youtube"
     movie = "movie"
+    series = "series"
     book = "book"
     game = "game"
+    music = "music"
 
 
 class Content(Base):

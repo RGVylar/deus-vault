@@ -505,7 +505,16 @@ async def lookup_streaming(url: str) -> dict:
         if not thumbnail:
             thumbnail = tmdb.get("thumbnail", "")
 
-    source_id = _extract_source_id(url, provider) or tmdb.get("source_id", "") if tmdb else _extract_source_id(url, provider)
+    source_id = _extract_source_id(url, provider) or (tmdb.get("source_id", "") if tmdb else "")
+
+    # Decide suggested content type: prefer TMDb media type (tv -> series, movie -> movie)
+    suggested_type = "movie"
+    if tmdb:
+        media_type = tmdb.get("media_type")
+        if media_type == "tv":
+            suggested_type = "series"
+        else:
+            suggested_type = "movie"
 
     return {
         "title": title,
@@ -514,7 +523,7 @@ async def lookup_streaming(url: str) -> dict:
         "source_id": source_id,
         "url": url,
         "duration_minutes": duration_minutes,
-        "suggested_content_type": "movie",
+        "suggested_content_type": suggested_type,
         "provider": provider,
     }
 

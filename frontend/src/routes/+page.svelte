@@ -197,7 +197,9 @@
 	<div class="tabs">
 		<button class:btn-secondary={filter !== 'all'} onclick={() => filter = 'all'}>Todos</button>
 		<button class:btn-secondary={filter !== 'youtube'} onclick={() => filter = 'youtube'}>▶️ YouTube</button>
-		<button class:btn-secondary={filter !== 'movie'} onclick={() => filter = 'movie'}>🎬 Pelis</button>
+		<button class:btn-secondary={filter !== 'movie'} onclick={() => filter = 'movie'}>🎬 Películas</button>
+		<button class:btn-secondary={filter !== 'series'} onclick={() => filter = 'series'}>📺 Series</button>
+		<button class:btn-secondary={filter !== 'music'} onclick={() => filter = 'music'}>🎵 Música</button>
 		<button class:btn-secondary={filter !== 'book'} onclick={() => filter = 'book'}>📖 Libros</button>
 		<button class:btn-secondary={filter !== 'game'} onclick={() => filter = 'game'}>🎮 Juegos</button>
 	</div>
@@ -278,7 +280,9 @@
 					<label for="add-type">Tipo</label>
 					<select id="add-type" bind:value={addType}>
 						<option value="youtube">▶️ YouTube</option>
-						<option value="movie">🎬 Película</option>
+						<option value="movie">🎬 Películas</option>
+						<option value="series">📺 Series</option>
+						<option value="music">🎵 Música</option>
 						<option value="book">📖 Libro</option>
 						<option value="game">🎮 Juego</option>
 					</select>

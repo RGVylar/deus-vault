@@ -9,7 +9,7 @@ export interface TokenResponse {
 	user: User;
 }
 
-export type ContentType = 'youtube' | 'movie' | 'book' | 'game';
+export type ContentType = 'youtube' | 'movie' | 'series' | 'book' | 'game' | 'music';
 
 export interface Content {
 	id: number;
