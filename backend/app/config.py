@@ -9,6 +9,10 @@ class Settings(BaseSettings):
     tmdb_api_key: str | None = None
     spotify_client_id: str | None = None
     spotify_client_secret: str | None = None
+    # Reading speed (words per minute) used to estimate book reading duration.
+    reading_speed_wpm: int = 200
+    # Average words per printed page used for page -> words conversion.
+    words_per_page: int = 300
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
