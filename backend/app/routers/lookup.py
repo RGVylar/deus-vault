@@ -266,7 +266,23 @@ async def lookup_book(url: str) -> dict:
                 cover_id = doc.get("cover_i")
                 if cover_id:
                     thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
-                page_count = int(doc.get("number_of_pages_median") or doc.get("number_of_pages") or 0)
+                # Prefer numeric page counts, fall back to parsing pagination strings
+                page_count = 0
+                try:
+                    np_candidate = doc.get("number_of_pages_median") or doc.get("number_of_pages")
+                    if np_candidate:
+                        page_count = int(np_candidate)
+                except Exception:
+                    page_count = 0
+                if page_count == 0:
+                    pag = doc.get("pagination") or doc.get("pages") or ""
+                    if pag:
+                        m = re.search(r"(\d{2,5})", str(pag))
+                        if m:
+                            try:
+                                page_count = int(m.group(1))
+                            except Exception:
+                                page_count = 0
 
     # If still missing info, try Google Books as fallback (no API key required for simple queries)
     if (not title or not author) and isbn:
@@ -283,6 +299,21 @@ async def lookup_book(url: str) -> dict:
                 image_links = info.get("imageLinks") or {}
                 thumbnail = thumbnail or image_links.get("thumbnail", "")
 
+    # If we still don't have page count but have an ISBN, try Google Books specifically
+    if page_count == 0 and isbn:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                gb2 = await client.get("https://www.googleapis.com/books/v1/volumes", params={"q": f"isbn:{isbn}"})
+            if gb2.status_code == 200:
+                items = gb2.json().get("items") or []
+                if items:
+                    info = items[0].get("volumeInfo", {})
+                    page_count = page_count or int(info.get("pageCount") or 0)
+                    image_links = info.get("imageLinks") or {}
+                    thumbnail = thumbnail or image_links.get("thumbnail", "")
+        except Exception:
+            pass
+
     # Last resort: search Open Library by title
     if not title and html:
         q = _guess_title_from_url(url)
@@ -291,14 +322,27 @@ async def lookup_book(url: str) -> dict:
                 s = await client.get("https://openlibrary.org/search.json", params={"q": q})
             if s.status_code == 200:
                 docs = s.json().get("docs", [])
-                if docs:
-                    doc = docs[0]
-                    title = doc.get("title") or title
-                    author = ", ".join(doc.get("author_name", []) or [])
-                    cover_id = doc.get("cover_i")
-                    if cover_id:
-                        thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
-                    page_count = int(doc.get("number_of_pages_median") or doc.get("number_of_pages") or 0)
+                    if docs:
+                        doc = docs[0]
+                        title = doc.get("title") or title
+                        author = ", ".join(doc.get("author_name", []) or [])
+                        cover_id = doc.get("cover_i")
+                        if cover_id:
+                            thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
+                        # Try numeric page fields first, then parse pagination text
+                        try:
+                            page_count = int(doc.get("number_of_pages_median") or doc.get("number_of_pages") or 0)
+                        except Exception:
+                            page_count = 0
+                        if page_count == 0:
+                            pag = doc.get("pagination") or doc.get("pages") or ""
+                            if pag:
+                                m = re.search(r"(\d{2,5})", str(pag))
+                                if m:
+                                    try:
+                                        page_count = int(m.group(1))
+                                    except Exception:
+                                        page_count = 0
 
     # If this is an Open Library work page and we still don't have page_count,
     # try fetching editions for the work and derive a median page count from editions.
@@ -314,8 +358,20 @@ async def lookup_book(url: str) -> dict:
                     entries = editions_resp.json().get("entries") or editions_resp.json().get("docs") or []
                     counts: list[int] = []
                     for e in entries:
+                        np = 0
                         try:
-                            np = int(e.get("number_of_pages") or 0)
+                            num = e.get("number_of_pages")
+                            if num:
+                                np = int(num)
+                            else:
+                                pag = e.get("pagination") or e.get("pages") or ""
+                                if pag:
+                                    m = re.search(r"(\d{2,5})", str(pag))
+                                    if m:
+                                        try:
+                                            np = int(m.group(1))
+                                        except Exception:
+                                            np = 0
                         except Exception:
                             np = 0
                         if np and np > 0:
