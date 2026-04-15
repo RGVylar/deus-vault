@@ -35,6 +35,13 @@ DOMAIN="${DOMAIN:-vault.mugrelore.com}"
 BACKEND_PORT="${BACKEND_PORT:-8000}"
 JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
 
+# Optional metadata providers
+EXISTING_TMDB_API_KEY=""
+if [[ -f "$APP_DIR/backend/.env" ]]; then
+    EXISTING_TMDB_API_KEY="$(grep '^TMDB_API_KEY=' "$APP_DIR/backend/.env" | cut -d '=' -f2- || true)"
+fi
+TMDB_API_KEY="${TMDB_API_KEY:-$EXISTING_TMDB_API_KEY}"
+
 export DEBIAN_FRONTEND=noninteractive
 
 # ---------- packages ----------
@@ -133,6 +140,7 @@ DATABASE_URL=postgresql+psycopg2://$DB_USER:$DB_PASS@localhost:5432/$DB_NAME
 JWT_SECRET=$JWT_SECRET
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=10080
+TMDB_API_KEY=$TMDB_API_KEY
 EOF
 chown "$APP_USER:$APP_USER" "$APP_DIR/backend/.env"
 chmod 600 "$APP_DIR/backend/.env"
