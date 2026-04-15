@@ -1,5 +1,6 @@
 import re
 import json
+import math
 from html import unescape
 from urllib.parse import unquote, urlparse
 
@@ -299,8 +300,13 @@ async def lookup_book(url: str) -> dict:
                         thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
                     page_count = int(doc.get("number_of_pages_median") or doc.get("number_of_pages") or 0)
 
-    # Estimate reading time from page count (approx 1.2 min/page)
-    duration_minutes = int(page_count * 1.2) if page_count and page_count > 0 else 0
+    # Estimate reading time from page count using configured reading speed.
+    duration_minutes = 0
+    if page_count and page_count > 0:
+        words_per_page = int(getattr(settings, "words_per_page", 300) or 300)
+        reading_wpm = int(getattr(settings, "reading_speed_wpm", 200) or 200)
+        words_total = page_count * words_per_page
+        duration_minutes = math.ceil(words_total / max(1, reading_wpm))
 
     source_id = isbn or _extract_source_id(url, provider) or (title or "").replace(" ", "_")
 
