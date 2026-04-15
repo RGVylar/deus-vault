@@ -1,5 +1,6 @@
 import re
 import json
+import sys
 from html import unescape
 from urllib.parse import unquote, urlparse
 
@@ -188,10 +189,12 @@ def _extract_source_id(url: str, provider: str) -> str:
 
 async def _tmdb_fallback(query: str) -> dict:
     if not settings.tmdb_api_key or not query:
+        print(f"[TMDB] No key or query: key={bool(settings.tmdb_api_key)}, query={query}", file=sys.stderr)
         return {}
 
     query = query.strip()
     alt_query = re.sub(r"^(watch|ver|voir|guarda|regarder|assistir)\s+", "", query, flags=re.IGNORECASE).strip()
+    print(f"[TMDB] Searching: query='{query}' | alt='{alt_query}'", file=sys.stderr)
 
     params = {
         "api_key": settings.tmdb_api_key,
@@ -203,19 +206,26 @@ async def _tmdb_fallback(query: str) -> dict:
     async with httpx.AsyncClient(timeout=10) as client:
         search_resp = await client.get("https://api.themoviedb.org/3/search/multi", params=params)
         if search_resp.status_code != 200:
+            print(f"[TMDB] First search failed: {search_resp.status_code}", file=sys.stderr)
             return {}
 
         results = search_resp.json().get("results", [])
+        print(f"[TMDB] First search: {len(results)} results", file=sys.stderr)
         if not results and alt_query and alt_query.lower() != query.lower():
+            print(f"[TMDB] Retrying with: '{alt_query}'", file=sys.stderr)
             retry_resp = await client.get(
                 "https://api.themoviedb.org/3/search/multi",
                 params={**params, "query": alt_query},
             )
             if retry_resp.status_code == 200:
                 results = retry_resp.json().get("results", [])
+                print(f"[TMDB] Retry: {len(results)} results", file=sys.stderr)
 
         selected = next((r for r in results if r.get("media_type") in {"movie", "tv"}), None)
         if not selected:
+            print(f"[TMDB] No movie/tv selected from {len(results)} results", file=sys.stderr)
+            if results:
+                print(f"[TMDB] Sample result: {results[0]}", file=sys.stderr)
             return {}
 
         media_type = selected.get("media_type")
