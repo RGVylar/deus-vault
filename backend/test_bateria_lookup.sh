@@ -15,7 +15,8 @@ probar() {
   PLATAFORMA="$1"
   URL="$2"
   echo "\n==== $PLATAFORMA ===="
-  curl -s "http://127.0.0.1:8000/api/lookup/auto?url=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["URL"]))')" | jq
+  ENCODED_URL=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$URL'''))")
+  curl -s "http://127.0.0.1:8000/api/lookup/auto?url=$ENCODED_URL" | jq
 }
 
 probar "Netflix" "$NETFLIX_URL"
