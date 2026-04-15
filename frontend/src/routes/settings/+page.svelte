@@ -20,6 +20,24 @@
 		auth.logout();
 		goto('/login');
 	}
+
+	function dispatchSettingsChanged() {
+		try {
+			const ev = new CustomEvent('deus_vault_settings_changed', { detail: { readingWpm, readingWordsPerPage } });
+			window.dispatchEvent(ev);
+		} catch (e) {}
+	}
+
+	function saveLocalSettings() {
+		try { localStorage.setItem('deus_vault_reading_wpm', String(readingWpm)); localStorage.setItem('deus_vault_words_per_page', String(readingWordsPerPage)); } catch(e){}
+		dispatchSettingsChanged();
+	}
+
+	function resetLocalSettings() {
+		readingWpm = 200; readingWordsPerPage = 300;
+		try { localStorage.removeItem('deus_vault_reading_wpm'); localStorage.removeItem('deus_vault_words_per_page'); } catch(e){}
+		dispatchSettingsChanged();
+	}
 </script>
 
 {#if auth.isLoggedIn}
@@ -39,8 +57,8 @@
 		<input id="settings-pages" type="number" bind:value={readingWordsPerPage} min="50" max="1000" />
 		<p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.5rem;">Estos ajustes se guardan localmente en tu navegador y se usan para estimar la duración de libros.</p>
 		<div style="display:flex; gap:0.5rem; margin-top:1rem;">
-			<button class="" onclick={() => { try { localStorage.setItem('deus_vault_reading_wpm', String(readingWpm)); localStorage.setItem('deus_vault_words_per_page', String(readingWordsPerPage)); } catch(e){} }} style="flex:1;">Guardar ajustes</button>
-			<button class="btn-secondary" onclick={() => { readingWpm = 200; readingWordsPerPage = 300; try { localStorage.removeItem('deus_vault_reading_wpm'); localStorage.removeItem('deus_vault_words_per_page'); } catch(e){} }} style="flex:1;">Restablecer</button>
+			<button class="" onclick={saveLocalSettings} style="flex:1;">Guardar ajustes</button>
+			<button class="btn-secondary" onclick={resetLocalSettings} style="flex:1;">Restablecer</button>
 		</div>
 	</div>
 
