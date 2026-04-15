@@ -181,4 +181,6 @@ systemctl restart deus-vault-backend &&
 systemctl reload caddy
 '
 pct exec 210 -- bash -c "cd /opt/deus-vault/backend && bash test_bateria_lookup.sh"
+
+pct exec 210 -- bash -lc 'curl -sG --data-urlencode "url=https://openlibrary.org/works/OL45883W" "http://127.0.0.1:8000/api/lookup/auto" -w "\nHTTPSTATUS:%{http_code}\n"'
 ```
