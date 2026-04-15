@@ -225,23 +225,28 @@ async def _tmdb_fallback(query: str) -> dict:
         if not selected:
             print(f"[TMDB] No movie/tv selected from {len(results)} results", file=sys.stderr)
             if results:
-                print(f"[TMDB] Sample result: {results[0]}", file=sys.stderr)
+                types = [r.get("media_type", "unknown") for r in results[:5]]
+                print(f"[TMDB] Sample types: {types}", file=sys.stderr)
             return {}
 
         media_type = selected.get("media_type")
         item_id = selected.get("id")
+        print(f"[TMDB] Selected: {media_type} id={item_id}, title={selected.get('title') or selected.get('name')}", file=sys.stderr)
         details_resp = await client.get(
             f"https://api.themoviedb.org/3/{media_type}/{item_id}",
             params={"api_key": settings.tmdb_api_key, "language": "en-US"},
         )
         details = details_resp.json() if details_resp.status_code == 200 else {}
+        print(f"[TMDB] Details response: {details_resp.status_code}", file=sys.stderr)
 
     runtime = 0
     if media_type == "movie":
         runtime = int(details.get("runtime") or 0)
+        print(f"[TMDB] Movie runtime: {runtime}", file=sys.stderr)
     else:
         episodes_runtime = details.get("episode_run_time") or []
         runtime = int(episodes_runtime[0]) if episodes_runtime else 0
+        print(f"[TMDB] TV runtime: {runtime}", file=sys.stderr)
 
     title = selected.get("title") or selected.get("name") or query
     poster_path = selected.get("poster_path") or details.get("poster_path")
