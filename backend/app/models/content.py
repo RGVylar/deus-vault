@@ -35,6 +35,9 @@ class Content(Base):
     url: Mapped[str | None] = mapped_column(Text, nullable=True)
     thumbnail: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Optional book metadata
+    page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    words_per_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     consumed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

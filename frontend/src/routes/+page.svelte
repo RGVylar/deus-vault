@@ -22,6 +22,9 @@
 	let addType: ContentType = $state('youtube');
 	let addUrl = $state('');
 	let addDuration = $state(0);
+	let addPageCount = $state(0);
+	let addWordsPerPage = $state(readingWordsPerPage);
+	let addBookFormat: 'book' | 'manga' = $state('book');
 	let addAuthor = $state('');
 	let addNotes = $state('');
 	let addThumbnail = $state('');
@@ -43,12 +46,15 @@
 		} catch (e) {}
 
 		// Listen for settings changes from /settings page or modal
-		const handler = (ev: Event) => {
+			const handler = (ev: Event) => {
 			try {
 				// @ts-ignore
 				const d = (ev as CustomEvent).detail || {};
 				if (d.readingWpm) readingWpm = Number(d.readingWpm) || readingWpm;
-				if (d.readingWordsPerPage) readingWordsPerPage = Number(d.readingWordsPerPage) || readingWordsPerPage;
+					if (d.readingWordsPerPage) {
+						readingWordsPerPage = Number(d.readingWordsPerPage) || readingWordsPerPage;
+						addWordsPerPage = readingWordsPerPage;
+					}
 			} catch (e) {}
 		};
 		window.addEventListener('deus_vault_settings_changed', handler as EventListener);
@@ -142,12 +148,16 @@
 				addType = 'game';
 			}
 
-			// If it's a book and we have page_count, compute duration using user WPM and words/page
+			// If it's a book and we have page_count, compute duration using addWordsPerPage (override) and user WPM
 			if (addType === 'book') {
 				if (data.page_count && Number(data.page_count) > 0) {
-					addDuration = Math.ceil(Number(data.page_count) * Number(readingWordsPerPage) / Math.max(1, Number(readingWpm)));
+					addPageCount = Number(data.page_count);
+					if (data.words_per_page) addWordsPerPage = Number(data.words_per_page);
+					addDuration = Math.ceil(Number(addPageCount) * Number(addWordsPerPage) / Math.max(1, Number(readingWpm)));
 				} else if (data.duration_minutes) {
 					addDuration = data.duration_minutes;
+					if (data.page_count) addPageCount = Number(data.page_count);
+					if (data.words_per_page) addWordsPerPage = Number(data.words_per_page);
 				}
 			} else {
 				if (data.duration_minutes) addDuration = data.duration_minutes;
@@ -168,6 +178,8 @@
 				url: addUrl || null,
 				thumbnail: addThumbnail || null,
 				duration_minutes: addDuration,
+				page_count: addPageCount && Number(addPageCount) > 0 ? Number(addPageCount) : null,
+				words_per_page: addWordsPerPage && Number(addWordsPerPage) > 0 ? Number(addWordsPerPage) : null,
 				source_id: addSourceId || null,
 				author: addAuthor || null,
 				notes: addNotes || null
@@ -202,6 +214,7 @@
 	function resetForm() {
 		addTitle = ''; addUrl = ''; addDuration = 0; addAuthor = '';
 		addNotes = ''; addThumbnail = ''; addSourceId = ''; addType = 'youtube';
+		addPageCount = 0; addWordsPerPage = readingWordsPerPage; addBookFormat = 'book';
 		lastLookupUrl = '';
 	}
 
@@ -367,6 +380,29 @@
 					<label for="add-duration">Duración (minutos)</label>
 					<input id="add-duration" type="number" bind:value={addDuration} min="0" />
 				</div>
+
+				{#if addType === 'book'}
+					<div class="form-group">
+						<label for="add-book-format">Formato</label>
+						<select id="add-book-format" bind:value={addBookFormat} on:change={() => {
+							if (addBookFormat === 'manga') addWordsPerPage = 50;
+							else addWordsPerPage = readingWordsPerPage;
+						}}>
+							<option value="book">Libro</option>
+							<option value="manga">Manga / Comic</option>
+						</select>
+					</div>
+
+					<div class="form-group">
+						<label for="add-words-per-page">Palabras por página</label>
+						<input id="add-words-per-page" type="number" bind:value={addWordsPerPage} min="1" />
+					</div>
+
+					<div class="form-group">
+						<label for="add-pages">Páginas</label>
+						<input id="add-pages" type="number" bind:value={addPageCount} min="0" />
+					</div>
+				{/if}
 
 				<div class="form-group">
 					<label for="add-notes">Notas</label>
