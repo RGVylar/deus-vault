@@ -156,6 +156,15 @@ deus-vault/
 | GET | `/api/lookup/streaming?url=` | Auto-rellenar desde Netflix/Prime/Max/Disney/Stremio |
 | GET | `/api/lookup/auto?url=` | Auto-detectar proveedor y auto-rellenar |
 
+## Mejoras propuestas
+- **Distinción de tipo de contenido:**
+    - El backend debe devolver "movie" o "series" según lo que detecte en TMDb o el proveedor.
+    - El script de batería de pruebas debe mostrar esa distinción en la salida.
+- **Clasificación anual tipo rewind:**
+    - Estadísticas de lo consumido por año (películas, series, libros, juegos).
+    - Visualización de cuántas cosas has visto/jugado/leído cada año.
+    - Gráficas o resumen para hacer un "rewind" personal de tu año.
+
 ## Useful commands
 ```
 pct exec 210 -- bash -lc '
