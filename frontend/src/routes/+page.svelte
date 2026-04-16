@@ -393,7 +393,7 @@
 				{#if addType === 'book'}
 					<div class="form-group">
 						<label for="add-book-format">Formato</label>
-						<select id="add-book-format" bind:value={addBookFormat} on:change={() => {
+						<select id="add-book-format" bind:value={addBookFormat} onchange={() => {
 							if (addBookFormat === 'manga') addWordsPerPage = 50;
 							else addWordsPerPage = readingWordsPerPage;
 						}}>
