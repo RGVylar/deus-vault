@@ -217,8 +217,45 @@ async def lookup_book(url: str) -> dict:
 
     html = resp.text if resp.status_code == 200 else ""
 
+    # For Google Books URLs, extract volume ID and query API directly
+    if provider == "googlebooks":
+        parsed_qs = dict(re.findall(r'([^&=?]+)=([^&]*)', urlparse(url).query))
+        volume_id = parsed_qs.get("id", "")
+        if volume_id:
+            async with httpx.AsyncClient(timeout=10) as client:
+                gb_direct = await client.get(f"https://www.googleapis.com/books/v1/volumes/{volume_id}")
+            if gb_direct.status_code == 200:
+                info = gb_direct.json().get("volumeInfo", {})
+                gb_title = info.get("title", "")
+                gb_authors = info.get("authors") or []
+                gb_author = ", ".join(gb_authors)
+                gb_pages = int(info.get("pageCount") or 0)
+                image_links = info.get("imageLinks") or {}
+                gb_thumb = image_links.get("thumbnail", "")
+                gb_isbn = ""
+                for id_entry in info.get("industryIdentifiers") or []:
+                    if id_entry.get("type") in ("ISBN_13", "ISBN_10"):
+                        gb_isbn = id_entry.get("identifier", "").replace("-", "")
+                        break
+                if gb_title:
+                    words_per_page = int(getattr(settings, "words_per_page", 300) or 300)
+                    reading_wpm = int(getattr(settings, "reading_speed_wpm", 200) or 200)
+                    gb_duration = math.ceil(gb_pages * words_per_page / max(1, reading_wpm)) if gb_pages > 0 else 0
+                    return {
+                        "title": gb_title,
+                        "author": gb_author,
+                        "thumbnail": gb_thumb,
+                        "page_count": gb_pages,
+                        "source_id": gb_isbn or volume_id,
+                        "url": url,
+                        "duration_minutes": gb_duration,
+                        "suggested_content_type": "book",
+                        "provider": provider,
+                    }
+
     # Prefer structured JSON-LD isbn/title/author if present
     isbn = None
+    jsonld_author = ""
     blocks = re.findall(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, flags=re.IGNORECASE | re.DOTALL)
     for block in blocks:
         try:
@@ -231,8 +268,16 @@ async def lookup_book(url: str) -> dict:
                 continue
             if item.get("isbn"):
                 isbn = str(item.get("isbn")).replace("-", "").strip()
-                break
-        if isbn:
+            # Extract author from JSON-LD (Goodreads, OpenLibrary, etc.)
+            if not jsonld_author:
+                author_data = item.get("author")
+                if isinstance(author_data, dict):
+                    jsonld_author = author_data.get("name", "")
+                elif isinstance(author_data, list):
+                    jsonld_author = ", ".join(
+                        a.get("name", "") for a in author_data if isinstance(a, dict) and a.get("name")
+                    )
+        if isbn and jsonld_author:
             break
 
     # meta tags
@@ -248,7 +293,7 @@ async def lookup_book(url: str) -> dict:
             isbn = re.sub(r"[^0-9X]", "", m.group(0))
 
     title = _extract_meta_content(html, "og:title") or _extract_title_tag(html) or _guess_title_from_url(url)
-    author = ""
+    author = jsonld_author
     thumbnail = ""
     page_count = 0
 
@@ -261,7 +306,7 @@ async def lookup_book(url: str) -> dict:
             if docs:
                 doc = docs[0]
                 title = doc.get("title") or title
-                author = ", ".join(doc.get("author_name", []) or [])
+                author = ", ".join(doc.get("author_name", []) or []) or author
                 cover_id = doc.get("cover_i")
                 if cover_id:
                     thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
@@ -497,10 +542,66 @@ def _extract_source_id(url: str, provider: str) -> str:
         return match.group(1) if match else ""
 
     if provider == "stremio":
+        # Extract IMDb ID from hash-based SPA URLs (e.g. app.strem.io/shell-v4.4/#/detail/movie/tt0780504/...)
+        imdb_match = re.search(r"\b(tt\d{7,})\b", url)
+        if imdb_match:
+            return imdb_match.group(1)
         match = re.search(r"stremio(?:://|\.com/)(?:detail/)?(?:movie|series)?/?([A-Za-z0-9:_-]+)", url)
         return match.group(1) if match else ""
 
     return ""
+
+
+async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
+    """Look up a movie or series on TMDb using an IMDb ID via the /find endpoint."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            f"https://api.themoviedb.org/3/find/{imdb_id}",
+            params={"api_key": api_key, "external_source": "imdb_id"},
+        )
+        if resp.status_code != 200:
+            return {}
+        data = resp.json()
+        movie_results = data.get("movie_results") or []
+        tv_results = data.get("tv_results") or []
+
+        if movie_results:
+            item = movie_results[0]
+            media_type = "movie"
+        elif tv_results:
+            item = tv_results[0]
+            media_type = "tv"
+        else:
+            return {}
+
+        item_id = item.get("id")
+        details_resp = await client.get(
+            f"https://api.themoviedb.org/3/{media_type}/{item_id}",
+            params={"api_key": api_key, "language": "es-ES"},
+        )
+        details = details_resp.json() if details_resp.status_code == 200 else {}
+
+    runtime = 0
+    if media_type == "movie":
+        runtime = int(details.get("runtime") or 0)
+    else:
+        episodes_runtime = details.get("episode_run_time") or []
+        runtime = int(episodes_runtime[0]) if episodes_runtime else 0
+        if not runtime:
+            last_ep = details.get("last_episode_to_air") or {}
+            runtime = int(last_ep.get("runtime") or 0)
+
+    title = details.get("title") or details.get("name") or item.get("title") or item.get("name") or ""
+    poster_path = details.get("poster_path") or item.get("poster_path")
+    thumbnail = f"https://image.tmdb.org/t/p/w780{poster_path}" if poster_path else ""
+
+    return {
+        "title": title,
+        "duration_minutes": runtime,
+        "thumbnail": thumbnail,
+        "source_id": f"tmdb:{media_type}:{item_id}",
+        "media_type": media_type,
+    }
 
 
 async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: str | None = None) -> dict:
@@ -565,6 +666,9 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
     else:
         episodes_runtime = details.get("episode_run_time") or []
         runtime = int(episodes_runtime[0]) if episodes_runtime else 0
+        if not runtime:
+            last_ep = details.get("last_episode_to_air") or {}
+            runtime = int(last_ep.get("runtime") or 0)
 
     title = best_match.get("title") or best_match.get("name") or query
     poster_path = best_match.get("poster_path") or details.get("poster_path")
@@ -711,7 +815,13 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
     if not title:
         title = _guess_title_from_url(url)
 
-    tmdb = await _tmdb_fallback(title, provider, tmdb_api_key=tmdb_api_key)
+    # For Stremio URLs containing an IMDb ID, use TMDb /find for accurate results
+    effective_tmdb_key = tmdb_api_key or settings.tmdb_api_key
+    stremio_imdb_id = _extract_source_id(url, provider) if provider == "stremio" else ""
+    if stremio_imdb_id and re.match(r"tt\d{7,}", stremio_imdb_id) and effective_tmdb_key:
+        tmdb = await _tmdb_find_by_imdb(stremio_imdb_id, effective_tmdb_key)
+    else:
+        tmdb = await _tmdb_fallback(title, provider, tmdb_api_key=tmdb_api_key)
     if tmdb:
         # Prefer canonical title from TMDb when available.
         title = tmdb.get("title", title)
@@ -722,7 +832,12 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
         if not thumbnail:
             thumbnail = tmdb.get("thumbnail", "")
 
-    source_id = _extract_source_id(url, provider) or (tmdb.get("source_id", "") if tmdb else "")
+    extracted_source_id = _extract_source_id(url, provider)
+    # For Stremio, prefer the IMDb ID (used in stremio:// protocol URLs)
+    if provider == "stremio" and stremio_imdb_id:
+        source_id = stremio_imdb_id
+    else:
+        source_id = extracted_source_id or (tmdb.get("source_id", "") if tmdb else "")
 
     # Decide suggested content type: prefer TMDb media type (tv -> series, movie -> movie)
     suggested_type = "movie"
