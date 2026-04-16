@@ -152,19 +152,18 @@ def _detect_provider(url: str) -> str | None:
     if "open.spotify.com" in host:
         return "spotify"
     return None
-async def lookup_spotify(url: str) -> dict:
+async def lookup_spotify(url: str, spotify_client_id: str | None = None, spotify_client_secret: str | None = None) -> dict:
     """Lookup Spotify track info using Spotify API."""
     import base64
-    import time
     # Soportar track URLs con o sin prefijo de idioma
     match = re.search(r"open\.spotify\.com/(?:[a-zA-Z0-9-]+/)?track/([A-Za-z0-9]+)", url)
     if not match:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Invalid Spotify track URL: {url}")
     track_id = match.group(1)
 
-    # Get OAuth token
-    client_id = settings.spotify_client_id
-    client_secret = settings.spotify_client_secret
+    # Get OAuth token — prefer user-supplied credentials over server config
+    client_id = spotify_client_id or settings.spotify_client_id
+    client_secret = spotify_client_secret or settings.spotify_client_secret
     if not client_id or not client_secret:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Spotify credentials not configured")
     token_url = "https://accounts.spotify.com/api/token"
@@ -504,8 +503,9 @@ def _extract_source_id(url: str, provider: str) -> str:
     return ""
 
 
-async def _tmdb_fallback(query: str, provider: str | None = None) -> dict:
-    if not settings.tmdb_api_key or not query:
+async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: str | None = None) -> dict:
+    api_key = tmdb_api_key or settings.tmdb_api_key
+    if not api_key or not query:
         return {}
 
     search_queries = _build_tmdb_query_candidates(query, provider)
@@ -524,7 +524,7 @@ async def _tmdb_fallback(query: str, provider: str | None = None) -> dict:
                 resp = await client.get(
                     "https://api.themoviedb.org/3/search/multi",
                     params={
-                        "api_key": settings.tmdb_api_key,
+                        "api_key": api_key,
                         "query": search_query,
                         "language": language,
                         "include_adult": "false",
@@ -555,7 +555,7 @@ async def _tmdb_fallback(query: str, provider: str | None = None) -> dict:
         item_id = best_match.get("id")
         details_resp = await client.get(
             f"https://api.themoviedb.org/3/{media_type}/{item_id}",
-            params={"api_key": settings.tmdb_api_key, "language": selected_language},
+            params={"api_key": api_key, "language": selected_language},
         )
         details = details_resp.json() if details_resp.status_code == 200 else {}
 
@@ -682,7 +682,7 @@ async def lookup_steam(url: str) -> dict:
 
 
 @router.get("/streaming")
-async def lookup_streaming(url: str) -> dict:
+async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
     provider = _detect_provider(url)
     if provider not in STREAMING_HOST_PATTERNS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unsupported streaming URL")
@@ -711,7 +711,7 @@ async def lookup_streaming(url: str) -> dict:
     if not title:
         title = _guess_title_from_url(url)
 
-    tmdb = await _tmdb_fallback(title, provider)
+    tmdb = await _tmdb_fallback(title, provider, tmdb_api_key=tmdb_api_key)
     if tmdb:
         # Prefer canonical title from TMDb when available.
         title = tmdb.get("title", title)
@@ -746,16 +746,21 @@ async def lookup_streaming(url: str) -> dict:
 
 
 @router.get("/auto")
-async def lookup_auto(url: str) -> dict:
+async def lookup_auto(
+    url: str,
+    tmdb_api_key: str | None = None,
+    spotify_client_id: str | None = None,
+    spotify_client_secret: str | None = None,
+) -> dict:
     provider = _detect_provider(url)
     if provider == "youtube":
         return await lookup_youtube(url)
     if provider == "steam":
         return await lookup_steam(url)
     if provider == "spotify":
-        return await lookup_spotify(url)
+        return await lookup_spotify(url, spotify_client_id=spotify_client_id, spotify_client_secret=spotify_client_secret)
     if provider in STREAMING_HOST_PATTERNS:
-        return await lookup_streaming(url)
+        return await lookup_streaming(url, tmdb_api_key=tmdb_api_key)
     # Book providers (OpenLibrary, Goodreads, Google Books, Amazon book pages)
     if provider in globals().get("BOOK_HOST_PATTERNS", {}):
         return await lookup_book(url)

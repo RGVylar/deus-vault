@@ -130,7 +130,16 @@
 		addError = '';
 		lookupLoading = true;
 		try {
-			const endpoint = `/lookup/auto?url=${encodeURIComponent(targetUrl)}`;
+			const params = new URLSearchParams({ url: targetUrl });
+			try {
+				const tmdbKey = localStorage.getItem('deus_vault_tmdb_api_key');
+				const spotifyId = localStorage.getItem('deus_vault_spotify_client_id');
+				const spotifySecret = localStorage.getItem('deus_vault_spotify_client_secret');
+				if (tmdbKey) params.set('tmdb_api_key', tmdbKey);
+				if (spotifyId) params.set('spotify_client_id', spotifyId);
+				if (spotifySecret) params.set('spotify_client_secret', spotifySecret);
+			} catch (e) {}
+			const endpoint = `/lookup/auto?${params.toString()}`;
 			const data = await api.get<any>(endpoint);
 
 			addTitle = data.title || addTitle;
