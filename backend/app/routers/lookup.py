@@ -219,13 +219,15 @@ async def lookup_book(url: str) -> dict:
 
     # For Google Books URLs, extract volume ID and query API directly
     if provider == "googlebooks":
-        parsed_qs = dict(re.findall(r'([^&=?]+)=([^&]*)', urlparse(url).query))
-        volume_id = parsed_qs.get("id", "")
+        from urllib.parse import parse_qs
+        qs = parse_qs(urlparse(url).query)
+        volume_id = (qs.get("id") or [""])[0]
         if volume_id:
             async with httpx.AsyncClient(timeout=10) as client:
                 gb_direct = await client.get(f"https://www.googleapis.com/books/v1/volumes/{volume_id}")
             if gb_direct.status_code == 200:
-                info = gb_direct.json().get("volumeInfo", {})
+                body = gb_direct.json()
+                info = body.get("volumeInfo") or {}
                 gb_title = info.get("title", "")
                 gb_authors = info.get("authors") or []
                 gb_author = ", ".join(gb_authors)
@@ -237,21 +239,33 @@ async def lookup_book(url: str) -> dict:
                     if id_entry.get("type") in ("ISBN_13", "ISBN_10"):
                         gb_isbn = id_entry.get("identifier", "").replace("-", "")
                         break
-                if gb_title:
-                    words_per_page = int(getattr(settings, "words_per_page", 300) or 300)
-                    reading_wpm = int(getattr(settings, "reading_speed_wpm", 200) or 200)
-                    gb_duration = math.ceil(gb_pages * words_per_page / max(1, reading_wpm)) if gb_pages > 0 else 0
-                    return {
-                        "title": gb_title,
-                        "author": gb_author,
-                        "thumbnail": gb_thumb,
-                        "page_count": gb_pages,
-                        "source_id": gb_isbn or volume_id,
-                        "url": url,
-                        "duration_minutes": gb_duration,
-                        "suggested_content_type": "book",
-                        "provider": provider,
-                    }
+                words_per_page = int(getattr(settings, "words_per_page", 300) or 300)
+                reading_wpm = int(getattr(settings, "reading_speed_wpm", 200) or 200)
+                gb_duration = math.ceil(gb_pages * words_per_page / max(1, reading_wpm)) if gb_pages > 0 else 0
+                # Return even if title is empty — better than falling through to generic HTML scraping
+                return {
+                    "title": gb_title,
+                    "author": gb_author,
+                    "thumbnail": gb_thumb,
+                    "page_count": gb_pages,
+                    "source_id": gb_isbn or volume_id,
+                    "url": url,
+                    "duration_minutes": gb_duration,
+                    "suggested_content_type": "book",
+                    "provider": provider,
+                }
+            # API failed (403/429/etc.) — at minimum return the volume_id so it's not empty
+            return {
+                "title": "",
+                "author": "",
+                "thumbnail": "",
+                "page_count": 0,
+                "source_id": volume_id,
+                "url": url,
+                "duration_minutes": 0,
+                "suggested_content_type": "book",
+                "provider": provider,
+            }
 
     # Prefer structured JSON-LD isbn/title/author if present
     isbn = None
@@ -424,6 +438,32 @@ async def lookup_book(url: str) -> dict:
                         counts.sort()
                         mid = len(counts) // 2
                         page_count = int(counts[mid] if len(counts) % 2 == 1 else (counts[mid - 1] + counts[mid]) // 2)
+        except Exception:
+            pass
+
+    # If still missing page_count/thumbnail but we have title+author, search Open Library by title
+    if (not page_count or not thumbnail) and title:
+        try:
+            search_params: dict = {"title": title}
+            if author:
+                search_params["author"] = author.split(",")[0].strip()
+            async with httpx.AsyncClient(timeout=10) as client:
+                ol_title = await client.get("https://openlibrary.org/search.json", params=search_params)
+            if ol_title.status_code == 200:
+                docs = ol_title.json().get("docs", [])
+                if docs:
+                    doc = docs[0]
+                    if not page_count:
+                        try:
+                            page_count = int(doc.get("number_of_pages_median") or doc.get("number_of_pages") or 0)
+                        except Exception:
+                            page_count = 0
+                    if not author:
+                        author = ", ".join(doc.get("author_name", []) or [])
+                    if not thumbnail:
+                        cover_id = doc.get("cover_i")
+                        if cover_id:
+                            thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
         except Exception:
             pass
 
