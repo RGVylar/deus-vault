@@ -270,6 +270,7 @@ async def lookup_book(url: str) -> dict:
     # Prefer structured JSON-LD isbn/title/author if present
     isbn = None
     jsonld_author = ""
+    jsonld_page_count = 0
     blocks = re.findall(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, flags=re.IGNORECASE | re.DOTALL)
     for block in blocks:
         try:
@@ -280,8 +281,18 @@ async def lookup_book(url: str) -> dict:
         for item in items:
             if not isinstance(item, dict):
                 continue
-            if item.get("isbn"):
-                isbn = str(item.get("isbn")).replace("-", "").strip()
+            # ISBN — can be a string or a list
+            if item.get("isbn") and not isbn:
+                isbn_raw = item["isbn"]
+                if isinstance(isbn_raw, list):
+                    isbn_raw = isbn_raw[0] if isbn_raw else ""
+                isbn = re.sub(r"[^0-9X]", "", str(isbn_raw))
+            # numberOfPages (Goodreads exposes this directly in JSON-LD)
+            if item.get("numberOfPages") and not jsonld_page_count:
+                try:
+                    jsonld_page_count = int(item["numberOfPages"])
+                except Exception:
+                    pass
             # Extract author from JSON-LD (Goodreads, OpenLibrary, etc.)
             if not jsonld_author:
                 author_data = item.get("author")
@@ -308,8 +319,8 @@ async def lookup_book(url: str) -> dict:
 
     title = _extract_meta_content(html, "og:title") or _extract_title_tag(html) or _guess_title_from_url(url)
     author = jsonld_author
-    thumbnail = ""
-    page_count = 0
+    thumbnail = _extract_meta_content(html, "og:image") or ""
+    page_count = jsonld_page_count
 
     # If we have an ISBN, try Open Library first
     if isbn:
@@ -444,7 +455,9 @@ async def lookup_book(url: str) -> dict:
     # If still missing page_count/thumbnail but we have title+author, search Open Library by title
     if (not page_count or not thumbnail) and title:
         try:
-            search_params: dict = {"title": title}
+            # Simplify the title for better Open Library search ("The Hobbit, or..." → "The Hobbit")
+            simple_title = re.split(r",\s+or\b|:\s+", title)[0].strip()
+            search_params: dict = {"title": simple_title}
             if author:
                 search_params["author"] = author.split(",")[0].strip()
             async with httpx.AsyncClient(timeout=10) as client:

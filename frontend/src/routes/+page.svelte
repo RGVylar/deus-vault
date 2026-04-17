@@ -35,6 +35,7 @@
 	let addError = $state('');
 	let lookupLoading = $state(false);
 	let lastLookupUrl = $state('');
+	let refreshingId = $state<number | null>(null);
 	let autoLookupTimer: ReturnType<typeof setTimeout> | null = null;
 
 	onMount(() => {
@@ -249,6 +250,40 @@
 		load();
 	}
 
+	async function refresh(c: Content) {
+		if (!c.url || refreshingId !== null) return;
+		refreshingId = c.id;
+		try {
+			const params = new URLSearchParams({ url: c.url });
+			try {
+				const tmdbKey = localStorage.getItem('deus_vault_tmdb_api_key');
+				const spotifyId = localStorage.getItem('deus_vault_spotify_client_id');
+				const spotifySecret = localStorage.getItem('deus_vault_spotify_client_secret');
+				if (tmdbKey) params.set('tmdb_api_key', tmdbKey);
+				if (spotifyId) params.set('spotify_client_id', spotifyId);
+				if (spotifySecret) params.set('spotify_client_secret', spotifySecret);
+			} catch (e) {}
+
+			const data = await api.get<any>(`/lookup/auto?${params.toString()}`);
+
+			const patch: Record<string, unknown> = {};
+			if (data.title) patch.title = data.title;
+			if (data.author) patch.author = data.author;
+			if (data.thumbnail) patch.thumbnail = data.thumbnail;
+			if (data.duration_minutes) patch.duration_minutes = data.duration_minutes;
+			if (data.episode_count != null) patch.episode_count = data.episode_count;
+			if (data.seasons != null) patch.seasons = data.seasons;
+			if (data.page_count && Number(data.page_count) > 0) patch.page_count = data.page_count;
+
+			await api.patch(`/contents/${c.id}`, patch);
+			load();
+		} catch (e) {
+			// silent fail
+		} finally {
+			refreshingId = null;
+		}
+	}
+
 	function formatHeroTime(minutes: number): string {
 		if (minutes < 60) return `${minutes} min`;
 		return `${Math.floor(minutes / 60)} h`;
@@ -353,6 +388,15 @@
 								<a href={link} target="_blank" rel="noopener">
 									<button class="btn-secondary">Abrir</button>
 								</a>
+							{/if}
+							{#if c.url}
+								<button
+									class="btn-secondary"
+									onclick={() => refresh(c)}
+									disabled={refreshingId !== null}
+									title="Actualizar metadatos"
+									style={refreshingId === c.id ? 'animation: spin 0.8s linear infinite; opacity:0.7;' : ''}
+								>↻</button>
 							{/if}
 							<button onclick={() => consume(c.id)} style="background:rgba(79,255,170,0.15); color:var(--game); box-shadow:none;">✓</button>
 							<button class="btn-danger" onclick={() => remove(c.id)}>✕</button>
