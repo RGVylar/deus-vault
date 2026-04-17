@@ -311,8 +311,9 @@ async def lookup_book(url: str) -> dict:
         if isbn_meta:
             isbn = isbn_meta.replace("-", "").strip()
 
-    # fallback regex for ISBN-13/10
-    if not isbn:
+    # fallback regex for ISBN-13/10 — skip for Goodreads: the page body contains
+    # ISBNs from ads and "readers also liked" sections that don't belong to THIS book
+    if not isbn and provider != "goodreads":
         m = re.search(r"(97[89][\- ]?\d[\d\- ]{8,}\d|\b\d{9}[\dX]\b)", html)
         if m:
             isbn = re.sub(r"[^0-9X]", "", m.group(0))
@@ -506,7 +507,32 @@ async def lookup_book(url: str) -> dict:
 _UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
 )
-_SKIP_SEGMENT_RE = re.compile(r"^\d+$|^[0-9A-Z]{10,}$")  # pure digits or long IDs like ASIN
+
+
+def _is_opaque_id(segment: str) -> bool:
+    """Detect opaque content IDs that are not human-readable title slugs."""
+    if not segment:
+        return True
+    if "=" in segment:  # embedded query params in path (e.g. ref=atv_br_...)
+        return True
+    if _UUID_RE.match(segment):
+        return True
+    # Pure numbers
+    if re.fullmatch(r"\d+", segment):
+        return True
+    # ASIN-style: all uppercase letters + digits, 10+ chars (e.g. 0JL6LKQZSNFNK8ETYQNZUQ0P4D)
+    if re.fullmatch(r"[0-9A-Z]{10,}", segment):
+        return True
+    # Base62-style IDs: alphanumeric ≥10 chars WITH mixed case AND digits (e.g. 33q4DdMGHLts)
+    if (
+        len(segment) >= 10
+        and re.fullmatch(r"[A-Za-z0-9]+", segment)
+        and re.search(r"[A-Z]", segment)
+        and re.search(r"[a-z]", segment)
+        and re.search(r"\d", segment)
+    ):
+        return True
+    return False
 
 
 def _guess_title_from_url(url: str) -> str:
@@ -515,11 +541,13 @@ def _guess_title_from_url(url: str) -> str:
         path_parts = [unquote(p) for p in parsed.path.split("/") if p]
         if not path_parts:
             return ""
-        # Walk segments from the end, skip UUIDs, pure numbers and opaque IDs
+        # Walk segments from the end, skip opaque IDs
         for part in reversed(path_parts):
-            if _UUID_RE.match(part):
+            if _is_opaque_id(part):
                 continue
-            if _SKIP_SEGMENT_RE.match(part):
+            # Skip generic structural segments
+            if part.lower() in {"detail", "movies", "series", "show", "watch", "video", "page",
+                                 "feature", "es", "en", "de", "fr", "it", "pt", "works", "books"}:
                 continue
             candidate = re.sub(r"[-_]+", " ", part)
             candidate = re.sub(r"\s+", " ", candidate).strip()
