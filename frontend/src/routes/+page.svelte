@@ -359,17 +359,14 @@
 						<div class="meta">
 							<span class="badge {c.content_type}">{TYPE_LABELS[c.content_type]}</span>
 							{#if c.content_type === 'series'}
-								{#if c.duration_minutes > 0}
-									<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>
-								{/if}
 								{#if c.seasons && c.seasons > 0}
 									<span>📺 {c.seasons}T</span>
 								{/if}
 								{#if c.episode_count && c.episode_count > 0}
 									<span>{c.episode_count} ep</span>
 								{/if}
-								{#if effectiveDuration(c) > 0}
-									<span style="color:var(--text-muted);">~{formatDuration(effectiveDuration(c))}</span>
+								{#if c.duration_minutes > 0}
+									<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>
 								{/if}
 							{:else}
 								{#if c.duration_minutes > 0}
@@ -383,6 +380,11 @@
 								<span>{c.author}</span>
 							{/if}
 						</div>
+						{#if c.content_type === 'series' && c.episode_count && c.episode_count > 0 && c.duration_minutes > 0}
+							<div class="series-total">
+								~{formatDuration(c.duration_minutes * c.episode_count)} en total
+							</div>
+						{/if}
 						<div class="actions">
 							{#if link}
 								<a href={link} target="_blank" rel="noopener">

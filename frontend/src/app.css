@@ -177,6 +177,12 @@ label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bot
 	font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;
 	display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;
 }
+.series-total {
+	font-size: 0.78rem;
+	font-weight: 600;
+	color: var(--series);
+	margin-top: 0.2rem;
+}
 .content-card .actions {
 	display: flex; gap: 0.4rem; margin-top: 0.4rem;
 }
