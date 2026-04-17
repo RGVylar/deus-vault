@@ -503,18 +503,29 @@ async def lookup_book(url: str) -> dict:
     }
 
 
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
+)
+_SKIP_SEGMENT_RE = re.compile(r"^\d+$|^[0-9A-Z]{10,}$")  # pure digits or long IDs like ASIN
+
+
 def _guess_title_from_url(url: str) -> str:
     try:
         parsed = urlparse(url)
-        path_parts = [p for p in parsed.path.split("/") if p]
+        path_parts = [unquote(p) for p in parsed.path.split("/") if p]
         if not path_parts:
             return ""
-        candidate = unquote(path_parts[-1])
-        if re.fullmatch(r"\d+", candidate):
-            return ""
-        candidate = re.sub(r"[-_]+", " ", candidate)
-        candidate = re.sub(r"\s+", " ", candidate).strip()
-        return candidate.title()
+        # Walk segments from the end, skip UUIDs, pure numbers and opaque IDs
+        for part in reversed(path_parts):
+            if _UUID_RE.match(part):
+                continue
+            if _SKIP_SEGMENT_RE.match(part):
+                continue
+            candidate = re.sub(r"[-_]+", " ", part)
+            candidate = re.sub(r"\s+", " ", candidate).strip()
+            if candidate:
+                return candidate.title()
+        return ""
     except Exception:
         return ""
 
@@ -526,7 +537,11 @@ def _clean_title(title: str, provider: str) -> str:
     provider_label = PROVIDER_LABELS.get(provider, "")
     if provider_label:
         cleaned = re.sub(rf"\s*[|\-–—]\s*{re.escape(provider_label)}\s*$", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\s*[|\-–—]\s*(Watch|Streaming|Official Site|Prime Video|Netflix|HBO\s*Max|Max|Disney\+).*$", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(
+        r"\s*[|\-–—]\s*(Watch|Stream(?:ing)?|Full\s+(?:Episodes?|Series)|Complete\s+Series|"
+        r"Official\s+Site|Season\s+\d+|Watch\s+Online|Prime\s*Video|Netflix|HBO\s*Max|Max|Disney\+).*$",
+        "", cleaned, flags=re.IGNORECASE
+    )
     # Common streaming CTA prefixes that hurt TMDb matching.
     cleaned = re.sub(
         r"^(watch|ver|voir|guarda|regarder|assistir|disfruta|los\s+episodios\s+completos\s+de|episodios\s+completos\s+de)\s+",
