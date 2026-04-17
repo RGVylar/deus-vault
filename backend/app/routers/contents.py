@@ -2,7 +2,7 @@ import random
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -20,11 +20,24 @@ def vault_stats(
     db: Session = Depends(get_db),
 ) -> VaultStats:
     """Total pending and consumed minutes + breakdown by type."""
+    # For series: total time = duration_minutes (per episode) * episode_count.
+    # For all other types: just duration_minutes.
+    def effective_duration(content_model: type) -> object:
+        return case(
+            (
+                (content_model.content_type == ContentType.series)
+                & content_model.episode_count.isnot(None)
+                & (content_model.episode_count > 0),
+                content_model.duration_minutes * content_model.episode_count,
+            ),
+            else_=content_model.duration_minutes,
+        )
+
     pending_q = select(
-        func.coalesce(func.sum(Content.duration_minutes), 0)
+        func.coalesce(func.sum(effective_duration(Content)), 0)
     ).where(Content.user_id == user.id, Content.consumed == False)  # noqa: E712
     consumed_q = select(
-        func.coalesce(func.sum(Content.duration_minutes), 0)
+        func.coalesce(func.sum(effective_duration(Content)), 0)
     ).where(Content.user_id == user.id, Content.consumed == True)  # noqa: E712
 
     pending_count_q = select(func.count()).where(
@@ -41,7 +54,7 @@ def vault_stats(
 
     # By type (pending only)
     by_type_rows = db.execute(
-        select(Content.content_type, func.coalesce(func.sum(Content.duration_minutes), 0))
+        select(Content.content_type, func.coalesce(func.sum(effective_duration(Content)), 0))
         .where(Content.user_id == user.id, Content.consumed == False)  # noqa: E712
         .group_by(Content.content_type)
     ).all()

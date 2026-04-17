@@ -5,6 +5,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, TYPE_ICONS, TYPE_LABELS, buildConsumeUrl } from '$lib/utils';
 	import type { Content, ContentType, VaultStats } from '$lib/types';
+	import { effectiveDuration } from '$lib/types';
 
 	let contents: Content[] = $state([]);
 	let stats: VaultStats | null = $state(null);
@@ -86,7 +87,20 @@
 						<div class="title">{c.title}</div>
 						<div class="meta">
 							<span class="badge {c.content_type}">{TYPE_LABELS[c.content_type]}</span>
-							{#if c.duration_minutes > 0}
+							{#if c.content_type === 'series'}
+								{#if c.duration_minutes > 0}
+									<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>
+								{/if}
+								{#if c.seasons && c.seasons > 0}
+									<span>📺 {c.seasons}T</span>
+								{/if}
+								{#if c.episode_count && c.episode_count > 0}
+									<span>{c.episode_count} ep</span>
+								{/if}
+								{#if effectiveDuration(c) > 0}
+									<span style="color:var(--text-muted);">~{formatDuration(effectiveDuration(c))}</span>
+								{/if}
+							{:else if c.duration_minutes > 0}
 								<span>⏱ {formatDuration(c.duration_minutes)}</span>
 							{/if}
 							{#if c.consumed_at}

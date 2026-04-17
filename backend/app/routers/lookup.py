@@ -622,6 +622,8 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
         details = details_resp.json() if details_resp.status_code == 200 else {}
 
     runtime = 0
+    episode_count: int | None = None
+    seasons: int | None = None
     if media_type == "movie":
         runtime = int(details.get("runtime") or 0)
     else:
@@ -630,6 +632,12 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
         if not runtime:
             last_ep = details.get("last_episode_to_air") or {}
             runtime = int(last_ep.get("runtime") or 0)
+        ep_total = details.get("number_of_episodes")
+        seasons_total = details.get("number_of_seasons")
+        if ep_total:
+            episode_count = int(ep_total)
+        if seasons_total:
+            seasons = int(seasons_total)
 
     title = details.get("title") or details.get("name") or item.get("title") or item.get("name") or ""
     poster_path = details.get("poster_path") or item.get("poster_path")
@@ -641,6 +649,8 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
         "thumbnail": thumbnail,
         "source_id": f"tmdb:{media_type}:{item_id}",
         "media_type": media_type,
+        "episode_count": episode_count,
+        "seasons": seasons,
     }
 
 
@@ -701,6 +711,8 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
         details = details_resp.json() if details_resp.status_code == 200 else {}
 
     runtime = 0
+    episode_count: int | None = None
+    seasons: int | None = None
     if media_type == "movie":
         runtime = int(details.get("runtime") or 0)
     else:
@@ -709,6 +721,12 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
         if not runtime:
             last_ep = details.get("last_episode_to_air") or {}
             runtime = int(last_ep.get("runtime") or 0)
+        ep_total = details.get("number_of_episodes")
+        seasons_total = details.get("number_of_seasons")
+        if ep_total:
+            episode_count = int(ep_total)
+        if seasons_total:
+            seasons = int(seasons_total)
 
     title = best_match.get("title") or best_match.get("name") or query
     poster_path = best_match.get("poster_path") or details.get("poster_path")
@@ -720,6 +738,8 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
         "thumbnail": thumbnail,
         "source_id": f"tmdb:{media_type}:{item_id}",
         "media_type": media_type,
+        "episode_count": episode_count,
+        "seasons": seasons,
     }
 
 
@@ -862,6 +882,8 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
         tmdb = await _tmdb_find_by_imdb(stremio_imdb_id, effective_tmdb_key)
     else:
         tmdb = await _tmdb_fallback(title, provider, tmdb_api_key=tmdb_api_key)
+    episode_count: int | None = None
+    seasons: int | None = None
     if tmdb:
         # Prefer canonical title from TMDb when available.
         title = tmdb.get("title", title)
@@ -871,6 +893,10 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
             duration_minutes = tmdb_duration
         if not thumbnail:
             thumbnail = tmdb.get("thumbnail", "")
+        if tmdb.get("episode_count"):
+            episode_count = int(tmdb["episode_count"])
+        if tmdb.get("seasons"):
+            seasons = int(tmdb["seasons"])
 
     extracted_source_id = _extract_source_id(url, provider)
     # For Stremio, prefer the IMDb ID (used in stremio:// protocol URLs)
@@ -895,6 +921,8 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
         "source_id": source_id,
         "url": url,
         "duration_minutes": duration_minutes,
+        "episode_count": episode_count,
+        "seasons": seasons,
         "suggested_content_type": suggested_type,
         "provider": provider,
     }

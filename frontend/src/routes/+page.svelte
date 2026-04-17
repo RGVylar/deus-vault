@@ -5,6 +5,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, TYPE_ICONS, TYPE_LABELS, buildConsumeUrl } from '$lib/utils';
 	import type { Content, VaultStats, ContentType } from '$lib/types';
+	import { effectiveDuration } from '$lib/types';
 
 	let stats: VaultStats | null = $state(null);
 	let contents: Content[] = $state([]);
@@ -25,6 +26,8 @@
 	let addPageCount = $state(0);
 	let addWordsPerPage = $state(readingWordsPerPage);
 	let addBookFormat: 'book' | 'manga' = $state('book');
+	let addEpisodeCount = $state(0);
+	let addSeasons = $state(0);
 	let addAuthor = $state('');
 	let addNotes = $state('');
 	let addThumbnail = $state('');
@@ -172,6 +175,12 @@
 				if (data.duration_minutes) addDuration = data.duration_minutes;
 			}
 
+			// Series metadata
+			if (addType === 'series') {
+				if (data.episode_count) addEpisodeCount = Number(data.episode_count);
+				if (data.seasons) addSeasons = Number(data.seasons);
+			}
+
 			lastLookupUrl = targetUrl;
 		} catch (e: unknown) {
 			addError = e instanceof Error ? e.message : 'Lookup failed';
@@ -189,6 +198,8 @@
 				duration_minutes: addDuration,
 				page_count: addPageCount && Number(addPageCount) > 0 ? Number(addPageCount) : null,
 				words_per_page: addWordsPerPage && Number(addWordsPerPage) > 0 ? Number(addWordsPerPage) : null,
+				episode_count: addType === 'series' && addEpisodeCount > 0 ? addEpisodeCount : null,
+				seasons: addType === 'series' && addSeasons > 0 ? addSeasons : null,
 				source_id: addSourceId || null,
 				author: addAuthor || null,
 				notes: addNotes || null
@@ -224,6 +235,7 @@
 		addTitle = ''; addUrl = ''; addDuration = 0; addAuthor = '';
 		addNotes = ''; addThumbnail = ''; addSourceId = ''; addType = 'youtube';
 		addPageCount = 0; addWordsPerPage = readingWordsPerPage; addBookFormat = 'book';
+		addEpisodeCount = 0; addSeasons = 0;
 		lastLookupUrl = '';
 	}
 
@@ -311,11 +323,26 @@
 						<div class="title">{c.title}</div>
 						<div class="meta">
 							<span class="badge {c.content_type}">{TYPE_LABELS[c.content_type]}</span>
-							{#if c.duration_minutes > 0}
-								<span>⏱ {formatDuration(c.duration_minutes)}</span>
-							{/if}
-							{#if c.content_type === 'book' && c.page_count && Number(c.page_count) > 0}
-								<span>📚 {c.page_count} pág</span>
+							{#if c.content_type === 'series'}
+								{#if c.duration_minutes > 0}
+									<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>
+								{/if}
+								{#if c.seasons && c.seasons > 0}
+									<span>📺 {c.seasons}T</span>
+								{/if}
+								{#if c.episode_count && c.episode_count > 0}
+									<span>{c.episode_count} ep</span>
+								{/if}
+								{#if effectiveDuration(c) > 0}
+									<span style="color:var(--text-muted);">~{formatDuration(effectiveDuration(c))}</span>
+								{/if}
+							{:else}
+								{#if c.duration_minutes > 0}
+									<span>⏱ {formatDuration(c.duration_minutes)}</span>
+								{/if}
+								{#if c.content_type === 'book' && c.page_count && Number(c.page_count) > 0}
+									<span>📚 {c.page_count} pág</span>
+								{/if}
 							{/if}
 							{#if c.author}
 								<span>{c.author}</span>
@@ -386,9 +413,27 @@
 				</div>
 
 				<div class="form-group">
-					<label for="add-duration">Duración (minutos)</label>
+					<label for="add-duration">Duración{addType === 'series' ? ' por episodio' : ''} (minutos)</label>
 					<input id="add-duration" type="number" bind:value={addDuration} min="0" />
 				</div>
+
+				{#if addType === 'series'}
+					<div style="display:flex; gap:0.75rem;">
+						<div class="form-group" style="flex:1;">
+							<label for="add-seasons">Temporadas</label>
+							<input id="add-seasons" type="number" bind:value={addSeasons} min="0" />
+						</div>
+						<div class="form-group" style="flex:1;">
+							<label for="add-episodes">Episodios totales</label>
+							<input id="add-episodes" type="number" bind:value={addEpisodeCount} min="0" />
+						</div>
+					</div>
+					{#if addDuration > 0 && addEpisodeCount > 0}
+						<p style="font-size:0.85rem; color:var(--text-muted); margin-top:-0.25rem;">
+							Duración total estimada: ~{formatDuration(addDuration * addEpisodeCount)}
+						</p>
+					{/if}
+				{/if}
 
 				{#if addType === 'book'}
 					<div class="form-group">

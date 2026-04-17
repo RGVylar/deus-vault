@@ -13,6 +13,8 @@ class ContentCreate(BaseModel):
     duration_minutes: int = 0
     page_count: int | None = None
     words_per_page: int | None = None
+    episode_count: int | None = None
+    seasons: int | None = None
     source_id: str | None = None
     author: str | None = None
     notes: str | None = None
@@ -25,6 +27,8 @@ class ContentUpdate(BaseModel):
     duration_minutes: int | None = None
     page_count: int | None = None
     words_per_page: int | None = None
+    episode_count: int | None = None
+    seasons: int | None = None
     author: str | None = None
     notes: str | None = None
 
@@ -38,6 +42,8 @@ class ContentOut(BaseModel):
     duration_minutes: int
     page_count: int | None
     words_per_page: int | None
+    episode_count: int | None
+    seasons: int | None
     consumed: bool
     consumed_at: datetime | None
     created_at: datetime

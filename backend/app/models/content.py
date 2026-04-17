@@ -38,6 +38,9 @@ class Content(Base):
     # Optional book metadata
     page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     words_per_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Optional series metadata (duration_minutes = per-episode runtime for series)
+    episode_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    seasons: Mapped[int | None] = mapped_column(Integer, nullable=True)
     consumed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
