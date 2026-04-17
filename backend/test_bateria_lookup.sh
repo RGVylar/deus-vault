@@ -7,7 +7,7 @@ NETFLIX_MOVIE_URL="https://www.netflix.com/watch/60000861?source=35"
 # Disney+ detecta Mandalorian como serie (correcto), si se quiere pelicula usar otro
 DISNEY_MOVIE_URL="https://www.disneyplus.com/movies/encanto/33q4DdMGHLts"
 PRIME_MOVIE_URL="https://www.primevideo.com/-/es/detail/0LCOF5S7YR0UEA8EYW31TA7OF7/ref=atv_mv_hom_c_OB3e7ea8_brws_10_5?jic=8%7CEgR0dm9k"
-MAX_MOVIE_URL="https://play.hbomax.com/feature/urn:hbo:feature:GXkRjxwMt3oNJjhsJATwo:type:feature"
+MAX_MOVIE_URL="https://www.hbomax.com/es/es/movies/smashing-machine/bdf72d38-d39b-477a-b366-3c873bd31aa5"
 STREMIO_MOVIE_URL="https://app.strem.io/shell-v4.4/#/detail/movie/tt0780504/tt0780504"
 
 # ── Series ───────────────────────────────────────────────────
