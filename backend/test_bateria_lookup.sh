@@ -24,9 +24,9 @@ GOODREADS_URL="https://www.goodreads.com/book/show/5907.The_Hobbit"
 GOOGLEBOOKS_URL="https://books.google.com/books?id=zyTCDAAAQBAJ"
 
 # ── Manga ────────────────────────────────────────────────────
-MANGA_GOODREADS_URL="https://www.goodreads.com/book/show/819028.Vagabond_Vol_1"
-MANGA_OL_URL="https://openlibrary.org/works/OL16791578W"
-MANGA_GOODREADS2_URL="https://www.goodreads.com/book/show/26970.Berserk_Vol_1"
+MANGA_GOODREADS_URL="https://www.goodreads.com/book/show/251912.Vagabond_Volume_1"
+MANGA_OL_URL="https://openlibrary.org/works/OL19332749W/Vinland_Saga_Book_One?edition=key%3A/books/OL57621241M"
+MANGA_GOODREADS2_URL="https://www.goodreads.com/book/show/248871.Berserk_Vol_1"
 
 # ── Otros ────────────────────────────────────────────────────
 STEAM_URL="https://store.steampowered.com/app/620/Portal_2/"
