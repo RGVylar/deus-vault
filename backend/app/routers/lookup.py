@@ -254,7 +254,41 @@ async def lookup_book(url: str) -> dict:
                     "suggested_content_type": "book",
                     "provider": provider,
                 }
-            # API failed (403/429/etc.) — at minimum return the volume_id so it's not empty
+            # API failed (403/429/etc.) — fall back to parsing the already-scraped HTML
+            # Google Books pages have JSON-LD and og: tags with title/author
+            if html:
+                gb_title = _extract_meta_content(html, "og:title") or _extract_title_tag(html) or ""
+                gb_author = _extract_meta_content(html, "og:description") or ""
+                # og:description is usually "Author Name - YYYY - N pages"; grab the first part
+                if " - " in gb_author:
+                    gb_author = gb_author.split(" - ")[0].strip()
+                gb_thumb = _extract_meta_content(html, "og:image") or ""
+                # Try JSON-LD too
+                blocks = re.findall(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, flags=re.IGNORECASE | re.DOTALL)
+                for block in blocks:
+                    try:
+                        jd = json.loads(block.strip())
+                        items = jd if isinstance(jd, list) else [jd]
+                        for item in items:
+                            if not isinstance(item, dict): continue
+                            gb_title = gb_title or item.get("name", "")
+                            au = item.get("author")
+                            if not gb_author and au:
+                                if isinstance(au, dict): gb_author = au.get("name", "")
+                                elif isinstance(au, list): gb_author = ", ".join(a.get("name","") for a in au if isinstance(a, dict))
+                    except Exception:
+                        pass
+                return {
+                    "title": gb_title,
+                    "author": gb_author,
+                    "thumbnail": gb_thumb,
+                    "page_count": 0,
+                    "source_id": volume_id,
+                    "url": url,
+                    "duration_minutes": 0,
+                    "suggested_content_type": "book",
+                    "provider": provider,
+                }
             return {
                 "title": "",
                 "author": "",

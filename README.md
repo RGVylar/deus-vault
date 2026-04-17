@@ -182,5 +182,24 @@ systemctl reload caddy
 '
 pct exec 210 -- bash -c "cd /opt/deus-vault/backend && bash test_bateria_lookup.sh"
 
+
+clear
+pct exec 210 -- bash -lc '
+cd /opt/deus-vault &&
+sudo -u deusvault git pull &&
+cd backend &&
+sudo -u deusvault .venv/bin/pip install -e . -q &&
+sudo -u deusvault .venv/bin/alembic upgrade head &&
+cd ../frontend &&
+sudo -u deusvault npm install --silent &&
+sudo -u deusvault npm run build --silent &&
+systemctl restart deus-vault-backend &&
+systemctl reload caddy &&
+echo "Esperando backend..." &&
+until curl -sf http://127.0.0.1:8000/health > /dev/null 2>&1; do sleep 1; done &&
+echo "Backend listo ✓"
+'
+pct exec 210 -- bash -c "cd /opt/deus-vault/backend && bash test_bateria_lookup.sh"
+
 pct exec 210 -- bash -lc 'curl -sG --data-urlencode "url=https://openlibrary.org/works/OL45883W" "http://127.0.0.1:8000/api/lookup/auto" -w "\nHTTPSTATUS:%{http_code}\n"'
 ```
