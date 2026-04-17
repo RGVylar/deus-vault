@@ -14,7 +14,7 @@ STREMIO_MOVIE_URL="https://app.strem.io/shell-v4.4/#/detail/movie/tt0780504/tt07
 NETFLIX_SERIES_URL="https://www.netflix.com/title/80057281"
 DISNEY_SERIES_URL="https://www.disneyplus.com/series/andor/3xsQKWG00GL5"
 # Prime Video: usar ASIN directo (formato más fiable)
-PRIME_SERIES_URL="https://www.primevideo.com/-/es/detail/0JL6LKQZSNFNK8ETYQNZUQ0P4D/ref=atv_br_def_r_br_c_unkc_1_10"
+PRIME_SERIES_URL="https://www.primevideo.com/dp/amzn1.dv.gti.ba61bdfa-2247-4ccb-8d15-6fc553d36ca7?autoplay=0&ref_=atv_cf_strg_wb"
 MAX_SERIES_URL="https://play.hbomax.com/page/urn:hbo:page:GVU2cggagzYNJjhsJATwo:type:series"
 STREMIO_SERIES_URL="https://app.strem.io/shell-v4.4/#/detail/series/tt0944947/tt0944947"
 
