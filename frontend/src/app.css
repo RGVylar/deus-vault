@@ -154,16 +154,20 @@ label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bot
 	padding: 0.85rem; border-radius: 14px;
 	background: var(--surface);
 	border: 1px solid var(--border);
-	transition: border-color 0.18s, transform 0.18s;
+	border-left: 3px solid var(--card-accent, var(--border));
+	transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s;
 	backdrop-filter: var(--blur);
 	-webkit-backdrop-filter: var(--blur);
+	box-shadow: -2px 0 12px color-mix(in srgb, var(--card-accent, transparent) 12%, transparent);
 }
 .content-card:hover {
 	border-color: var(--border-bright);
+	border-left-color: var(--card-accent, var(--border-bright));
 	transform: translateY(-1px);
+	box-shadow: -2px 0 20px color-mix(in srgb, var(--card-accent, transparent) 22%, transparent);
 }
 .content-card .thumb {
-	width: 64px; height: 64px; border-radius: 10px;
+	width: 68px; height: 96px; border-radius: 8px;
 	object-fit: cover; flex-shrink: 0;
 	background: var(--surface2);
 }
@@ -237,8 +241,22 @@ label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bot
 	padding: 0.3rem 0.7rem; border-radius: 99px;
 	background: var(--surface); border: 1px solid var(--border);
 	font-size: 0.75rem;
+	position: relative; overflow: hidden;
 }
 .stat-pill .val { font-weight: 700; }
+/* Typed pill: colored bottom bar */
+.stat-pill-typed {
+	border-color: color-mix(in srgb, var(--pill-color, var(--border)) 30%, var(--border));
+	padding-bottom: 0.45rem;
+}
+.stat-pill-bar {
+	position: absolute; bottom: 0; left: 0;
+	height: 2px;
+	background: var(--pill-color, var(--primary));
+	opacity: 0.7;
+	border-radius: 0 2px 0 0;
+	transition: width 0.4s ease;
+}
 
 /* Filter tabs */
 .tabs {
@@ -325,9 +343,9 @@ h2 { font-size: 1.05rem; margin-bottom: 0.75rem; font-weight: 600; }
 	}
 
 	.content-card .thumb {
-		width: 108px;
-		height: 108px;
-		border-radius: 12px;
+		width: 88px;
+		height: 124px;
+		border-radius: 10px;
 	}
 
 	.content-card .title {

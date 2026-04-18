@@ -2,7 +2,7 @@ import random
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import case, func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -26,21 +26,42 @@ router = APIRouter(prefix="/contents", tags=["contents"])
 PAGE_LIMIT = 20
 
 
-def _effective_duration(model: type) -> object:
-    """SQL expression: series total = duration_minutes * episode_count, else duration_minutes."""
-    return case(
-        (
-            (model.content_type == ContentType.series)
-            & model.episode_count.isnot(None)
-            & (model.episode_count > 0),
-            model.duration_minutes * model.episode_count,
-        ),
-        else_=model.duration_minutes,
-    )
-
-
 def _is_leap_year(year: int) -> bool:
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+
+
+def _effective_duration(c: Content) -> int:
+    """Total duration in minutes (series = per-ep * episodes)."""
+    if c.content_type == ContentType.series and c.episode_count and c.episode_count > 0:
+        return c.duration_minutes * c.episode_count
+    return c.duration_minutes
+
+
+def _remaining_minutes(c: Content) -> int:
+    """Minutes left accounting for progress. Used for the pending debt."""
+    progress = c.progress or 0
+
+    if c.content_type == ContentType.series:
+        total_eps = c.episode_count or 0
+        if total_eps > 0:
+            eps_done = min(progress, total_eps)
+            return max(0, (total_eps - eps_done) * c.duration_minutes)
+        return c.duration_minutes  # no episode count → use per-ep duration
+
+    total = c.duration_minutes
+    if progress <= 0:
+        return total
+
+    if c.content_type == ContentType.book and c.page_count and c.page_count > 0:
+        pages_left = max(0, c.page_count - progress)
+        return max(0, round(total * pages_left / c.page_count))
+
+    if c.content_type == ContentType.game:
+        pct_left = max(0, 100 - progress)
+        return max(0, round(total * pct_left / 100))
+
+    # movie, youtube, music: progress = minutes already watched/listened
+    return max(0, total - progress)
 
 
 @router.get("/stats", response_model=VaultStats)
@@ -48,40 +69,32 @@ def vault_stats(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VaultStats:
-    """Total pending and consumed minutes + breakdown by type."""
-    pending_q = select(
-        func.coalesce(func.sum(_effective_duration(Content)), 0)
-    ).where(Content.user_id == user.id, Content.consumed == False)  # noqa: E712
-    consumed_q = select(
-        func.coalesce(func.sum(_effective_duration(Content)), 0)
-    ).where(Content.user_id == user.id, Content.consumed == True)  # noqa: E712
-
-    pending_count_q = select(func.count()).where(
-        Content.user_id == user.id, Content.consumed == False  # noqa: E712
+    """Pending debt (progress-aware) and consumed totals."""
+    pending_items = list(
+        db.scalars(
+            select(Content).where(Content.user_id == user.id, Content.consumed == False)  # noqa: E712
+        ).all()
     )
-    consumed_count_q = select(func.count()).where(
-        Content.user_id == user.id, Content.consumed == True  # noqa: E712
+    consumed_items = list(
+        db.scalars(
+            select(Content).where(Content.user_id == user.id, Content.consumed == True)  # noqa: E712
+        ).all()
     )
 
-    total_pending = db.scalar(pending_q) or 0
-    total_consumed = db.scalar(consumed_q) or 0
-    pending_count = db.scalar(pending_count_q) or 0
-    consumed_count = db.scalar(consumed_count_q) or 0
+    total_pending = sum(_remaining_minutes(c) for c in pending_items)
+    total_consumed = sum(_effective_duration(c) for c in consumed_items)
 
-    # By type (pending only)
-    by_type_rows = db.execute(
-        select(Content.content_type, func.coalesce(func.sum(_effective_duration(Content)), 0))
-        .where(Content.user_id == user.id, Content.consumed == False)  # noqa: E712
-        .group_by(Content.content_type)
-    ).all()
-    by_type = {row[0].value: row[1] for row in by_type_rows}
+    by_type: dict[str, int] = {}
+    for c in pending_items:
+        key = c.content_type.value
+        by_type[key] = by_type.get(key, 0) + _remaining_minutes(c)
 
     return VaultStats(
         total_pending_minutes=total_pending,
         total_consumed_minutes=total_consumed,
-        pending_count=pending_count,
-        consumed_count=consumed_count,
-        by_type=by_type,
+        pending_count=len(pending_items),
+        consumed_count=len(consumed_items),
+        by_type={k: v for k, v in by_type.items() if v > 0},
     )
 
 
@@ -111,27 +124,20 @@ def rewind(
         ).all()
     )
 
-    def item_duration(c: Content) -> int:
-        if c.content_type == ContentType.series and c.episode_count and c.episode_count > 0:
-            return c.duration_minutes * c.episode_count
-        return c.duration_minutes
-
-    total_minutes = sum(item_duration(c) for c in items)
+    total_minutes = sum(_effective_duration(c) for c in items)
     minutes_in_year = (366 if _is_leap_year(year) else 365) * 24 * 60
 
-    # By type
     by_type: dict[str, TypeRewindStats] = {}
     for ct in ContentType:
         type_items = [c for c in items if c.content_type == ct]
         if type_items:
-            type_minutes = sum(item_duration(c) for c in type_items)
+            type_minutes = sum(_effective_duration(c) for c in type_items)
             by_type[ct.value] = TypeRewindStats(
                 count=len(type_items),
                 minutes=type_minutes,
                 percentage_of_year=round(type_minutes / minutes_in_year * 100, 3),
             )
 
-    # By month
     by_month: list[MonthStats] = []
     for m in range(1, 13):
         month_items = [c for c in items if c.consumed_at and c.consumed_at.month == m]
@@ -139,11 +145,10 @@ def rewind(
             MonthStats(
                 month=m,
                 count=len(month_items),
-                minutes=sum(item_duration(c) for c in month_items),
+                minutes=sum(_effective_duration(c) for c in month_items),
             )
         )
 
-    # Calendar heatmap
     calendar: dict[str, DayStats] = {}
     for c in items:
         if c.consumed_at:
@@ -151,7 +156,7 @@ def rewind(
             prev = calendar.get(day_key, DayStats(count=0, minutes=0))
             calendar[day_key] = DayStats(
                 count=prev.count + 1,
-                minutes=prev.minutes + item_duration(c),
+                minutes=prev.minutes + _effective_duration(c),
             )
 
     return RewindStats(
@@ -170,6 +175,7 @@ def rewind(
 def list_contents(
     consumed: bool | None = Query(None),
     content_type: ContentType | None = Query(None),
+    search: str | None = Query(None, max_length=200),
     limit: int = Query(default=PAGE_LIMIT, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
@@ -180,9 +186,19 @@ def list_contents(
         q = q.where(Content.consumed == consumed)
     if content_type is not None:
         q = q.where(Content.content_type == content_type)
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        q = q.where(
+            or_(
+                func.lower(Content.title).like(term),
+                func.lower(Content.author).like(term),
+            )
+        )
 
     total = db.scalar(select(func.count()).select_from(q.subquery())) or 0
-    items = list(db.scalars(q.order_by(Content.created_at.desc()).limit(limit).offset(offset)).all())
+    items = list(
+        db.scalars(q.order_by(Content.created_at.desc()).limit(limit).offset(offset)).all()
+    )
 
     return PaginatedContents(items=items, total=total, offset=offset, limit=limit)
 
