@@ -18,11 +18,19 @@
 		music:   'var(--music)',
 	};
 
+	// Thumbnail class per content type
+	function thumbClass(type: ContentType): string {
+		if (type === 'youtube') return 'thumb thumb-landscape';
+		if (type === 'game' || type === 'series' || type === 'music') return 'thumb thumb-square';
+		return 'thumb'; // book, movie: portrait
+	}
+
 	let stats: VaultStats | null = $state(null);
 	let contents: Content[] = $state([]);
 	let total = $state(0);
 	let offset = $state(0);
 	let filter: ContentType | 'all' = $state('all');
+	let sortOrder = $state('recent');
 	let searchQuery = $state('');
 	let showAdd = $state(false);
 	let loading = $state(true);
@@ -82,8 +90,8 @@
 		return () => window.removeEventListener('deus_vault_settings_changed', handler as EventListener);
 	});
 
-	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string) {
-		let url = `/contents?consumed=${consumed}&limit=${LIMIT}&offset=${off}`;
+	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string, sort = 'recent') {
+		let url = `/contents?consumed=${consumed}&limit=${LIMIT}&offset=${off}&sort=${sort}`;
 		if (type !== 'all') url += `&content_type=${type}`;
 		if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
 		return url;
@@ -95,7 +103,7 @@
 		try {
 			const [s, p] = await Promise.all([
 				api.get<VaultStats>('/contents/stats'),
-				api.get<PaginatedContents>(buildUrl(false, filter, 0, searchQuery))
+				api.get<PaginatedContents>(buildUrl(false, filter, 0, searchQuery, sortOrder))
 			]);
 			stats = s;
 			contents = p.items;
@@ -103,32 +111,26 @@
 		} finally { loading = false; }
 	}
 
-	async function reloadList() {
-		offset = 0;
-		const p = await api.get<PaginatedContents>(buildUrl(false, filter, 0, searchQuery));
-		contents = p.items;
-		total = p.total;
-	}
-
 	async function loadMore() {
 		loadingMore = true;
 		const newOffset = offset + LIMIT;
 		try {
-			const p = await api.get<PaginatedContents>(buildUrl(false, filter, newOffset, searchQuery));
+			const p = await api.get<PaginatedContents>(buildUrl(false, filter, newOffset, searchQuery, sortOrder));
 			contents = [...contents, ...p.items];
 			total = p.total;
 			offset = newOffset;
 		} finally { loadingMore = false; }
 	}
 
-	// React to filter changes
-	let filterMounted = false;
+	// React to filter OR sort changes (skip first run, handled by load())
+	let controlsMounted = false;
 	$effect(() => {
 		const _filter = filter;
-		if (!filterMounted) { filterMounted = true; return; }
+		const _sort = sortOrder;
+		if (!controlsMounted) { controlsMounted = true; return; }
 		if (!auth.isLoggedIn) return;
 		offset = 0;
-		api.get<PaginatedContents>(buildUrl(false, _filter, 0, searchQuery)).then(p => {
+		api.get<PaginatedContents>(buildUrl(false, _filter, 0, searchQuery, _sort)).then(p => {
 			contents = p.items;
 			total = p.total;
 		});
@@ -141,7 +143,7 @@
 		searchTimer = setTimeout(() => {
 			if (!auth.isLoggedIn) return;
 			offset = 0;
-			api.get<PaginatedContents>(buildUrl(false, filter, 0, q)).then(p => {
+			api.get<PaginatedContents>(buildUrl(false, filter, 0, q, sortOrder)).then(p => {
 				contents = p.items;
 				total = p.total;
 			});
@@ -398,16 +400,24 @@
 		<button class:btn-secondary={filter !== 'game'} onclick={() => filter = 'game'}>🎮 Juegos</button>
 	</div>
 
-	<div class="search-wrap">
-		<input
-			type="search"
-			bind:value={searchQuery}
-			placeholder="🔍  Buscar por título o autor…"
-			class="search-input"
-		/>
-		{#if searchQuery}
-			<button class="search-clear" onclick={() => searchQuery = ''} aria-label="Limpiar">✕</button>
-		{/if}
+	<div class="search-sort-row">
+		<div class="search-wrap" style="flex:1;">
+			<input
+				type="search"
+				bind:value={searchQuery}
+				placeholder="🔍  Buscar…"
+				class="search-input"
+			/>
+			{#if searchQuery}
+				<button class="search-clear" onclick={() => searchQuery = ''} aria-label="Limpiar">✕</button>
+			{/if}
+		</div>
+		<select bind:value={sortOrder} class="sort-select">
+			<option value="recent">📅 Recientes</option>
+			<option value="duration_asc">⏱ Duración ↑</option>
+			<option value="duration_desc">⏱ Duración ↓</option>
+			<option value="title_asc">🔤 Título A–Z</option>
+		</select>
 	</div>
 
 	<!-- Content list -->
@@ -429,9 +439,9 @@
 				{@const remaining = remainingMinutes(c)}
 				<div class="content-card" style="--card-accent:{TYPE_COLOR[c.content_type] ?? 'var(--border)'}">
 					{#if c.thumbnail}
-						<img class="thumb" src={c.thumbnail} alt="" />
+						<img class={thumbClass(c.content_type)} src={c.thumbnail} alt="" />
 					{:else}
-						<div class="thumb thumb-placeholder">
+						<div class="{thumbClass(c.content_type)} thumb-placeholder">
 							{TYPE_ICONS[c.content_type] || '📄'}
 						</div>
 					{/if}
@@ -642,10 +652,15 @@
 {/if}
 
 <style>
-	/* Search */
+	/* Search + sort row */
+	.search-sort-row {
+		display: flex;
+		gap: 0.5rem;
+		margin-bottom: 0.75rem;
+		align-items: center;
+	}
 	.search-wrap {
 		position: relative;
-		margin-bottom: 0.75rem;
 	}
 	.search-input {
 		width: 100%;
@@ -659,6 +674,13 @@
 		font-size: 0.8rem; border-radius: 6px;
 	}
 	.search-clear:hover { background: var(--surface); color: var(--text); }
+	.sort-select {
+		flex-shrink: 0;
+		font-size: 0.78rem;
+		padding: 0.5rem 0.6rem;
+		border-radius: 10px;
+		white-space: nowrap;
+	}
 
 	/* Thumb placeholder */
 	.thumb-placeholder {

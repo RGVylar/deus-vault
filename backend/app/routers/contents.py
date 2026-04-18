@@ -176,6 +176,7 @@ def list_contents(
     consumed: bool | None = Query(None),
     content_type: ContentType | None = Query(None),
     search: str | None = Query(None, max_length=200),
+    sort: str = Query(default="recent", pattern="^(recent|duration_asc|duration_desc|title_asc)$"),
     limit: int = Query(default=PAGE_LIMIT, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
@@ -195,10 +196,17 @@ def list_contents(
             )
         )
 
+    if sort == "duration_asc":
+        q = q.order_by(Content.duration_minutes.asc(), Content.created_at.desc())
+    elif sort == "duration_desc":
+        q = q.order_by(Content.duration_minutes.desc(), Content.created_at.desc())
+    elif sort == "title_asc":
+        q = q.order_by(func.lower(Content.title).asc())
+    else:  # recent
+        q = q.order_by(Content.created_at.desc())
+
     total = db.scalar(select(func.count()).select_from(q.subquery())) or 0
-    items = list(
-        db.scalars(q.order_by(Content.created_at.desc()).limit(limit).offset(offset)).all()
-    )
+    items = list(db.scalars(q.limit(limit).offset(offset)).all())
 
     return PaginatedContents(items=items, total=total, offset=offset, limit=limit)
 
@@ -281,14 +289,27 @@ def delete_content(
 @router.get("/random", response_model=ContentOut)
 def random_pick(
     content_type: ContentType | None = Query(None),
+    min_duration: int | None = Query(None, ge=0, description="Min remaining minutes"),
+    max_duration: int | None = Query(None, ge=0, description="Max remaining minutes"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Content:
-    """Pick a random pending content item."""
+    """Pick a random pending content item, optionally filtered by available time."""
     q = select(Content).where(Content.user_id == user.id, Content.consumed == False)  # noqa: E712
     if content_type is not None:
         q = q.where(Content.content_type == content_type)
     items = list(db.scalars(q).all())
+
+    if min_duration is not None or max_duration is not None:
+        def fits(c: Content) -> bool:
+            remaining = _remaining_minutes(c)
+            if min_duration is not None and remaining < min_duration:
+                return False
+            if max_duration is not None and remaining > max_duration:
+                return False
+            return True
+        items = [c for c in items if fits(c)]
+
     if not items:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No pending content")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No pending content in that time range")
     return random.choice(items)

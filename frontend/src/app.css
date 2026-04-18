@@ -171,6 +171,9 @@ label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bot
 	object-fit: cover; flex-shrink: 0;
 	background: var(--surface2);
 }
+/* Per-type thumbnail shapes */
+.thumb-square    { width: 72px !important; height: 72px !important; border-radius: 10px !important; }
+.thumb-landscape { width: 108px !important; height: 62px !important; border-radius: 8px !important; align-self: center; }
 .content-card .info { flex: 1; min-width: 0; }
 .content-card .title {
 	font-size: 0.9rem; font-weight: 600; line-height: 1.3;
@@ -347,6 +350,8 @@ h2 { font-size: 1.05rem; margin-bottom: 0.75rem; font-weight: 600; }
 		height: 124px;
 		border-radius: 10px;
 	}
+	.thumb-square    { width: 88px !important; height: 88px !important; }
+	.thumb-landscape { width: 132px !important; height: 76px !important; }
 
 	.content-card .title {
 		font-size: 1rem;
