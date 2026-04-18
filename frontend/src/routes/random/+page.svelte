@@ -16,9 +16,9 @@
 		{ label: 'Tarde libre',   min: 150,  max: null  },
 	];
 
-	// Game/YouTube: contain (no cropping). Everything else: cover.
+	// Game/YouTube: anchor top. Everything else: center crop.
 	function thumbClass(type: ContentType): string {
-		return type === 'game' || type === 'youtube' ? 'thumb thumb-contain' : 'thumb';
+		return type === 'game' || type === 'youtube' ? 'thumb thumb-top' : 'thumb';
 	}
 
 	let pick: Content | null = $state(null);

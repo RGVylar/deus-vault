@@ -18,9 +18,9 @@
 		music:   'var(--music)',
 	};
 
-	// Game/YouTube: show full image without cropping (contain). Everything else: cover.
+	// Game/YouTube: anchor top so logo stays visible. Everything else: center crop.
 	function thumbClass(type: ContentType): string {
-		return type === 'game' || type === 'youtube' ? 'thumb thumb-contain' : 'thumb';
+		return type === 'game' || type === 'youtube' ? 'thumb thumb-top' : 'thumb';
 	}
 
 	let stats: VaultStats | null = $state(null);
