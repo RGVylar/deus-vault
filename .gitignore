@@ -10,3 +10,4 @@ android/
 ios/
 dist/
 .claude-context-session.md
+/.claude
