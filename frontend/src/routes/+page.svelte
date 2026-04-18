@@ -18,11 +18,9 @@
 		music:   'var(--music)',
 	};
 
-	// Thumbnail class per content type
+	// Game/YouTube: show full image without cropping (contain). Everything else: cover.
 	function thumbClass(type: ContentType): string {
-		if (type === 'youtube') return 'thumb thumb-landscape';
-		if (type === 'game' || type === 'series' || type === 'music') return 'thumb thumb-square';
-		return 'thumb'; // book, movie: portrait
+		return type === 'game' || type === 'youtube' ? 'thumb thumb-contain' : 'thumb';
 	}
 
 	let stats: VaultStats | null = $state(null);

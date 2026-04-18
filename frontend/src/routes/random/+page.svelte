@@ -16,11 +16,9 @@
 		{ label: 'Tarde libre',   min: 150,  max: null  },
 	];
 
-	// Thumb class per content type
+	// Game/YouTube: contain (no cropping). Everything else: cover.
 	function thumbClass(type: ContentType): string {
-		if (type === 'youtube') return 'thumb thumb-landscape';
-		if (type === 'game' || type === 'series' || type === 'music') return 'thumb thumb-square';
-		return 'thumb'; // book, movie: portrait (default)
+		return type === 'game' || type === 'youtube' ? 'thumb thumb-contain' : 'thumb';
 	}
 
 	let pick: Content | null = $state(null);
