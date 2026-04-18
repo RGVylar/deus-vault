@@ -31,6 +31,7 @@ class ContentUpdate(BaseModel):
     seasons: int | None = None
     author: str | None = None
     notes: str | None = None
+    progress: int | None = None
 
 
 class ContentOut(BaseModel):
@@ -50,6 +51,7 @@ class ContentOut(BaseModel):
     source_id: str | None
     author: str | None
     notes: str | None
+    progress: int | None
 
     model_config = {"from_attributes": True}
 
@@ -60,3 +62,38 @@ class VaultStats(BaseModel):
     pending_count: int
     consumed_count: int
     by_type: dict[str, int]  # pending minutes per type
+
+
+class PaginatedContents(BaseModel):
+    items: list[ContentOut]
+    total: int
+    offset: int
+    limit: int
+
+
+class TypeRewindStats(BaseModel):
+    count: int
+    minutes: int
+    percentage_of_year: float
+
+
+class MonthStats(BaseModel):
+    month: int
+    count: int
+    minutes: int
+
+
+class DayStats(BaseModel):
+    count: int
+    minutes: int
+
+
+class RewindStats(BaseModel):
+    year: int
+    total_consumed_minutes: int
+    total_consumed_count: int
+    percentage_of_year: float
+    by_type: dict[str, TypeRewindStats]
+    by_month: list[MonthStats]
+    calendar: dict[str, DayStats]  # "YYYY-MM-DD" -> DayStats
+    items: list[ContentOut]

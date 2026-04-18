@@ -4,14 +4,23 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, TYPE_ICONS, TYPE_LABELS, buildConsumeUrl } from '$lib/utils';
-	import type { Content, VaultStats, ContentType } from '$lib/types';
+	import type { Content, VaultStats, ContentType, PaginatedContents } from '$lib/types';
 	import { effectiveDuration } from '$lib/types';
+
+	const LIMIT = 20;
 
 	let stats: VaultStats | null = $state(null);
 	let contents: Content[] = $state([]);
+	let total = $state(0);
+	let offset = $state(0);
 	let filter: ContentType | 'all' = $state('all');
 	let showAdd = $state(false);
 	let loading = $state(true);
+	let loadingMore = $state(false);
+
+	// Progress editing
+	let editingProgressId = $state<number | null>(null);
+	let progressValue = $state(0);
 
 	// Settings
 	let showSettings = $state(false);
@@ -41,7 +50,6 @@
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
 		load();
-		// Load user setting from localStorage (client-only)
 		try {
 			const stored = localStorage.getItem('deus_vault_reading_wpm');
 			if (stored) readingWpm = Number(stored) || readingWpm;
@@ -49,40 +57,63 @@
 			if (storedPages) readingWordsPerPage = Number(storedPages) || readingWordsPerPage;
 		} catch (e) {}
 
-		// Listen for settings changes from /settings page or modal
-			const handler = (ev: Event) => {
+		const handler = (ev: Event) => {
 			try {
 				// @ts-ignore
 				const d = (ev as CustomEvent).detail || {};
 				if (d.readingWpm) readingWpm = Number(d.readingWpm) || readingWpm;
-					if (d.readingWordsPerPage) {
-						readingWordsPerPage = Number(d.readingWordsPerPage) || readingWordsPerPage;
-						addWordsPerPage = readingWordsPerPage;
-					}
+				if (d.readingWordsPerPage) {
+					readingWordsPerPage = Number(d.readingWordsPerPage) || readingWordsPerPage;
+					addWordsPerPage = readingWordsPerPage;
+				}
 			} catch (e) {}
 		};
 		window.addEventListener('deus_vault_settings_changed', handler as EventListener);
-
-		return () => {
-			window.removeEventListener('deus_vault_settings_changed', handler as EventListener);
-		};
+		return () => window.removeEventListener('deus_vault_settings_changed', handler as EventListener);
 	});
+
+	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number) {
+		let url = `/contents?consumed=${consumed}&limit=${LIMIT}&offset=${off}`;
+		if (type !== 'all') url += `&content_type=${type}`;
+		return url;
+	}
 
 	async function load() {
 		loading = true;
+		offset = 0;
 		try {
-			[stats, contents] = await Promise.all([
+			const [s, p] = await Promise.all([
 				api.get<VaultStats>('/contents/stats'),
-				api.get<Content[]>('/contents?consumed=false')
+				api.get<PaginatedContents>(buildUrl(false, filter, 0))
 			]);
+			stats = s;
+			contents = p.items;
+			total = p.total;
 		} finally { loading = false; }
 	}
 
+	async function loadMore() {
+		loadingMore = true;
+		const newOffset = offset + LIMIT;
+		try {
+			const p = await api.get<PaginatedContents>(buildUrl(false, filter, newOffset));
+			contents = [...contents, ...p.items];
+			total = p.total;
+			offset = newOffset;
+		} finally { loadingMore = false; }
+	}
+
+	// Reload list when filter changes (after mount)
+	let filterMounted = false;
 	$effect(() => {
+		const _filter = filter;
+		if (!filterMounted) { filterMounted = true; return; }
 		if (!auth.isLoggedIn) return;
-		const type = filter;
-		const url = type === 'all' ? '/contents?consumed=false' : `/contents?consumed=false&content_type=${type}`;
-		api.get<Content[]>(url).then(r => contents = r);
+		offset = 0;
+		api.get<PaginatedContents>(buildUrl(false, _filter, 0)).then(p => {
+			contents = p.items;
+			total = p.total;
+		});
 	});
 
 	function isLookupCandidate(url: string): boolean {
@@ -90,42 +121,24 @@
 			const parsed = new URL(url);
 			const host = parsed.hostname.toLowerCase();
 			return (
-				host.includes('youtube.com') ||
-				host.includes('youtu.be') ||
-				host.includes('store.steampowered.com') ||
-				host.includes('netflix.com') ||
-				host.includes('primevideo.com') ||
-				host.includes('amazon.com') ||
-				host.includes('max.com') ||
-				host.includes('hbomax.com') ||
-				host.includes('disneyplus.com') ||
-				host.includes('strem.io') ||
-				host.includes('stremio.com') ||
-				host.includes('open.spotify.com') ||
-				host.includes('openlibrary.org') ||
-				host.includes('goodreads.com') ||
+				host.includes('youtube.com') || host.includes('youtu.be') ||
+				host.includes('store.steampowered.com') || host.includes('netflix.com') ||
+				host.includes('primevideo.com') || host.includes('amazon.com') ||
+				host.includes('max.com') || host.includes('hbomax.com') ||
+				host.includes('disneyplus.com') || host.includes('strem.io') ||
+				host.includes('stremio.com') || host.includes('open.spotify.com') ||
+				host.includes('openlibrary.org') || host.includes('goodreads.com') ||
 				host.includes('books.google.com')
 			);
-		} catch {
-			return false;
-		}
+		} catch { return false; }
 	}
 
 	$effect(() => {
 		const url = addUrl.trim();
 		if (!showAdd || !url || !isLookupCandidate(url) || lookupLoading || url === lastLookupUrl) return;
-
 		if (autoLookupTimer) clearTimeout(autoLookupTimer);
-		autoLookupTimer = setTimeout(() => {
-			void lookupUrl(url);
-		}, 350);
-
-		return () => {
-			if (autoLookupTimer) {
-				clearTimeout(autoLookupTimer);
-				autoLookupTimer = null;
-			}
-		};
+		autoLookupTimer = setTimeout(() => { void lookupUrl(url); }, 350);
+		return () => { if (autoLookupTimer) { clearTimeout(autoLookupTimer); autoLookupTimer = null; } };
 	});
 
 	async function lookupUrl(overrideUrl?: string) {
@@ -143,25 +156,18 @@
 				if (spotifyId) params.set('spotify_client_id', spotifyId);
 				if (spotifySecret) params.set('spotify_client_secret', spotifySecret);
 			} catch (e) {}
-			const endpoint = `/lookup/auto?${params.toString()}`;
-			const data = await api.get<any>(endpoint);
+			const data = await api.get<any>(`/lookup/auto?${params.toString()}`);
 
 			addTitle = data.title || addTitle;
 			addAuthor = data.author || addAuthor;
 			addThumbnail = data.thumbnail || '';
 			addSourceId = data.source_id || '';
 
-			// Determine type
 			const suggestedType = data.suggested_content_type;
-			if (suggestedType) {
-				addType = suggestedType;
-			} else if (targetUrl.includes('youtube.com') || targetUrl.includes('youtu.be')) {
-				addType = 'youtube';
-			} else if (targetUrl.includes('store.steampowered.com')) {
-				addType = 'game';
-			}
+			if (suggestedType) addType = suggestedType;
+			else if (targetUrl.includes('youtube.com') || targetUrl.includes('youtu.be')) addType = 'youtube';
+			else if (targetUrl.includes('store.steampowered.com')) addType = 'game';
 
-			// If it's a book and we have page_count, compute duration using addWordsPerPage (override) and user WPM
 			if (addType === 'book') {
 				if (data.page_count && Number(data.page_count) > 0) {
 					addPageCount = Number(data.page_count);
@@ -176,7 +182,6 @@
 				if (data.duration_minutes) addDuration = data.duration_minutes;
 			}
 
-			// Series metadata
 			if (addType === 'series') {
 				if (data.episode_count) addEpisodeCount = Number(data.episode_count);
 				if (data.seasons) addSeasons = Number(data.seasons);
@@ -219,16 +224,8 @@
 			localStorage.setItem('deus_vault_words_per_page', String(readingWordsPerPage));
 		} catch (e) {}
 		showSettings = false;
-		dispatchSettingsChanged();
-	}
-
-	// dispatch settings change for other windows/components
-	function dispatchSettingsChanged() {
 		try {
-			const ev = new CustomEvent('deus_vault_settings_changed', {
-				detail: { readingWpm, readingWordsPerPage }
-			});
-			window.dispatchEvent(ev);
+			window.dispatchEvent(new CustomEvent('deus_vault_settings_changed', { detail: { readingWpm, readingWordsPerPage } }));
 		} catch (e) {}
 	}
 
@@ -236,8 +233,7 @@
 		addTitle = ''; addUrl = ''; addDuration = 0; addAuthor = '';
 		addNotes = ''; addThumbnail = ''; addSourceId = ''; addType = 'youtube';
 		addPageCount = 0; addWordsPerPage = readingWordsPerPage; addBookFormat = 'book';
-		addEpisodeCount = 0; addSeasons = 0;
-		lastLookupUrl = '';
+		addEpisodeCount = 0; addSeasons = 0; lastLookupUrl = '';
 	}
 
 	async function consume(id: number) {
@@ -263,9 +259,7 @@
 				if (spotifyId) params.set('spotify_client_id', spotifyId);
 				if (spotifySecret) params.set('spotify_client_secret', spotifySecret);
 			} catch (e) {}
-
 			const data = await api.get<any>(`/lookup/auto?${params.toString()}`);
-
 			const patch: Record<string, unknown> = {};
 			if (data.title) patch.title = data.title;
 			if (data.author) patch.author = data.author;
@@ -274,14 +268,51 @@
 			if (data.episode_count != null) patch.episode_count = data.episode_count;
 			if (data.seasons != null) patch.seasons = data.seasons;
 			if (data.page_count && Number(data.page_count) > 0) patch.page_count = data.page_count;
-
 			await api.patch(`/contents/${c.id}`, patch);
 			load();
 		} catch (e) {
 			// silent fail
-		} finally {
-			refreshingId = null;
-		}
+		} finally { refreshingId = null; }
+	}
+
+	// --- Progress helpers ---
+	function progressPercent(c: Content): number {
+		if (!c.progress || c.progress <= 0) return 0;
+		if (c.content_type === 'book' && c.page_count && c.page_count > 0)
+			return Math.min(100, (c.progress / c.page_count) * 100);
+		if (c.content_type === 'game')
+			return Math.min(100, c.progress);
+		if (c.duration_minutes > 0)
+			return Math.min(100, (c.progress / c.duration_minutes) * 100);
+		return 0;
+	}
+
+	function progressLabel(c: Content): string {
+		if (!c.progress || c.progress <= 0) return '';
+		if (c.content_type === 'book') return `Pág. ${c.progress}${c.page_count ? ' / ' + c.page_count : ''}`;
+		if (c.content_type === 'game') return `${c.progress}%`;
+		if (c.content_type === 'series') return `Ep. ${c.progress}`;
+		return `${c.progress} min`;
+	}
+
+	function progressPlaceholder(c: Content): string {
+		if (c.content_type === 'book') return `Página (máx. ${c.page_count ?? '?'})`;
+		if (c.content_type === 'game') return 'Porcentaje (0-100)';
+		if (c.content_type === 'series') return 'Episodio actual';
+		return 'Minuto actual';
+	}
+
+	function startEditProgress(c: Content) {
+		editingProgressId = c.id;
+		progressValue = c.progress ?? 0;
+	}
+
+	async function saveProgress(c: Content) {
+		editingProgressId = null;
+		const val = Math.max(0, Math.floor(progressValue));
+		// Optimistic update
+		contents = contents.map(x => x.id === c.id ? { ...x, progress: val } : x);
+		await api.patch(`/contents/${c.id}`, { progress: val });
 	}
 
 	function formatHeroTime(minutes: number): string {
@@ -293,7 +324,6 @@
 {#if !auth.isLoggedIn}
 	<p>Redirigiendo…</p>
 {:else}
-	<!-- Hero: total pending time -->
 	{#if stats}
 		<div class="hero-number ominous">
 			<div class="kicker">DEUDA DE CONTENIDO</div>
@@ -323,7 +353,6 @@
 		{/if}
 	{/if}
 
-	<!-- Filter tabs -->
 	<div class="tabs">
 		<button class:btn-secondary={filter !== 'all'} onclick={() => filter = 'all'}>Todos</button>
 		<button class:btn-secondary={filter !== 'youtube'} onclick={() => filter = 'youtube'}>▶️ YouTube</button>
@@ -334,7 +363,6 @@
 		<button class:btn-secondary={filter !== 'game'} onclick={() => filter = 'game'}>🎮 Juegos</button>
 	</div>
 
-	<!-- Content list -->
 	{#if loading}
 		<p style="text-align:center; color:var(--text-muted);">Cargando…</p>
 	{:else if contents.length === 0}
@@ -346,6 +374,7 @@
 		<div class="content-grid">
 			{#each contents as c (c.id)}
 				{@const link = buildConsumeUrl(c)}
+				{@const pct = progressPercent(c)}
 				<div class="content-card">
 					{#if c.thumbnail}
 						<img class="thumb" src={c.thumbnail} alt="" />
@@ -359,32 +388,50 @@
 						<div class="meta">
 							<span class="badge {c.content_type}">{TYPE_LABELS[c.content_type]}</span>
 							{#if c.content_type === 'series'}
-								{#if c.seasons && c.seasons > 0}
-									<span>📺 {c.seasons}T</span>
-								{/if}
-								{#if c.episode_count && c.episode_count > 0}
-									<span>{c.episode_count} ep</span>
-								{/if}
-								{#if c.duration_minutes > 0}
-									<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>
-								{/if}
+								{#if c.seasons && c.seasons > 0}<span>📺 {c.seasons}T</span>{/if}
+								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} ep</span>{/if}
+								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>{/if}
 							{:else}
-								{#if c.duration_minutes > 0}
-									<span>⏱ {formatDuration(c.duration_minutes)}</span>
-								{/if}
+								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}</span>{/if}
 								{#if c.content_type === 'book' && c.page_count && Number(c.page_count) > 0}
 									<span>📚 {c.page_count} pág</span>
 								{/if}
 							{/if}
-							{#if c.author}
-								<span>{c.author}</span>
-							{/if}
+							{#if c.author}<span>{c.author}</span>{/if}
 						</div>
 						{#if c.content_type === 'series' && c.episode_count && c.episode_count > 0 && c.duration_minutes > 0}
-							<div class="series-total">
-								~{formatDuration(c.duration_minutes * c.episode_count)} en total
+							<div class="series-total">~{formatDuration(c.duration_minutes * c.episode_count)} en total</div>
+						{/if}
+
+						<!-- Progress -->
+						{#if c.content_type !== 'music'}
+							<div class="progress-row">
+								{#if editingProgressId === c.id}
+									<input
+										type="number"
+										bind:value={progressValue}
+										min="0"
+										placeholder={progressPlaceholder(c)}
+										class="progress-input"
+										onblur={() => saveProgress(c)}
+										onkeydown={(e) => e.key === 'Enter' && saveProgress(c)}
+										autofocus
+									/>
+								{:else}
+									<button class="progress-btn" onclick={() => startEditProgress(c)}>
+										{#if pct > 0}
+											<span class="progress-text">{progressLabel(c)}</span>
+											<span class="progress-track">
+												<span class="progress-fill" style="width:{pct}%"></span>
+											</span>
+										{:else}
+											<span style="color:var(--text-muted); font-size:0.72rem;">+ progreso</span>
+										{/if}
+									</button>
+								{/if}
 							</div>
 						{/if}
+
 						<div class="actions">
 							{#if link}
 								<a href={link} target="_blank" rel="noopener">
@@ -407,13 +454,19 @@
 				</div>
 			{/each}
 		</div>
+
+		{#if contents.length < total}
+			<div style="text-align:center; margin: 1rem 0 2rem;">
+				<button class="btn-secondary" onclick={loadMore} disabled={loadingMore}>
+					{loadingMore ? 'Cargando…' : `Cargar más (${total - contents.length} restantes)`}
+				</button>
+			</div>
+		{/if}
 	{/if}
 
-	<!-- FAB -->
 	<button class="fab settings" onclick={() => showSettings = true} title="Ajustes">⚙️</button>
 	<button class="fab" onclick={() => showAdd = true}>+</button>
 
-	<!-- Add modal -->
 	{#if showAdd}
 		<div class="overlay" onclick={() => showAdd = false} role="presentation">
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -492,12 +545,10 @@
 							<option value="manga">Manga / Comic</option>
 						</select>
 					</div>
-
 					<div class="form-group">
 						<label for="add-words-per-page">Palabras por página</label>
 						<input id="add-words-per-page" type="number" bind:value={addWordsPerPage} min="1" />
 					</div>
-
 					<div class="form-group">
 						<label for="add-pages">Páginas</label>
 						<input id="add-pages" type="number" bind:value={addPageCount} min="0" />
@@ -523,12 +574,10 @@
 		<div class="overlay" onclick={() => showSettings = false} role="presentation">
 			<div class="modal" onclick={e => e.stopPropagation()} role="dialog">
 				<h2>Ajustes</h2>
-
 				<div class="form-group">
 					<label for="reading-wpm">Velocidad de lectura (palabras/minuto)</label>
 					<input id="reading-wpm" type="number" bind:value={readingWpm} min="50" max="2000" />
 				</div>
-
 				<div style="display:flex; gap:0.5rem; margin-top:1rem;">
 					<button onclick={saveSettings} style="flex:1;">Guardar</button>
 					<button class="btn-secondary" onclick={() => { showSettings = false; }} style="flex:1;">Cancelar</button>
@@ -537,3 +586,45 @@
 		</div>
 	{/if}
 {/if}
+
+<style>
+	.progress-row {
+		margin: 0.3rem 0 0.1rem;
+		min-height: 22px;
+	}
+	.progress-btn {
+		all: unset;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		width: 100%;
+		padding: 0.1rem 0;
+	}
+	.progress-text {
+		font-size: 0.72rem;
+		color: var(--primary-dim);
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+	.progress-track {
+		flex: 1;
+		height: 4px;
+		background: var(--surface);
+		border-radius: 2px;
+		overflow: hidden;
+		min-width: 40px;
+	}
+	.progress-fill {
+		display: block;
+		height: 100%;
+		background: var(--primary);
+		border-radius: 2px;
+		transition: width 0.3s;
+	}
+	.progress-input {
+		width: 100%;
+		font-size: 0.8rem;
+		padding: 0.25rem 0.5rem;
+	}
+</style>

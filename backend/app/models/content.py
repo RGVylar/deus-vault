@@ -46,6 +46,8 @@ class Content(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # Progress tracking (page for books, episode for series, minutes for video, % for games)
+    progress: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Extra metadata
     source_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # youtube id, imdb id, etc.
     author: Mapped[str | None] = mapped_column(String(255), nullable=True)  # channel, director, author, studio

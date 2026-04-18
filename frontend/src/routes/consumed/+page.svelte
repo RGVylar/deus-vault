@@ -4,34 +4,64 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, TYPE_ICONS, TYPE_LABELS, buildConsumeUrl } from '$lib/utils';
-	import type { Content, ContentType, VaultStats } from '$lib/types';
-	import { effectiveDuration } from '$lib/types';
+	import type { Content, ContentType, VaultStats, PaginatedContents } from '$lib/types';
+
+	const LIMIT = 20;
 
 	let contents: Content[] = $state([]);
 	let stats: VaultStats | null = $state(null);
 	let filter: ContentType | 'all' = $state('all');
 	let loading = $state(true);
+	let loadingMore = $state(false);
+	let total = $state(0);
+	let offset = $state(0);
 
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
 		load();
 	});
 
+	function buildUrl(type: ContentType | 'all', off: number) {
+		let url = `/contents?consumed=true&limit=${LIMIT}&offset=${off}`;
+		if (type !== 'all') url += `&content_type=${type}`;
+		return url;
+	}
+
 	async function load() {
 		loading = true;
+		offset = 0;
 		try {
-			[stats, contents] = await Promise.all([
+			const [s, p] = await Promise.all([
 				api.get<VaultStats>('/contents/stats'),
-				api.get<Content[]>('/contents?consumed=true')
+				api.get<PaginatedContents>(buildUrl(filter, 0))
 			]);
+			stats = s;
+			contents = p.items;
+			total = p.total;
 		} finally { loading = false; }
 	}
 
+	async function loadMore() {
+		loadingMore = true;
+		const newOffset = offset + LIMIT;
+		try {
+			const p = await api.get<PaginatedContents>(buildUrl(filter, newOffset));
+			contents = [...contents, ...p.items];
+			total = p.total;
+			offset = newOffset;
+		} finally { loadingMore = false; }
+	}
+
+	let filterMounted = false;
 	$effect(() => {
+		const _filter = filter;
+		if (!filterMounted) { filterMounted = true; return; }
 		if (!auth.isLoggedIn) return;
-		const type = filter;
-		const url = type === 'all' ? '/contents?consumed=true' : `/contents?consumed=true&content_type=${type}`;
-		api.get<Content[]>(url).then(r => contents = r);
+		offset = 0;
+		api.get<PaginatedContents>(buildUrl(_filter, 0)).then(p => {
+			contents = p.items;
+			total = p.total;
+		});
 	});
 
 	async function unconsume(id: number) {
@@ -61,6 +91,7 @@
 		<button class:btn-secondary={filter !== 'all'} onclick={() => filter = 'all'}>Todos</button>
 		<button class:btn-secondary={filter !== 'youtube'} onclick={() => filter = 'youtube'}>▶️</button>
 		<button class:btn-secondary={filter !== 'movie'} onclick={() => filter = 'movie'}>🎬</button>
+		<button class:btn-secondary={filter !== 'series'} onclick={() => filter = 'series'}>📺</button>
 		<button class:btn-secondary={filter !== 'book'} onclick={() => filter = 'book'}>📖</button>
 		<button class:btn-secondary={filter !== 'game'} onclick={() => filter = 'game'}>🎮</button>
 	</div>
@@ -88,15 +119,9 @@
 						<div class="meta">
 							<span class="badge {c.content_type}">{TYPE_LABELS[c.content_type]}</span>
 							{#if c.content_type === 'series'}
-								{#if c.seasons && c.seasons > 0}
-									<span>📺 {c.seasons}T</span>
-								{/if}
-								{#if c.episode_count && c.episode_count > 0}
-									<span>{c.episode_count} ep</span>
-								{/if}
-								{#if c.duration_minutes > 0}
-									<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>
-								{/if}
+								{#if c.seasons && c.seasons > 0}<span>📺 {c.seasons}T</span>{/if}
+								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} ep</span>{/if}
+								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>{/if}
 								{#if c.episode_count && c.episode_count > 0 && c.duration_minutes > 0}
 									<span class="series-total">~{formatDuration(c.duration_minutes * c.episode_count)} total</span>
 								{/if}
@@ -119,5 +144,13 @@
 				</div>
 			{/each}
 		</div>
+
+		{#if contents.length < total}
+			<div style="text-align:center; margin: 1rem 0 2rem;">
+				<button class="btn-secondary" onclick={loadMore} disabled={loadingMore}>
+					{loadingMore ? 'Cargando…' : `Cargar más (${total - contents.length} restantes)`}
+				</button>
+			</div>
+		{/if}
 	{/if}
 {/if}

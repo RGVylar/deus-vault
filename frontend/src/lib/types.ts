@@ -28,6 +28,7 @@ export interface Content {
 	source_id: string | null;
 	author: string | null;
 	notes: string | null;
+	progress?: number | null;
 }
 
 /** Effective duration for stats/display: series multiply by episode count */
@@ -46,6 +47,13 @@ export interface VaultStats {
 	by_type: Record<string, number>;
 }
 
+export interface PaginatedContents {
+	items: Content[];
+	total: number;
+	offset: number;
+	limit: number;
+}
+
 export interface LookupResult {
 	title: string;
 	author: string;
@@ -53,4 +61,32 @@ export interface LookupResult {
 	source_id: string;
 	url: string;
 	duration_minutes: number;
+}
+
+export interface TypeRewindStats {
+	count: number;
+	minutes: number;
+	percentage_of_year: number;
+}
+
+export interface MonthStats {
+	month: number;
+	count: number;
+	minutes: number;
+}
+
+export interface DayStats {
+	count: number;
+	minutes: number;
+}
+
+export interface RewindStats {
+	year: number;
+	total_consumed_minutes: number;
+	total_consumed_count: number;
+	percentage_of_year: number;
+	by_type: Record<string, TypeRewindStats>;
+	by_month: MonthStats[];
+	calendar: Record<string, DayStats>;
+	items: Content[];
 }

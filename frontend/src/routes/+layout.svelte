@@ -9,6 +9,7 @@
 		{ href: '/', label: 'Bóveda', icon: '🏛️' },
 		{ href: '/consumed', label: 'Consumido', icon: '✅' },
 		{ href: '/random', label: 'Azar', icon: '🎲' },
+		{ href: '/rewind', label: 'Rewind', icon: '📅' },
 		{ href: '/settings', label: 'Ajustes', icon: '⚙️' }
 	];
 </script>
