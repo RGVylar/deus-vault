@@ -181,7 +181,7 @@ label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bot
 .content-card.card-portrait {
 	padding: 0;
 	overflow: hidden;
-	min-height: 210px; /* similar visual weight to landscape cards */
+	min-height: 295px; /* thumbnail(30%*col-width ~168px) + info(~130px) ≈ landscape card */
 	gap: 0;
 	align-items: stretch;
 }
