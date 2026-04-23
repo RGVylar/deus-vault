@@ -177,27 +177,29 @@ label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bot
 	background: var(--surface2);
 }
 
-/* Portrait card (books, music) — thumbnail fills full left column, edge-to-edge */
+/* Portrait card (books, music) — tall cover on the left, info on the right */
 .content-card.card-portrait {
 	padding: 0;
 	overflow: hidden;
-	min-height: 295px; /* thumbnail(30%*col-width ~168px) + info(~130px) ≈ landscape card */
 	gap: 0;
 	align-items: stretch;
 }
 .content-card.card-portrait .thumb-portrait {
-	width: 38%;
-	max-width: 150px;
+	width: 42%;
+	max-width: 160px;
 	align-self: stretch;
 	flex-shrink: 0;
-	object-fit: contain;
-	object-position: center;
+	object-fit: cover;
+	object-position: center top;
 	border-radius: 0;
 	background: var(--surface2);
+	/* Subtle gradient fade on the right edge to blend into the info section */
+	-webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+	mask-image: linear-gradient(to right, black 80%, transparent 100%);
 }
 .content-card.card-portrait .thumb-portrait-ph {
-	width: 38%;
-	max-width: 150px;
+	width: 42%;
+	max-width: 160px;
 	align-self: stretch;
 	flex-shrink: 0;
 	display: flex;
