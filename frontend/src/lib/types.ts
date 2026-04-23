@@ -29,6 +29,8 @@ export interface Content {
 	author: string | null;
 	notes: string | null;
 	progress?: number | null;
+	pinned: boolean;
+	collection: string | null;
 }
 
 /** Effective duration for stats/display: series multiply by episode count */
@@ -89,4 +91,9 @@ export interface RewindStats {
 	by_month: MonthStats[];
 	calendar: Record<string, DayStats>;
 	items: Content[];
+	streak_max: number;
+	streak_current: number;
+	best_month: number | null;
+	avg_days_to_consume: number | null;
+	favorite_type: string | null;
 }

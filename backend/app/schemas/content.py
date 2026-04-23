@@ -18,6 +18,8 @@ class ContentCreate(BaseModel):
     source_id: str | None = None
     author: str | None = None
     notes: str | None = None
+    pinned: bool = False
+    collection: str | None = None
 
 
 class ContentUpdate(BaseModel):
@@ -32,6 +34,9 @@ class ContentUpdate(BaseModel):
     author: str | None = None
     notes: str | None = None
     progress: int | None = None
+    pinned: bool | None = None
+    collection: str | None = None
+    consumed_at: datetime | None = None  # allows correcting the consumed date
 
 
 class ContentOut(BaseModel):
@@ -52,6 +57,8 @@ class ContentOut(BaseModel):
     author: str | None
     notes: str | None
     progress: int | None
+    pinned: bool
+    collection: str | None
 
     model_config = {"from_attributes": True}
 
@@ -97,3 +104,9 @@ class RewindStats(BaseModel):
     by_month: list[MonthStats]
     calendar: dict[str, DayStats]  # "YYYY-MM-DD" -> DayStats
     items: list[ContentOut]
+    # Enhanced stats
+    streak_max: int
+    streak_current: int
+    best_month: int | None          # month number (1-12)
+    avg_days_to_consume: float | None
+    favorite_type: str | None

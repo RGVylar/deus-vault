@@ -30,6 +30,8 @@
 	let filter: ContentType | 'all' = $state('all');
 	let sortOrder = $state('recent');
 	let searchQuery = $state('');
+	let activeCollection = $state<string | null>(null);
+	let collections: string[] = $state([]);
 	let showAdd = $state(false);
 	let loading = $state(true);
 	let loadingMore = $state(false);
@@ -37,6 +39,24 @@
 	// Progress editing
 	let editingProgressId = $state<number | null>(null);
 	let progressValue = $state(0);
+
+	// Delete confirmation
+	let deletingId = $state<number | null>(null);
+
+	// Edit modal
+	let editingItem = $state<Content | null>(null);
+	let editTitle = $state('');
+	let editUrl = $state('');
+	let editAuthor = $state('');
+	let editThumbnail = $state('');
+	let editDuration = $state(0);
+	let editPageCount = $state<number | null>(null);
+	let editEpisodeCount = $state<number | null>(null);
+	let editSeasons = $state<number | null>(null);
+	let editNotes = $state('');
+	let editCollection = $state('');
+	let editPinned = $state(false);
+	let editError = $state('');
 
 	// Settings
 	let showSettings = $state(false);
@@ -57,6 +77,8 @@
 	let addNotes = $state('');
 	let addThumbnail = $state('');
 	let addSourceId = $state('');
+	let addCollection = $state('');
+	let addPinned = $state(false);
 	let addError = $state('');
 	let lookupLoading = $state(false);
 	let lastLookupUrl = $state('');
@@ -88,11 +110,18 @@
 		return () => window.removeEventListener('deus_vault_settings_changed', handler as EventListener);
 	});
 
-	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string, sort = 'recent') {
+	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string, sort = 'recent', col: string | null = null) {
 		let url = `/contents?consumed=${consumed}&limit=${LIMIT}&offset=${off}&sort=${sort}`;
 		if (type !== 'all') url += `&content_type=${type}`;
 		if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
+		if (col) url += `&collection=${encodeURIComponent(col)}`;
 		return url;
+	}
+
+	async function loadCollections() {
+		try {
+			collections = await api.get<string[]>('/contents/collections');
+		} catch { collections = []; }
 	}
 
 	async function load() {
@@ -101,11 +130,12 @@
 		try {
 			const [s, p] = await Promise.all([
 				api.get<VaultStats>('/contents/stats'),
-				api.get<PaginatedContents>(buildUrl(false, filter, 0, searchQuery, sortOrder))
+				api.get<PaginatedContents>(buildUrl(false, filter, 0, searchQuery, sortOrder, activeCollection))
 			]);
 			stats = s;
 			contents = p.items;
 			total = p.total;
+			await loadCollections();
 		} finally { loading = false; }
 	}
 
@@ -113,22 +143,23 @@
 		loadingMore = true;
 		const newOffset = offset + LIMIT;
 		try {
-			const p = await api.get<PaginatedContents>(buildUrl(false, filter, newOffset, searchQuery, sortOrder));
+			const p = await api.get<PaginatedContents>(buildUrl(false, filter, newOffset, searchQuery, sortOrder, activeCollection));
 			contents = [...contents, ...p.items];
 			total = p.total;
 			offset = newOffset;
 		} finally { loadingMore = false; }
 	}
 
-	// React to filter OR sort changes (skip first run, handled by load())
+	// React to filter, sort, or collection changes
 	let controlsMounted = false;
 	$effect(() => {
 		const _filter = filter;
 		const _sort = sortOrder;
+		const _col = activeCollection;
 		if (!controlsMounted) { controlsMounted = true; return; }
 		if (!auth.isLoggedIn) return;
 		offset = 0;
-		api.get<PaginatedContents>(buildUrl(false, _filter, 0, searchQuery, _sort)).then(p => {
+		api.get<PaginatedContents>(buildUrl(false, _filter, 0, searchQuery, _sort, _col)).then(p => {
 			contents = p.items;
 			total = p.total;
 		});
@@ -141,7 +172,7 @@
 		searchTimer = setTimeout(() => {
 			if (!auth.isLoggedIn) return;
 			offset = 0;
-			api.get<PaginatedContents>(buildUrl(false, filter, 0, q, sortOrder)).then(p => {
+			api.get<PaginatedContents>(buildUrl(false, filter, 0, q, sortOrder, activeCollection)).then(p => {
 				contents = p.items;
 				total = p.total;
 			});
@@ -229,7 +260,8 @@
 				words_per_page: addWordsPerPage && Number(addWordsPerPage) > 0 ? Number(addWordsPerPage) : null,
 				episode_count: addType === 'series' && addEpisodeCount > 0 ? addEpisodeCount : null,
 				seasons: addType === 'series' && addSeasons > 0 ? addSeasons : null,
-				source_id: addSourceId || null, author: addAuthor || null, notes: addNotes || null
+				source_id: addSourceId || null, author: addAuthor || null, notes: addNotes || null,
+				collection: addCollection.trim() || null, pinned: addPinned,
 			});
 			showAdd = false;
 			resetForm();
@@ -251,10 +283,22 @@
 		addNotes = ''; addThumbnail = ''; addSourceId = ''; addType = 'youtube';
 		addPageCount = 0; addWordsPerPage = readingWordsPerPage; addBookFormat = 'book';
 		addEpisodeCount = 0; addSeasons = 0; lastLookupUrl = '';
+		addCollection = ''; addPinned = false;
 	}
 
 	async function consume(id: number) { await api.post(`/contents/${id}/consume`); load(); }
-	async function remove(id: number) { await api.del(`/contents/${id}`); load(); }
+	async function remove(id: number) {
+		deletingId = null;
+		await api.del(`/contents/${id}`);
+		load();
+	}
+
+	async function togglePin(c: Content) {
+		const newPinned = !c.pinned;
+		contents = contents.map(x => x.id === c.id ? { ...x, pinned: newPinned } : x);
+		await api.patch(`/contents/${c.id}`, { pinned: newPinned });
+		api.get<VaultStats>('/contents/stats').then(s => { stats = s; });
+	}
 
 	async function refresh(c: Content) {
 		if (!c.url || refreshingId !== null) return;
@@ -281,6 +325,54 @@
 			await api.patch(`/contents/${c.id}`, patch);
 			load();
 		} catch (e) { /* silent */ } finally { refreshingId = null; }
+	}
+
+	// --- Edit modal ---
+	function startEdit(c: Content) {
+		editingItem = c;
+		editTitle = c.title;
+		editUrl = c.url ?? '';
+		editAuthor = c.author ?? '';
+		editThumbnail = c.thumbnail ?? '';
+		editDuration = c.duration_minutes;
+		editPageCount = c.page_count ?? null;
+		editEpisodeCount = c.episode_count ?? null;
+		editSeasons = c.seasons ?? null;
+		editNotes = c.notes ?? '';
+		editCollection = c.collection ?? '';
+		editPinned = c.pinned;
+		editError = '';
+	}
+
+	async function saveEdit() {
+		if (!editingItem) return;
+		editError = '';
+		try {
+			const patch: Record<string, unknown> = {
+				title: editTitle.trim() || editingItem.title,
+				url: editUrl.trim() || null,
+				author: editAuthor.trim() || null,
+				thumbnail: editThumbnail.trim() || null,
+				duration_minutes: Math.max(0, Number(editDuration) || 0),
+				notes: editNotes.trim() || null,
+				collection: editCollection.trim() || null,
+				pinned: editPinned,
+			};
+			if (editingItem.content_type === 'book') {
+				patch.page_count = editPageCount ? Number(editPageCount) : null;
+			}
+			if (editingItem.content_type === 'series') {
+				patch.episode_count = editEpisodeCount ? Number(editEpisodeCount) : null;
+				patch.seasons = editSeasons ? Number(editSeasons) : null;
+			}
+			const updated = await api.patch<Content>(`/contents/${editingItem.id}`, patch);
+			contents = contents.map(x => x.id === editingItem!.id ? updated : x);
+			editingItem = null;
+			await loadCollections();
+			api.get<VaultStats>('/contents/stats').then(s => { stats = s; });
+		} catch (e: unknown) {
+			editError = e instanceof Error ? e.message : 'Error al guardar';
+		}
 	}
 
 	// --- Progress helpers ---
@@ -418,6 +510,24 @@
 		</select>
 	</div>
 
+	<!-- Collection filter chips -->
+	{#if collections.length > 0}
+		<div class="collection-chips">
+			<button
+				class="col-chip"
+				class:col-chip-active={activeCollection === null}
+				onclick={() => activeCollection = null}
+			>Todas</button>
+			{#each collections as col}
+				<button
+					class="col-chip"
+					class:col-chip-active={activeCollection === col}
+					onclick={() => activeCollection = activeCollection === col ? null : col}
+				>📁 {col}</button>
+			{/each}
+		</div>
+	{/if}
+
 	<!-- Content list -->
 	{#if loading}
 		<p style="text-align:center; color:var(--text-muted);">Cargando…</p>
@@ -444,9 +554,15 @@
 						</div>
 					{/if}
 					<div class="info">
-						<div class="title">{c.title}</div>
+						<div class="title">
+							{#if c.pinned}<span class="pin-indicator" title="Prioritario">📌</span>{/if}
+							{c.title}
+						</div>
 						<div class="meta">
 							<span class="badge {c.content_type}">{TYPE_LABELS[c.content_type]}</span>
+							{#if c.collection}
+								<span class="collection-badge">📁 {c.collection}</span>
+							{/if}
 							{#if c.content_type === 'series'}
 								{#if c.seasons && c.seasons > 0}<span>📺 {c.seasons}T</span>{/if}
 								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} ep</span>{/if}
@@ -461,6 +577,11 @@
 						</div>
 						{#if c.content_type === 'series' && c.episode_count && c.episode_count > 0 && c.duration_minutes > 0}
 							<div class="series-total">~{formatDuration(c.duration_minutes * c.episode_count)} en total</div>
+						{/if}
+
+						<!-- Notes snippet -->
+						{#if c.notes}
+							<div class="notes-snippet" title={c.notes}>{c.notes}</div>
 						{/if}
 
 						<!-- Progress bar (always visible for non-music) -->
@@ -518,8 +639,26 @@
 									style={refreshingId === c.id ? 'animation: spin 0.8s linear infinite; opacity:0.7;' : ''}
 								>↻</button>
 							{/if}
+							<!-- Pin toggle -->
+							<button
+								class="btn-secondary pin-btn"
+								class:pin-btn-active={c.pinned}
+								onclick={() => togglePin(c)}
+								title={c.pinned ? 'Quitar prioridad' : 'Marcar prioritario'}
+							>{c.pinned ? '📌' : '📍'}</button>
+							<!-- Edit -->
+							<button class="btn-secondary" onclick={() => startEdit(c)} title="Editar">✏️</button>
+							<!-- Consume -->
 							<button onclick={() => consume(c.id)} style="background:rgba(79,255,170,0.15); color:var(--game); box-shadow:none;">✓</button>
-							<button class="btn-danger" onclick={() => remove(c.id)}>✕</button>
+							<!-- Delete (with confirm) -->
+							{#if deletingId === c.id}
+								<span class="delete-confirm">
+									<button class="btn-danger" onclick={() => remove(c.id)}>Sí</button>
+									<button class="btn-secondary" onclick={() => deletingId = null}>No</button>
+								</span>
+							{:else}
+								<button class="btn-danger" onclick={() => deletingId = c.id}>✕</button>
+							{/if}
 						</div>
 					</div>
 				</div>
@@ -537,6 +676,78 @@
 
 	<button class="fab settings" onclick={() => showSettings = true} title="Ajustes">⚙️</button>
 	<button class="fab" onclick={() => showAdd = true}>+</button>
+
+	<!-- Edit modal -->
+	{#if editingItem}
+		<div class="overlay" onclick={() => editingItem = null} role="presentation">
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div class="modal" onclick={e => e.stopPropagation()} role="dialog">
+				<h2>Editar</h2>
+				<div class="form-group">
+					<label for="edit-title">Título</label>
+					<input id="edit-title" bind:value={editTitle} />
+				</div>
+				<div class="form-group">
+					<label for="edit-author">Autor / Canal / Estudio</label>
+					<input id="edit-author" bind:value={editAuthor} />
+				</div>
+				<div class="form-group">
+					<label for="edit-url">URL</label>
+					<input id="edit-url" bind:value={editUrl} placeholder="https://…" />
+				</div>
+				<div class="form-group">
+					<label for="edit-duration">Duración{editingItem.content_type === 'series' ? ' por episodio' : ''} (minutos)</label>
+					<input id="edit-duration" type="number" bind:value={editDuration} min="0" />
+				</div>
+				{#if editingItem.content_type === 'book'}
+					<div class="form-group">
+						<label for="edit-pages">Páginas</label>
+						<input id="edit-pages" type="number" bind:value={editPageCount} min="0" />
+					</div>
+				{/if}
+				{#if editingItem.content_type === 'series'}
+					<div style="display:flex; gap:0.75rem;">
+						<div class="form-group" style="flex:1;">
+							<label for="edit-seasons">Temporadas</label>
+							<input id="edit-seasons" type="number" bind:value={editSeasons} min="0" />
+						</div>
+						<div class="form-group" style="flex:1;">
+							<label for="edit-episodes">Episodios</label>
+							<input id="edit-episodes" type="number" bind:value={editEpisodeCount} min="0" />
+						</div>
+					</div>
+				{/if}
+				<div class="form-group">
+					<label for="edit-collection">Colección</label>
+					<input id="edit-collection" bind:value={editCollection} list="collections-list" placeholder="Sin colección" />
+					<datalist id="collections-list">
+						{#each collections as col}
+							<option value={col}></option>
+						{/each}
+					</datalist>
+				</div>
+				<div class="form-group">
+					<label for="edit-thumbnail">URL de imagen</label>
+					<input id="edit-thumbnail" bind:value={editThumbnail} placeholder="https://…" />
+				</div>
+				<div class="form-group">
+					<label for="edit-notes">Notas</label>
+					<textarea id="edit-notes" bind:value={editNotes}></textarea>
+				</div>
+				<div class="form-group pinned-row">
+					<label class="pinned-label">
+						<input type="checkbox" bind:checked={editPinned} />
+						Marcar como prioritario 📌
+					</label>
+				</div>
+				{#if editError}<p class="error">{editError}</p>{/if}
+				<div style="display:flex; gap:0.5rem; margin-top:1rem;">
+					<button onclick={saveEdit} style="flex:1;">Guardar</button>
+					<button class="btn-secondary" onclick={() => editingItem = null} style="flex:1;">Cancelar</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Add modal -->
 	{#if showAdd}
@@ -620,8 +831,23 @@
 					</div>
 				{/if}
 				<div class="form-group">
+					<label for="add-collection">Colección</label>
+					<input id="add-collection" bind:value={addCollection} list="collections-list-add" placeholder="Sin colección" />
+					<datalist id="collections-list-add">
+						{#each collections as col}
+							<option value={col}></option>
+						{/each}
+					</datalist>
+				</div>
+				<div class="form-group">
 					<label for="add-notes">Notas</label>
 					<textarea id="add-notes" bind:value={addNotes}></textarea>
+				</div>
+				<div class="form-group pinned-row">
+					<label class="pinned-label">
+						<input type="checkbox" bind:checked={addPinned} />
+						Marcar como prioritario 📌
+					</label>
 				</div>
 				{#if addError}<p class="error">{addError}</p>{/if}
 				<div style="display:flex; gap:0.5rem; margin-top:1rem;">
@@ -680,6 +906,30 @@
 		white-space: nowrap;
 	}
 
+	/* Collection chips */
+	.collection-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+		margin-bottom: 0.75rem;
+	}
+	.col-chip {
+		background: var(--surface2);
+		border: 1px solid var(--border);
+		color: var(--text-muted);
+		box-shadow: none;
+		padding: 0.25rem 0.65rem;
+		font-size: 0.75rem;
+		border-radius: 99px;
+	}
+	.col-chip:hover { background: var(--surface-hover); color: var(--text); box-shadow: none; }
+	.col-chip-active {
+		background: var(--primary-glow) !important;
+		border-color: var(--primary) !important;
+		color: var(--primary) !important;
+		font-weight: 700;
+	}
+
 	/* Thumb placeholder */
 	.thumb-placeholder {
 		display: flex; align-items: center; justify-content: center;
@@ -687,10 +937,55 @@
 		background: var(--surface2);
 	}
 
+	/* Pin indicator */
+	.pin-indicator {
+		font-size: 0.75rem;
+		margin-right: 0.2rem;
+		vertical-align: middle;
+	}
+
+	/* Collection badge on card */
+	.collection-badge {
+		font-size: 0.68rem;
+		background: rgba(255,255,255,0.07);
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		padding: 0.05rem 0.35rem;
+		color: var(--text-muted);
+	}
+
+	/* Notes snippet */
+	.notes-snippet {
+		font-size: 0.72rem;
+		color: var(--text-muted);
+		margin: 0.2rem 0 0.1rem;
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		line-height: 1.35;
+		font-style: italic;
+	}
+
 	/* Author meta truncated */
 	.author-meta {
 		overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 		max-width: 120px;
+	}
+
+	/* Pin button */
+	.pin-btn { font-size: 0.85rem; padding: 0.25rem 0.4rem; opacity: 0.5; }
+	.pin-btn:hover { opacity: 1; }
+	.pin-btn-active { opacity: 1 !important; }
+
+	/* Delete confirm */
+	.delete-confirm {
+		display: flex;
+		gap: 0.25rem;
+	}
+	.delete-confirm button {
+		font-size: 0.75rem;
+		padding: 0.25rem 0.5rem;
 	}
 
 	/* Progress bar (always-visible track) */
@@ -766,5 +1061,15 @@
 	.progress-preview {
 		font-size: 0.7rem;
 		color: var(--game);
+	}
+
+	/* Pinned checkbox row */
+	.pinned-row { margin-top: 0.25rem; }
+	.pinned-label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.9rem;
+		cursor: pointer;
 	}
 </style>

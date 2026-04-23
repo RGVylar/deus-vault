@@ -48,9 +48,12 @@ class Content(Base):
     )
     # Progress tracking (page for books, episode for series, minutes for video, % for games)
     progress: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Organisation
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    collection: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # Extra metadata
-    source_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # youtube id, imdb id, etc.
-    author: Mapped[str | None] = mapped_column(String(255), nullable=True)  # channel, director, author, studio
+    source_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    author: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="contents")  # noqa: F821

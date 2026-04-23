@@ -16,6 +16,10 @@
 	let total = $state(0);
 	let offset = $state(0);
 
+	// Editable consumed date
+	let editingDateId = $state<number | null>(null);
+	let editDateValue = $state('');
+
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
 		load();
@@ -67,6 +71,25 @@
 	async function unconsume(id: number) {
 		await api.post(`/contents/${id}/unconsume`);
 		load();
+	}
+
+	function startEditDate(c: Content) {
+		editingDateId = c.id;
+		// Format consumed_at as "YYYY-MM-DD" for date input
+		if (c.consumed_at) {
+			editDateValue = c.consumed_at.slice(0, 10);
+		} else {
+			editDateValue = new Date().toISOString().slice(0, 10);
+		}
+	}
+
+	async function saveDate(c: Content) {
+		if (!editDateValue) { editingDateId = null; return; }
+		// Build an ISO datetime from the date string (noon UTC to avoid timezone day-shift)
+		const isoDate = `${editDateValue}T12:00:00Z`;
+		editingDateId = null;
+		contents = contents.map(x => x.id === c.id ? { ...x, consumed_at: isoDate } : x);
+		await api.patch(`/contents/${c.id}`, { consumed_at: isoDate });
 	}
 </script>
 
@@ -128,8 +151,27 @@
 							{:else if c.duration_minutes > 0}
 								<span>⏱ {formatDuration(c.duration_minutes)}</span>
 							{/if}
-							{#if c.consumed_at}
-								<span>📅 {new Date(c.consumed_at).toLocaleDateString('es')}</span>
+							<!-- Consumed date (editable) -->
+							{#if editingDateId === c.id}
+								<span class="date-edit-wrap">
+									<input
+										type="date"
+										bind:value={editDateValue}
+										class="date-input"
+										onblur={() => saveDate(c)}
+										onkeydown={(e) => { if (e.key === 'Enter') saveDate(c); if (e.key === 'Escape') editingDateId = null; }}
+										autofocus
+									/>
+									<button class="btn-secondary date-save-btn" onclick={() => saveDate(c)}>✓</button>
+								</span>
+							{:else if c.consumed_at}
+								<button class="date-btn" onclick={() => startEditDate(c)} title="Editar fecha">
+									📅 {new Date(c.consumed_at).toLocaleDateString('es')}
+								</button>
+							{:else}
+								<button class="date-btn date-btn-empty" onclick={() => startEditDate(c)} title="Añadir fecha">
+									📅 Sin fecha
+								</button>
 							{/if}
 						</div>
 						<div class="actions">
@@ -154,3 +196,34 @@
 		{/if}
 	{/if}
 {/if}
+
+<style>
+	/* Editable consumed date */
+	.date-btn {
+		all: unset;
+		cursor: pointer;
+		font-size: 0.72rem;
+		color: var(--text-muted);
+		border-bottom: 1px dashed var(--border);
+		padding-bottom: 1px;
+		transition: color 0.15s;
+	}
+	.date-btn:hover { color: var(--primary); border-bottom-color: var(--primary); }
+	.date-btn-empty { opacity: 0.5; }
+	.date-btn-empty:hover { opacity: 1; }
+
+	.date-edit-wrap {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+	.date-input {
+		font-size: 0.75rem;
+		padding: 0.15rem 0.35rem;
+		border-radius: 6px;
+	}
+	.date-save-btn {
+		font-size: 0.72rem;
+		padding: 0.15rem 0.4rem;
+	}
+</style>

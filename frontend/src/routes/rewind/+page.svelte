@@ -164,6 +164,45 @@
 	<span class="pct-sub">≈ {minutesToDays(stats.total_consumed_minutes)}</span>
 </div>
 
+<!-- Enhanced stat chips -->
+<div class="enhanced-stats">
+	{#if stats.streak_current > 0}
+		<div class="estat-chip estat-streak">
+			<span class="estat-icon">🔥</span>
+			<span class="estat-val">{stats.streak_current}</span>
+			<span class="estat-label">días seguidos</span>
+		</div>
+	{/if}
+	{#if stats.streak_max > 0}
+		<div class="estat-chip">
+			<span class="estat-icon">⚡</span>
+			<span class="estat-val">{stats.streak_max}</span>
+			<span class="estat-label">racha máx.</span>
+		</div>
+	{/if}
+	{#if stats.best_month !== null}
+		<div class="estat-chip">
+			<span class="estat-icon">🏆</span>
+			<span class="estat-val">{MONTHS_ES[(stats.best_month ?? 1) - 1]}</span>
+			<span class="estat-label">mejor mes</span>
+		</div>
+	{/if}
+	{#if stats.avg_days_to_consume !== null}
+		<div class="estat-chip">
+			<span class="estat-icon">⏳</span>
+			<span class="estat-val">{stats.avg_days_to_consume}d</span>
+			<span class="estat-label">media a terminar</span>
+		</div>
+	{/if}
+	{#if stats.favorite_type}
+		<div class="estat-chip">
+			<span class="estat-icon">{TYPE_ICONS[stats.favorite_type] ?? '📄'}</span>
+			<span class="estat-val">{TYPE_LABELS[stats.favorite_type] ?? stats.favorite_type}</span>
+			<span class="estat-label">favorito</span>
+		</div>
+	{/if}
+</div>
+
 <!-- By type -->
 {#if Object.keys(stats.by_type).length > 0}
 <section class="section">
@@ -350,6 +389,44 @@
 		letter-spacing: 0.1em;
 		color: var(--text-muted);
 		margin-bottom: 0.75rem;
+	}
+
+	/* Enhanced stat chips */
+	.enhanced-stats {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-bottom: 1.5rem;
+		justify-content: center;
+	}
+	.estat-chip {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.1rem;
+		background: var(--surface2);
+		border: 1px solid var(--border);
+		border-radius: 14px;
+		padding: 0.6rem 0.9rem;
+		min-width: 72px;
+	}
+	.estat-streak {
+		border-color: rgba(255, 140, 0, 0.4);
+		background: rgba(255, 140, 0, 0.06);
+	}
+	.estat-icon { font-size: 1.1rem; }
+	.estat-val {
+		font-size: 1rem;
+		font-weight: 800;
+		color: var(--text);
+		line-height: 1.1;
+	}
+	.estat-label {
+		font-size: 0.62rem;
+		color: var(--text-muted);
+		text-align: center;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 	}
 
 	/* Type grid */
