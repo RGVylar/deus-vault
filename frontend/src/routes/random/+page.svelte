@@ -16,9 +16,9 @@
 		{ label: 'Tarde libre',   min: 150,  max: null  },
 	];
 
-	// Game/YouTube: anchor top. Everything else: center crop.
+	// Portrait cards only (game anchors top)
 	function thumbClass(type: ContentType): string {
-		return type === 'game' || type === 'youtube' ? 'thumb thumb-top' : 'thumb';
+		return type === 'game' ? 'thumb thumb-top' : 'thumb';
 	}
 
 	let pick: Content | null = $state(null);
@@ -164,10 +164,19 @@
 	<!-- Result card -->
 	{#if pick}
 		{@const link = buildConsumeUrl(pick)}
+		{@const landscape = pick.content_type === 'youtube' || pick.content_type === 'movie' || pick.content_type === 'series'}
 		<div class="result-wrap">
 			<div class="result-kicker">Tu siguiente contenido</div>
-			<div class="content-card random-pick" style="--card-accent:var(--{pick.content_type})">
-				{#if pick.thumbnail}
+			<div class="content-card random-pick" class:card-landscape={landscape} style="--card-accent:var(--{pick.content_type})">
+				{#if landscape}
+					<div class="thumb-landscape">
+						{#if pick.thumbnail}
+							<img src={pick.thumbnail} alt="" />
+						{:else}
+							<div class="thumb-landscape-ph">{TYPE_ICONS[pick.content_type] || '📄'}</div>
+						{/if}
+					</div>
+				{:else if pick.thumbnail}
 					<img class={thumbClass(pick.content_type)} src={pick.thumbnail} alt="" />
 				{:else}
 					<div class="{thumbClass(pick.content_type)} thumb-placeholder" style="font-size:2rem;">

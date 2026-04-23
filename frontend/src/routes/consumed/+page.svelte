@@ -129,8 +129,17 @@
 		<div style="display:flex; flex-direction:column; gap:0.5rem;">
 			{#each contents as c (c.id)}
 				{@const link = buildConsumeUrl(c)}
-				<div class="content-card" style="opacity:0.75;">
-					{#if c.thumbnail}
+				{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series'}
+				<div class="content-card" class:card-landscape={landscape} style="opacity:0.8; --card-accent:var(--{c.content_type})">
+					{#if landscape}
+						<div class="thumb-landscape">
+							{#if c.thumbnail}
+								<img src={c.thumbnail} alt="" />
+							{:else}
+								<div class="thumb-landscape-ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
+							{/if}
+						</div>
+					{:else if c.thumbnail}
 						<img class="thumb" src={c.thumbnail} alt="" />
 					{:else}
 						<div class="thumb" style="display:flex; align-items:center; justify-content:center; font-size:1.5rem;">

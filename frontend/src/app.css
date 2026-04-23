@@ -166,6 +166,7 @@ label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bot
 	transform: translateY(-1px);
 	box-shadow: -2px 0 20px color-mix(in srgb, var(--card-accent, transparent) 22%, transparent);
 }
+/* Portrait thumb (books, games, music) — side column */
 .content-card .thumb {
 	width: 68px;
 	align-self: stretch;
@@ -176,8 +177,59 @@ label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bot
 	flex-shrink: 0;
 	background: var(--surface2);
 }
-/* Game/YouTube: anchor to top so logo/title stays visible when cropped */
 .thumb-top { object-position: top center !important; }
+
+/* Landscape card (youtube, movie, series) */
+.content-card.card-landscape {
+	flex-direction: column;
+	gap: 0;
+	padding: 0;
+	overflow: hidden;
+}
+.content-card.card-landscape .thumb-landscape {
+	width: 100%;
+	height: 0;
+	padding-bottom: 42%; /* ~2.4:1, fits 16:9 without too much height */
+	position: relative;
+	flex-shrink: 0;
+	background: var(--surface2);
+	border-radius: 0;
+}
+.content-card.card-landscape .thumb-landscape img,
+.content-card.card-landscape .thumb-landscape .thumb-landscape-ph {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+	border-radius: 0;
+}
+.content-card.card-landscape .thumb-landscape-ph {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 2.2rem;
+	background: var(--surface2);
+}
+/* Accent bar at top for landscape cards instead of left border */
+.content-card.card-landscape::before {
+	content: '';
+	position: absolute;
+	top: 0; left: 0; right: 0;
+	height: 2.5px;
+	background: var(--card-accent, var(--border));
+	border-radius: 14px 14px 0 0;
+	z-index: 1;
+}
+.content-card.card-landscape {
+	position: relative;
+	border-left-width: 1px; /* reset left border back to normal */
+}
+.content-card.card-landscape .info {
+	padding: 0.7rem 0.85rem 0.85rem;
+}
+
 .content-card .info { flex: 1; min-width: 0; }
 .content-card .title {
 	font-size: 0.9rem; font-weight: 600; line-height: 1.3;

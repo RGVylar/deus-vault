@@ -18,9 +18,14 @@
 		music:   'var(--music)',
 	};
 
-	// Game/YouTube: anchor top so logo stays visible. Everything else: center crop.
+	// Landscape layout: video content has 16:9 thumbnails → show them at top, full width
+	function isLandscape(type: ContentType): boolean {
+		return type === 'youtube' || type === 'movie' || type === 'series';
+	}
+
+	// For portrait cards (books, games, music)
 	function thumbClass(type: ContentType): string {
-		return type === 'game' || type === 'youtube' ? 'thumb thumb-top' : 'thumb';
+		return type === 'game' ? 'thumb thumb-top' : 'thumb';
 	}
 
 	let stats: VaultStats | null = $state(null);
@@ -545,13 +550,30 @@
 				{@const pct = progressPercent(c)}
 				{@const hasProgress = (c.progress ?? 0) > 0}
 				{@const remaining = remainingMinutes(c)}
-				<div class="content-card" style="--card-accent:{TYPE_COLOR[c.content_type] ?? 'var(--border)'}">
-					{#if c.thumbnail}
-						<img class={thumbClass(c.content_type)} src={c.thumbnail} alt="" />
-					{:else}
-						<div class="{thumbClass(c.content_type)} thumb-placeholder">
-							{TYPE_ICONS[c.content_type] || '📄'}
+				{@const landscape = isLandscape(c.content_type)}
+				<div
+					class="content-card"
+					class:card-landscape={landscape}
+					style="--card-accent:{TYPE_COLOR[c.content_type] ?? 'var(--border)'}"
+				>
+					{#if landscape}
+						<!-- Landscape: thumbnail banner at top -->
+						<div class="thumb-landscape">
+							{#if c.thumbnail}
+								<img src={c.thumbnail} alt="" />
+							{:else}
+								<div class="thumb-landscape-ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
+							{/if}
 						</div>
+					{:else}
+						<!-- Portrait: thumbnail side column (books, games, music) -->
+						{#if c.thumbnail}
+							<img class={thumbClass(c.content_type)} src={c.thumbnail} alt="" />
+						{:else}
+							<div class="{thumbClass(c.content_type)} thumb-placeholder">
+								{TYPE_ICONS[c.content_type] || '📄'}
+							</div>
+						{/if}
 					{/if}
 					<div class="info">
 						<div class="title">
