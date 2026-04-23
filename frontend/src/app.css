@@ -166,14 +166,14 @@ label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bot
 	transform: translateY(-1px);
 	box-shadow: -2px 0 20px color-mix(in srgb, var(--card-accent, transparent) 22%, transparent);
 }
-/* Portrait thumb (books, games, music) — side column */
+/* Portrait thumb (books, music) — side column, fixed height */
 .content-card .thumb {
-	width: 68px;
-	align-self: stretch;
-	min-height: 72px;
+	width: 64px;
+	height: 90px;
+	align-self: flex-start;
 	border-radius: 8px;
 	object-fit: cover;
-	object-position: center;
+	object-position: center top;
 	flex-shrink: 0;
 	background: var(--surface2);
 }
@@ -256,6 +256,7 @@ label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bot
 	display: grid;
 	grid-template-columns: 1fr;
 	gap: 0.55rem;
+	align-items: start;
 }
 
 /* Big number hero */
@@ -393,6 +394,7 @@ h2 { font-size: 1.05rem; margin-bottom: 0.75rem; font-weight: 600; }
 	.content-grid {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 0.9rem;
+		align-items: start;
 	}
 
 	.content-card {
