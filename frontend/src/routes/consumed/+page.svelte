@@ -130,7 +130,7 @@
 			{#each contents as c (c.id)}
 				{@const link = buildConsumeUrl(c)}
 				{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series' || c.content_type === 'game'}
-				<div class="content-card" class:card-landscape={landscape} style="opacity:0.8; --card-accent:var(--{c.content_type})">
+				<div class="content-card" class:card-landscape={landscape} class:card-portrait={!landscape} style="opacity:0.8; --card-accent:var(--{c.content_type})">
 					{#if landscape}
 						<div class="thumb-landscape">
 							{#if c.thumbnail}
@@ -140,11 +140,9 @@
 							{/if}
 						</div>
 					{:else if c.thumbnail}
-						<img class="thumb" src={c.thumbnail} alt="" />
+						<img class="thumb-portrait" src={c.thumbnail} alt="" />
 					{:else}
-						<div class="thumb" style="display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
-							{TYPE_ICONS[c.content_type] || '📄'}
-						</div>
+						<div class="thumb-portrait-ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
 					{/if}
 					<div class="info">
 						<div class="title">{c.title}</div>

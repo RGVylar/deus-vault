@@ -167,7 +167,7 @@
 		{@const landscape = pick.content_type === 'youtube' || pick.content_type === 'movie' || pick.content_type === 'series' || pick.content_type === 'game'}
 		<div class="result-wrap">
 			<div class="result-kicker">Tu siguiente contenido</div>
-			<div class="content-card random-pick" class:card-landscape={landscape} style="--card-accent:var(--{pick.content_type})">
+			<div class="content-card random-pick" class:card-landscape={landscape} class:card-portrait={!landscape} style="--card-accent:var(--{pick.content_type})">
 				{#if landscape}
 					<div class="thumb-landscape">
 						{#if pick.thumbnail}
@@ -177,11 +177,9 @@
 						{/if}
 					</div>
 				{:else if pick.thumbnail}
-					<img class={thumbClass(pick.content_type)} src={pick.thumbnail} alt="" />
+					<img class="thumb-portrait" src={pick.thumbnail} alt="" />
 				{:else}
-					<div class="{thumbClass(pick.content_type)} thumb-placeholder" style="font-size:2rem;">
-						{TYPE_ICONS[pick.content_type] || '📄'}
-					</div>
+					<div class="thumb-portrait-ph">{TYPE_ICONS[pick.content_type] || '📄'}</div>
 				{/if}
 				<div class="info">
 					<div class="title" style="font-size:1rem;">{pick.title}</div>

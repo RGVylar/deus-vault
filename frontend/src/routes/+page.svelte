@@ -555,10 +555,11 @@
 				<div
 					class="content-card"
 					class:card-landscape={landscape}
+					class:card-portrait={!landscape}
 					style="--card-accent:{TYPE_COLOR[c.content_type] ?? 'var(--border)'}"
 				>
 					{#if landscape}
-						<!-- Landscape: thumbnail banner at top -->
+						<!-- Landscape: thumbnail banner at top (youtube, movie, series, game) -->
 						<div class="thumb-landscape">
 							{#if c.thumbnail}
 								<img src={c.thumbnail} alt="" />
@@ -567,13 +568,11 @@
 							{/if}
 						</div>
 					{:else}
-						<!-- Portrait: thumbnail side column (books, games, music) -->
+						<!-- Portrait: thumbnail fills full left column (books, music) -->
 						{#if c.thumbnail}
-							<img class={thumbClass(c.content_type)} src={c.thumbnail} alt="" />
+							<img class="thumb-portrait" src={c.thumbnail} alt="" />
 						{:else}
-							<div class="{thumbClass(c.content_type)} thumb-placeholder">
-								{TYPE_ICONS[c.content_type] || '📄'}
-							</div>
+							<div class="thumb-portrait-ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
 						{/if}
 					{/if}
 					<div class="info">
