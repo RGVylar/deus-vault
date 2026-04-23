@@ -18,14 +18,15 @@
 		music:   'var(--music)',
 	};
 
-	// Landscape layout: video content has 16:9 thumbnails → show them at top, full width
+	// Landscape layout: video + game content has wide thumbnails → banner at top
+	// Books and music have portrait/square covers → side column
 	function isLandscape(type: ContentType): boolean {
-		return type === 'youtube' || type === 'movie' || type === 'series';
+		return type === 'youtube' || type === 'movie' || type === 'series' || type === 'game';
 	}
 
-	// For portrait cards (books, games, music)
-	function thumbClass(type: ContentType): string {
-		return type === 'game' ? 'thumb thumb-top' : 'thumb';
+	// For portrait cards (books, music only)
+	function thumbClass(_type: ContentType): string {
+		return 'thumb';
 	}
 
 	let stats: VaultStats | null = $state(null);

@@ -129,7 +129,7 @@
 		<div style="display:flex; flex-direction:column; gap:0.5rem;">
 			{#each contents as c (c.id)}
 				{@const link = buildConsumeUrl(c)}
-				{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series'}
+				{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series' || c.content_type === 'game'}
 				<div class="content-card" class:card-landscape={landscape} style="opacity:0.8; --card-accent:var(--{c.content_type})">
 					{#if landscape}
 						<div class="thumb-landscape">

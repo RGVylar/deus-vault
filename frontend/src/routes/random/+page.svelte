@@ -164,7 +164,7 @@
 	<!-- Result card -->
 	{#if pick}
 		{@const link = buildConsumeUrl(pick)}
-		{@const landscape = pick.content_type === 'youtube' || pick.content_type === 'movie' || pick.content_type === 'series'}
+		{@const landscape = pick.content_type === 'youtube' || pick.content_type === 'movie' || pick.content_type === 'series' || pick.content_type === 'game'}
 		<div class="result-wrap">
 			<div class="result-kicker">Tu siguiente contenido</div>
 			<div class="content-card random-pick" class:card-landscape={landscape} style="--card-accent:var(--{pick.content_type})">
