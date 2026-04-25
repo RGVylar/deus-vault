@@ -372,7 +372,6 @@ input.text::placeholder, textarea.text::placeholder { color: var(--text-dim); }
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
-  align-items: start;
 }
 .c-card {
   position: relative;
@@ -431,11 +430,12 @@ input.text::placeholder, textarea.text::placeholder { color: var(--text-dim); }
 .c-card.portrait { flex-direction: row; }
 .c-card .thumb-port {
   width: 38%;
-  aspect-ratio: 2/3;
+  min-height: 120px;
   background-size: cover;
   background-position: center;
   position: relative;
   flex-shrink: 0;
+  align-self: stretch;
   -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
           mask-image: linear-gradient(to right, black 80%, transparent 100%);
   overflow: hidden;
