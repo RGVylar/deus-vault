@@ -31,6 +31,15 @@
 	}
 </script>
 
+<div class="desk-login-wrap">
+
+<!-- Desktop: brand panel (left half) -->
+<div class="desk-login-brand">
+	<div class="logo-title">Deus Vault</div>
+	<p class="tagline">Una bóveda de contenido por consumir antes de morir. Películas, libros, juegos, vídeos. Lo que sea que dejaste pendiente. <em style="opacity:0.6;">memento mori.</em></p>
+</div>
+
+<!-- Form panel (right on desktop, full on mobile) -->
 <div class="login-wrap">
 	<div class="logo-title">DEUS VAULT</div>
 	<div class="logo-tag">Tu bóveda de contenido por consumir</div>
@@ -65,3 +74,5 @@
 		</form>
 	</div>
 </div>
+
+</div><!-- /desk-login-wrap -->

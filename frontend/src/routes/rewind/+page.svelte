@@ -126,8 +126,16 @@
 	<p class="muted center">Redirigiendo…</p>
 {:else}
 
-<!-- Year picker -->
-<div class="row" style="justify-content:center; margin:8px 0 20px; gap:16px;">
+<!-- Desktop topbar -->
+<div class="desk-topbar desk-only">
+	<h1 class="desk-title">Rewind {year}</h1>
+	<div class="desk-spacer"></div>
+	<button class="btn" onclick={() => year--}>‹ Anterior</button>
+	<button class="btn" onclick={() => year++} disabled={year >= new Date().getFullYear()}>Siguiente ›</button>
+</div>
+
+<!-- Year picker (mobile) -->
+<div class="row mobile-only" style="justify-content:center; margin:8px 0 20px; gap:16px;">
 	<button class="btn" onclick={() => year--}>‹</button>
 	<span style="font-size:18px; font-weight:700; color:var(--primary); min-width:140px; text-align:center;">Rewind {year}</span>
 	<button class="btn" onclick={() => year++} disabled={year >= new Date().getFullYear()}>›</button>
@@ -145,95 +153,71 @@
 
 {:else}
 
-<!-- Hero -->
-<div class="hero">
-	<div class="kicker">TU AÑO EN CONTENIDO</div>
-	<div class="number" style="font-size:clamp(48px,16vw,96px);">{stats.total_consumed_count}</div>
-	<div class="unit">
-		{stats.total_consumed_count === 1 ? 'ítem consumido' : 'ítems consumidos'} ·
-		{formatDuration(stats.total_consumed_minutes)}
-	</div>
-	<div class="sub">{stats.percentage_of_year.toFixed(2)}% de tu año · ≈ {minutesToDays(stats.total_consumed_minutes)}</div>
-</div>
+<!-- Desktop rewind grid -->
+<div class="desk-rewind-grid">
 
-<!-- Estat chips -->
-<div class="estat-grid">
-	{#if stats.streak_current > 0}
-		<div class="estat">
-			<div class="ei">🔥</div>
-			<div class="ev">{stats.streak_current}</div>
-			<div class="el">días seguidos</div>
+	<!-- Hero row: spans full width on desktop -->
+	<div class="desk-rewind-hero">
+		<!-- Hero number card -->
+		<div class="desk-hero">
+			<div class="kicker">TU AÑO EN CONTENIDO</div>
+			<div class="number" style="font-size:clamp(72px,7vw,120px);">{stats.total_consumed_count}</div>
+			<div class="unit">{stats.total_consumed_count === 1 ? 'ítem consumido' : 'ítems consumidos'} · {formatDuration(stats.total_consumed_minutes)}</div>
+			<div class="sub">{stats.percentage_of_year.toFixed(2)}% de tu año · ≈ {minutesToDays(stats.total_consumed_minutes)}</div>
 		</div>
-	{/if}
-	{#if stats.streak_max > 0}
-		<div class="estat">
-			<div class="ei">⚡</div>
-			<div class="ev">{stats.streak_max}</div>
-			<div class="el">racha máx.</div>
-		</div>
-	{/if}
-	{#if stats.best_month !== null}
-		<div class="estat">
-			<div class="ei">🏆</div>
-			<div class="ev">{MONTHS_ES[(stats.best_month ?? 1) - 1]}</div>
-			<div class="el">mejor mes</div>
-		</div>
-	{/if}
-	{#if stats.avg_days_to_consume !== null}
-		<div class="estat">
-			<div class="ei">⏳</div>
-			<div class="ev">{stats.avg_days_to_consume}d</div>
-			<div class="el">media a terminar</div>
-		</div>
-	{/if}
-	{#if stats.favorite_type}
-		<div class="estat">
-			<div class="ei">{TYPE_ICONS[stats.favorite_type] ?? '📄'}</div>
-			<div class="ev">{TYPE_LABELS[stats.favorite_type] ?? stats.favorite_type}</div>
-			<div class="el">favorito</div>
-		</div>
-	{/if}
-</div>
 
-<!-- By type -->
-{#if Object.keys(stats.by_type).length > 0}
-<section class="rewind-section">
-	<h2>Por tipo</h2>
-	<div class="type-grid">
-		{#each Object.entries(stats.by_type).sort((a,b) => b[1].minutes - a[1].minutes) as [type, s]}
-			<div class="type-card" style="--accent:{TYPE_COLORS[type] ?? 'var(--primary)'}">
-				<div class="ico">{TYPE_ICONS[type] ?? '📄'}</div>
-				<div class="nm">{TYPE_LABELS[type] ?? type}</div>
-				<div class="ct">{s.count} ítem{s.count !== 1 ? 's' : ''}</div>
-				<div class="tm">{formatDuration(s.minutes)}</div>
-				<div class="pc">{s.percentage_of_year < 0.01 ? '<0.01' : s.percentage_of_year.toFixed(2)}% del año</div>
+		<!-- % + estats card -->
+		<div class="desk-quick">
+			<div style="text-align:center; font-size:52px; font-weight:900; color:var(--primary); line-height:1; filter:drop-shadow(0 0 24px oklch(0.75 0.18 300 / 0.5)); letter-spacing:-0.04em;">{stats.percentage_of_year.toFixed(2)}%</div>
+			<div class="muted center" style="font-size:13px; margin-top:6px;">de tu año dedicado a contenido</div>
+			<div class="muted center" style="font-size:12px;">≈ {minutesToDays(stats.total_consumed_minutes)}</div>
+			<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px;">
+				{#if stats.streak_current > 0}
+					<div class="estat" style="min-width:0;"><div class="ei">🔥</div><div class="ev">{stats.streak_current}</div><div class="el">racha actual</div></div>
+				{/if}
+				{#if stats.streak_max > 0}
+					<div class="estat" style="min-width:0;"><div class="ei">⚡</div><div class="ev">{stats.streak_max}</div><div class="el">racha máx</div></div>
+				{/if}
+				{#if stats.best_month !== null}
+					<div class="estat" style="min-width:0;"><div class="ei">🏆</div><div class="ev">{MONTHS_ES[(stats.best_month ?? 1) - 1]}</div><div class="el">mejor mes</div></div>
+				{/if}
+				{#if stats.favorite_type}
+					<div class="estat" style="min-width:0;"><div class="ei">{TYPE_ICONS[stats.favorite_type] ?? '📄'}</div><div class="ev">{TYPE_LABELS[stats.favorite_type] ?? stats.favorite_type}</div><div class="el">favorito</div></div>
+				{/if}
 			</div>
-		{/each}
+		</div>
 	</div>
-</section>
-{/if}
 
-<!-- Heatmap calendar -->
-<section class="rewind-section">
-	<h2>Actividad diaria</h2>
-	<div class="glass" style="overflow-x:auto; padding:12px;">
-		<!-- Month labels row -->
-		<div class="heatmap-months" style="grid-template-columns: 20px repeat({calendarGrid.length}, 12px); display:grid; gap:2px; margin-bottom:2px; min-width:max-content;">
+	<!-- Month bars card -->
+	<div class="glass" style="padding:20px;">
+		<div class="rw-label">Por mes</div>
+		<div class="month-bars desk-month-bars">
+			{#each stats.by_month as m}
+				{@const pct = m.minutes / maxMonthMinutes * 100}
+				<div class="mb-col" title="{MONTHS_ES[m.month-1]}: {m.count} ítems · {formatDuration(m.minutes)}">
+					<div class="mb-bar" style="height:{Math.max(pct, m.minutes > 0 ? 3 : 0)}%; opacity:{m.minutes > 0 ? 1 : 0.15};"></div>
+					<div class="mb-lbl">{MONTHS_ES[m.month-1]}</div>
+				</div>
+			{/each}
+		</div>
+	</div>
+
+	<!-- Heatmap card -->
+	<div class="glass" style="padding:18px; overflow-x:auto;">
+		<div class="rw-label">Actividad diaria</div>
+		<div style="grid-template-columns: 20px repeat({calendarGrid.length}, 12px); display:grid; gap:2px; margin-bottom:2px; min-width:max-content;">
 			<div></div>
 			{#each calendarGrid as _, col}
 				{@const label = calMonthLabels.find(m => m.col === col)}
 				<div style="font-size:9px; color:var(--text-muted);">{label ? label.label : ''}</div>
 			{/each}
 		</div>
-
-		<!-- Day labels + grid -->
 		<div style="display:flex; gap:4px; min-width:max-content;">
 			<div style="display:flex; flex-direction:column; gap:2px; width:12px;">
 				{#each DAYS_ES as d, i}
 					<div style="height:10px; font-size:8px; color:var(--text-muted); line-height:10px;">{i % 2 === 0 ? d : ''}</div>
 				{/each}
 			</div>
-
 			<div style="display:flex; gap:2px;">
 				{#each calendarGrid as week}
 					<div style="display:flex; flex-direction:column; gap:2px;">
@@ -241,31 +225,85 @@
 							<div
 								class="heat {heatLevel(day.minutes, day.inYear)}"
 								style="width:10px; height:10px;{!day.inYear ? 'background:transparent; border-color:transparent;' : ''}"
-								title={day.inYear && day.count > 0
-									? `${day.key}: ${day.count} ítem${day.count !== 1 ? 's' : ''} · ${formatDuration(day.minutes)}`
-									: day.key}
+								title={day.inYear && day.count > 0 ? `${day.key}: ${day.count} ítem${day.count !== 1 ? 's' : ''} · ${formatDuration(day.minutes)}` : day.key}
 							></div>
 						{/each}
 					</div>
 				{/each}
 			</div>
 		</div>
-
-		<!-- Legend -->
-		<div style="display:flex; align-items:center; gap:4px; margin-top:8px; font-size:10px; color:var(--text-muted);">
-			<span>Menos</span>
+		<div style="display:flex; align-items:center; gap:4px; margin-top:8px; font-size:10px; color:var(--text-muted); justify-content:flex-end;">
+			<span>menos</span>
 			<div class="heat" style="width:10px;height:10px;"></div>
 			<div class="heat l1" style="width:10px;height:10px;"></div>
 			<div class="heat l2" style="width:10px;height:10px;"></div>
 			<div class="heat l3" style="width:10px;height:10px;"></div>
 			<div class="heat l4" style="width:10px;height:10px;"></div>
-			<span>Más</span>
+			<span>más</span>
+		</div>
+	</div>
+
+</div><!-- /desk-rewind-grid -->
+
+<!-- Mobile-only estat chips -->
+<div class="estat-grid mobile-only">
+	{#if stats.streak_current > 0}
+		<div class="estat"><div class="ei">🔥</div><div class="ev">{stats.streak_current}</div><div class="el">días seguidos</div></div>
+	{/if}
+	{#if stats.streak_max > 0}
+		<div class="estat"><div class="ei">⚡</div><div class="ev">{stats.streak_max}</div><div class="el">racha máx.</div></div>
+	{/if}
+	{#if stats.best_month !== null}
+		<div class="estat"><div class="ei">🏆</div><div class="ev">{MONTHS_ES[(stats.best_month ?? 1) - 1]}</div><div class="el">mejor mes</div></div>
+	{/if}
+	{#if stats.avg_days_to_consume !== null}
+		<div class="estat"><div class="ei">⏳</div><div class="ev">{stats.avg_days_to_consume}d</div><div class="el">media a terminar</div></div>
+	{/if}
+	{#if stats.favorite_type}
+		<div class="estat"><div class="ei">{TYPE_ICONS[stats.favorite_type] ?? '📄'}</div><div class="ev">{TYPE_LABELS[stats.favorite_type] ?? stats.favorite_type}</div><div class="el">favorito</div></div>
+	{/if}
+</div>
+
+<!-- Mobile-only heatmap + month bars -->
+<section class="rewind-section mobile-only">
+	<h2>Actividad diaria</h2>
+	<div class="glass" style="overflow-x:auto; padding:12px;">
+		<div style="grid-template-columns: 20px repeat({calendarGrid.length}, 12px); display:grid; gap:2px; margin-bottom:2px; min-width:max-content;">
+			<div></div>
+			{#each calendarGrid as _, col}
+				{@const label = calMonthLabels.find(m => m.col === col)}
+				<div style="font-size:9px; color:var(--text-muted);">{label ? label.label : ''}</div>
+			{/each}
+		</div>
+		<div style="display:flex; gap:4px; min-width:max-content;">
+			<div style="display:flex; flex-direction:column; gap:2px; width:12px;">
+				{#each DAYS_ES as d, i}
+					<div style="height:10px; font-size:8px; color:var(--text-muted); line-height:10px;">{i % 2 === 0 ? d : ''}</div>
+				{/each}
+			</div>
+			<div style="display:flex; gap:2px;">
+				{#each calendarGrid as week}
+					<div style="display:flex; flex-direction:column; gap:2px;">
+						{#each week as day}
+							<div class="heat {heatLevel(day.minutes, day.inYear)}"
+								style="width:10px; height:10px;{!day.inYear ? 'background:transparent; border-color:transparent;' : ''}"
+								title={day.inYear && day.count > 0 ? `${day.key}: ${day.count} ítem${day.count !== 1 ? 's' : ''} · ${formatDuration(day.minutes)}` : day.key}
+							></div>
+						{/each}
+					</div>
+				{/each}
+			</div>
+		</div>
+		<div style="display:flex; align-items:center; gap:4px; margin-top:8px; font-size:10px; color:var(--text-muted);">
+			<span>Menos</span>
+			<div class="heat" style="width:10px;height:10px;"></div><div class="heat l1" style="width:10px;height:10px;"></div>
+			<div class="heat l2" style="width:10px;height:10px;"></div><div class="heat l3" style="width:10px;height:10px;"></div>
+			<div class="heat l4" style="width:10px;height:10px;"></div><span>Más</span>
 		</div>
 	</div>
 </section>
 
-<!-- Month breakdown -->
-<section class="rewind-section">
+<section class="rewind-section mobile-only">
 	<h2>Por mes</h2>
 	<div class="glass" style="padding:16px;">
 		<div class="month-bars">
@@ -279,6 +317,24 @@
 		</div>
 	</div>
 </section>
+
+<!-- By type (auto-fill grid, shared) -->
+{#if Object.keys(stats.by_type).length > 0}
+<section class="rewind-section">
+	<h2>Por tipo</h2>
+	<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:10px;">
+		{#each Object.entries(stats.by_type).sort((a,b) => b[1].minutes - a[1].minutes) as [type, s]}
+			<div class="type-card" style="--accent:{TYPE_COLORS[type] ?? 'var(--primary)'}; padding:16px;">
+				<div class="ico" style="font-size:24px;">{TYPE_ICONS[type] ?? '📄'}</div>
+				<div class="nm" style="font-size:13px;">{TYPE_LABELS[type] ?? type}</div>
+				<div class="ct">{s.count} ítem{s.count !== 1 ? 's' : ''}</div>
+				<div class="tm" style="font-size:18px;">{formatDuration(s.minutes)}</div>
+				<div class="pc">{s.percentage_of_year < 0.01 ? '<0.01' : s.percentage_of_year.toFixed(2)}% del año</div>
+			</div>
+		{/each}
+	</div>
+</section>
+{/if}
 
 <!-- Item list -->
 <section class="rewind-section">
@@ -294,19 +350,11 @@
 			>
 				{#if landscape}
 					<div class="thumb-land">
-						{#if c.thumbnail}
-							<img src={c.thumbnail} alt="" />
-						{:else}
-							<div class="ph">{TYPE_ICONS[c.content_type] ?? '📄'}</div>
-						{/if}
+						{#if c.thumbnail}<img src={c.thumbnail} alt="" />{:else}<div class="ph">{TYPE_ICONS[c.content_type] ?? '📄'}</div>{/if}
 					</div>
 				{:else}
 					<div class="thumb-port">
-						{#if c.thumbnail}
-							<img src={c.thumbnail} alt="" />
-						{:else}
-							<div class="ph">{TYPE_ICONS[c.content_type] ?? '📄'}</div>
-						{/if}
+						{#if c.thumbnail}<img src={c.thumbnail} alt="" />{:else}<div class="ph">{TYPE_ICONS[c.content_type] ?? '📄'}</div>{/if}
 					</div>
 				{/if}
 				<div class="info">
@@ -329,15 +377,13 @@
 {/if}
 
 <style>
-	.rewind-section {
-		margin-bottom: 28px;
-	}
+	.rewind-section { margin-bottom: 28px; }
 	.rewind-section h2 {
-		font-size: 11px;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--text-muted);
-		margin-bottom: 10px;
+		font-size: 11px; font-weight: 700; text-transform: uppercase;
+		letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 10px;
+	}
+	.rw-label {
+		font-size: 11px; font-weight: 700; text-transform: uppercase;
+		letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 14px;
 	}
 </style>

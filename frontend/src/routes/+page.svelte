@@ -454,40 +454,84 @@
 {#if !auth.isLoggedIn}
 	<p class="muted center">Redirigiendo…</p>
 {:else}
+
+	<!-- ── Desktop topbar (search + sort integrated) ── -->
+	<div class="desk-topbar desk-only">
+		<h1 class="desk-title">Bóveda</h1>
+		<div class="desk-search">
+			<span class="ico">🔍</span>
+			<input type="search" bind:value={searchQuery} placeholder="Buscar en la bóveda…" />
+		</div>
+		<select class="sort" bind:value={sortOrder} style="max-width:150px;">
+			<option value="recent">📅 Recientes</option>
+			<option value="duration_asc">⏱ Duración ↑</option>
+			<option value="duration_desc">⏱ Duración ↓</option>
+			<option value="title_asc">🔤 Título A–Z</option>
+		</select>
+	</div>
+
 	{#if stats}
-		<div class="hero">
-			<div class="kicker">DEUDA PENDIENTE</div>
-			<div class="number">{formatHeroTime(stats.total_pending_minutes)}</div>
-			<div class="unit">{formatDuration(stats.total_pending_minutes)} totales por consumir</div>
-			<div class="sub">La bóveda no espera</div>
-		</div>
-
-		<div class="pill-row">
-			<div class="pill">
-				<span>📦</span> <span class="val">{stats.pending_count}</span> <span class="lbl">pendientes</span>
+		<!-- Hero + quick stats (grid on desktop, stacked on mobile) -->
+		<div class="desk-hero-grid">
+			<div class="hero">
+				<div class="kicker">DEUDA PENDIENTE</div>
+				<div class="number">{formatHeroTime(stats.total_pending_minutes)}</div>
+				<div class="unit">{formatDuration(stats.total_pending_minutes)} totales por consumir</div>
+				<div class="sub">La bóveda no espera</div>
 			</div>
-			<div class="pill">
-				<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">consumidos</span>
-			</div>
-		</div>
 
-		{#if Object.keys(stats.by_type).length > 0}
-			<div class="pill-row">
-				{#each Object.entries(stats.by_type) as [type, mins]}
-					{@const pct = totalByTypeMins > 0 ? (mins / totalByTypeMins) * 100 : 0}
-					<div class="pill pill-typed" style="--pill-color:{TYPE_COLOR[type] ?? 'var(--primary)'}">
-						<span>{TYPE_ICONS[type] || '📄'}</span>
-						<span class="val">{formatDuration(mins)}</span>
-						{TYPE_LABELS[type] || type}
-						<span class="pill-bar" style="width:{pct}%"></span>
+			<!-- Distribution card: desktop only -->
+			{#if Object.keys(stats.by_type).length > 0}
+				<div class="desk-quick desk-only">
+					<h3>Distribución</h3>
+					{#each Object.entries(stats.by_type).sort((a,b) => b[1]-a[1]) as [type, mins]}
+						{@const pct = totalByTypeMins > 0 ? (mins / totalByTypeMins) * 100 : 0}
+						<div class="dq-row">
+							<span class="lbl"><span>{TYPE_ICONS[type] || '📄'}</span>{TYPE_LABELS[type] || type}</span>
+							<div class="dq-bar"><div class="dq-bar-fill" style="width:{pct}%; --bar-color:{TYPE_COLOR[type] ?? 'var(--primary)'}"></div></div>
+							<span class="val">{formatDuration(mins)}</span>
+						</div>
+					{/each}
+					<div class="dq-footer">
+						<span style="font-size:12px; color:var(--text-muted);">{stats.pending_count} pendientes · {stats.consumed_count} consumidos</span>
+						<button class="btn btn-primary" onclick={() => showAdd = true} style="padding:6px 14px; font-size:12px;">+ Añadir</button>
 					</div>
-				{/each}
+				</div>
+			{/if}
+		</div>
+
+		<!-- Mobile-only pill stats -->
+		<div class="mobile-only">
+			<div class="pill-row">
+				<div class="pill">
+					<span>📦</span> <span class="val">{stats.pending_count}</span> <span class="lbl">pendientes</span>
+				</div>
+				<div class="pill">
+					<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">consumidos</span>
+				</div>
 			</div>
-		{/if}
+			{#if Object.keys(stats.by_type).length > 0}
+				<div class="pill-row">
+					{#each Object.entries(stats.by_type) as [type, mins]}
+						{@const pct = totalByTypeMins > 0 ? (mins / totalByTypeMins) * 100 : 0}
+						<div class="pill pill-typed" style="--pill-color:{TYPE_COLOR[type] ?? 'var(--primary)'}">
+							<span>{TYPE_ICONS[type] || '📄'}</span>
+							<span class="val">{formatDuration(mins)}</span>
+							{TYPE_LABELS[type] || type}
+							<span class="pill-bar" style="width:{pct}%"></span>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
 	{/if}
 
-	<!-- Filter tabs -->
-	<div class="tabs">
+	<!-- Section header + filter tabs -->
+	<div class="desk-section desk-only">
+		<h2>Pendiente</h2>
+		<span class="more">{total} ítems</span>
+	</div>
+	<div class="tabs desk-tabs">
 		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>Todos</button>
 		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️ YouTube</button>
 		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬 Películas</button>
@@ -497,8 +541,8 @@
 		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮 Juegos</button>
 	</div>
 
-	<!-- Search + sort -->
-	<div class="search-row">
+	<!-- Search + sort (mobile only — desktop has it in topbar) -->
+	<div class="search-row mobile-only">
 		<div class="search">
 			<span class="ico">🔍</span>
 			<input
@@ -689,7 +733,12 @@
 		{/if}
 	{/if}
 
+	<!-- Mobile FAB (hidden on desktop) -->
 	<button class="fab" onclick={() => showAdd = true}>+</button>
+	<!-- Desktop FAB pill (hidden on mobile) -->
+	<button class="desk-fab" onclick={() => showAdd = true}>
+		<span class="plus">+</span> Añadir contenido
+	</button>
 
 	<!-- Edit modal -->
 	{#if editingItem}

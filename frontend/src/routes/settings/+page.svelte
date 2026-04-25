@@ -92,7 +92,16 @@
 </script>
 
 {#if auth.isLoggedIn}
-	<h1>Ajustes</h1>
+
+	<!-- Desktop topbar -->
+	<div class="desk-topbar desk-only">
+		<h1 class="desk-title">Ajustes</h1>
+	</div>
+
+	<!-- Mobile title -->
+	<h1 class="mobile-only">Ajustes</h1>
+
+	<div class="desk-settings-grid">
 
 	<!-- Cuenta -->
 	<div class="glass setting-group">
@@ -198,29 +207,31 @@
 		</div>
 	</div>
 
-	<!-- Actions -->
-	<div class="row mt8" style="flex-wrap:wrap; gap:8px; margin-bottom:20px;">
+	<!-- Actions (save buttons — span full width on desktop) -->
+	<div class="desk-settings-save glass setting-group" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
 		<button class="btn btn-primary" onclick={saveLocalSettings} style="flex:1; justify-content:center;">Guardar ajustes</button>
 		<button class="btn" onclick={resetLocalSettings} style="flex:1; justify-content:center;">Restablecer lectura</button>
 		{#if saved}
-			<span style="color:var(--game); font-weight:600; font-size:13px;">Guardado ✓</span>
+			<span style="color:var(--game); font-weight:600; font-size:13px; width:100%; text-align:center;">Guardado ✓</span>
 		{/if}
 	</div>
 
-	<!-- Sesión -->
-	<div class="glass setting-group">
+	</div><!-- /desk-settings-grid -->
+
+	<!-- Sesión (full width on desktop) -->
+	<div class="glass setting-group" style="margin-top:0;">
 		<div class="setting-group-title">Sesión</div>
-		<button class="btn btn-danger" onclick={logout} style="width:100%; justify-content:center; padding:12px;">Cerrar sesión</button>
+		<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+			<div>
+				<div style="font-weight:700; font-size:15px;">{auth.user?.name}</div>
+				<div class="muted" style="font-size:13px;">{auth.user?.email}</div>
+			</div>
+			<button class="btn btn-danger" onclick={logout} style="padding:10px 20px;">Cerrar sesión</button>
+		</div>
 	</div>
 
 	<div class="center mt16" style="padding-bottom:8px;">
-		<a
-			href="https://ko-fi.com/Z8Z81OW7UV"
-			target="_blank"
-			rel="noopener noreferrer"
-			class="btn"
-			style="font-size:12px;"
-		>
+		<a href="https://ko-fi.com/Z8Z81OW7UV" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:12px;">
 			☕ Invítame una
 		</a>
 	</div>
@@ -267,4 +278,8 @@
 		overflow: hidden;
 	}
 	.wp-swatch div { width: 100%; height: 100%; }
+
+	@media (min-width: 1024px) {
+		.desk-settings-save { grid-column: 1 / -1; }
+	}
 </style>

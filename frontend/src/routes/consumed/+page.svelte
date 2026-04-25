@@ -105,22 +105,54 @@
 {#if !auth.isLoggedIn}
 	<p class="muted center">Redirigiendo…</p>
 {:else}
-	<h1>Consumido</h1>
+
+	<!-- Desktop topbar -->
+	<div class="desk-topbar desk-only">
+		<h1 class="desk-title">Consumido</h1>
+	</div>
 
 	{#if stats}
-		<div class="hero" style="padding:16px 12px;">
-			<div class="kicker">TOTAL CONSUMIDO</div>
-			<div class="number" style="font-size:clamp(40px,14vw,80px);">{formatDuration(stats.total_consumed_minutes)}</div>
-			<div class="unit">de contenido consumido</div>
+		<!-- Hero + logros grid -->
+		<div class="desk-hero-grid">
+			<div class="hero" style="padding:16px 12px;">
+				<div class="kicker">TOTAL CONSUMIDO</div>
+				<div class="number" style="font-size:clamp(40px,14vw,80px); background:linear-gradient(180deg,#fff,oklch(0.84 0.17 150)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 0 30px oklch(0.80 0.18 150 / 0.4));">{formatDuration(stats.total_consumed_minutes)}</div>
+				<div class="unit">{stats.consumed_count} ítems completados</div>
+			</div>
+
+			<!-- Logros card: desktop only -->
+			<div class="desk-quick desk-only">
+				<h3>Logros</h3>
+				<div class="dq-row">
+					<span class="lbl">✅ Total consumido</span>
+					<span class="val">{stats.consumed_count}</span>
+				</div>
+				<div class="dq-row">
+					<span class="lbl">⏱ Tiempo total</span>
+					<span class="val" style="font-size:13px;">{formatDuration(stats.total_consumed_minutes)}</span>
+				</div>
+				{#if stats.consumed_count > 0}
+					<div class="dq-row">
+						<span class="lbl">📊 Media por ítem</span>
+						<span class="val" style="font-size:13px;">{formatDuration(Math.round(stats.total_consumed_minutes / stats.consumed_count))}</span>
+					</div>
+				{/if}
+				<div class="dq-row">
+					<span class="lbl">📦 Aún pendientes</span>
+					<span class="val">{stats.pending_count}</span>
+				</div>
+			</div>
 		</div>
-		<div class="pill-row">
+
+		<!-- Mobile-only pill -->
+		<div class="pill-row mobile-only">
 			<div class="pill">
 				<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">items</span>
 			</div>
 		</div>
 	{/if}
 
-	<div class="tabs">
+	<div class="tabs desk-tabs">
 		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>Todos</button>
 		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️</button>
 		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬</button>
