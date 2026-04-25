@@ -452,63 +452,62 @@
 </script>
 
 {#if !auth.isLoggedIn}
-	<p>Redirigiendo…</p>
+	<p class="muted center">Redirigiendo…</p>
 {:else}
 	{#if stats}
-		<div class="hero-number ominous">
-			<div class="kicker">DEUDA DE CONTENIDO</div>
+		<div class="hero">
+			<div class="kicker">DEUDA PENDIENTE</div>
 			<div class="number">{formatHeroTime(stats.total_pending_minutes)}</div>
 			<div class="unit">{formatDuration(stats.total_pending_minutes)} totales por consumir</div>
+			<div class="sub">La bóveda no espera</div>
 		</div>
 
-		<div class="stat-row">
-			<div class="stat-pill">
-				<span>📦</span> <span class="val">{stats.pending_count}</span> pendientes
+		<div class="pill-row">
+			<div class="pill">
+				<span>📦</span> <span class="val">{stats.pending_count}</span> <span class="lbl">pendientes</span>
 			</div>
-			<div class="stat-pill">
-				<span>✅</span> <span class="val">{stats.consumed_count}</span> consumidos
+			<div class="pill">
+				<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">consumidos</span>
 			</div>
 		</div>
 
 		{#if Object.keys(stats.by_type).length > 0}
-			<div class="stat-row">
+			<div class="pill-row">
 				{#each Object.entries(stats.by_type) as [type, mins]}
 					{@const pct = totalByTypeMins > 0 ? (mins / totalByTypeMins) * 100 : 0}
-					<div class="stat-pill stat-pill-typed" style="--pill-color:{TYPE_COLOR[type] ?? 'var(--primary)'}">
+					<div class="pill pill-typed" style="--pill-color:{TYPE_COLOR[type] ?? 'var(--primary)'}">
 						<span>{TYPE_ICONS[type] || '📄'}</span>
 						<span class="val">{formatDuration(mins)}</span>
 						{TYPE_LABELS[type] || type}
-						<span class="stat-pill-bar" style="width:{pct}%"></span>
+						<span class="pill-bar" style="width:{pct}%"></span>
 					</div>
 				{/each}
 			</div>
 		{/if}
 	{/if}
 
-	<!-- Filter tabs + Search -->
+	<!-- Filter tabs -->
 	<div class="tabs">
-		<button class:btn-secondary={filter !== 'all'} onclick={() => filter = 'all'}>Todos</button>
-		<button class:btn-secondary={filter !== 'youtube'} onclick={() => filter = 'youtube'}>▶️ YouTube</button>
-		<button class:btn-secondary={filter !== 'movie'} onclick={() => filter = 'movie'}>🎬 Películas</button>
-		<button class:btn-secondary={filter !== 'series'} onclick={() => filter = 'series'}>📺 Series</button>
-		<button class:btn-secondary={filter !== 'music'} onclick={() => filter = 'music'}>🎵 Música</button>
-		<button class:btn-secondary={filter !== 'book'} onclick={() => filter = 'book'}>📖 Libros</button>
-		<button class:btn-secondary={filter !== 'game'} onclick={() => filter = 'game'}>🎮 Juegos</button>
+		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>Todos</button>
+		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️ YouTube</button>
+		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬 Películas</button>
+		<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺 Series</button>
+		<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>🎵 Música</button>
+		<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖 Libros</button>
+		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮 Juegos</button>
 	</div>
 
-	<div class="search-sort-row">
-		<div class="search-wrap" style="flex:1;">
+	<!-- Search + sort -->
+	<div class="search-row">
+		<div class="search">
+			<span class="ico">🔍</span>
 			<input
 				type="search"
 				bind:value={searchQuery}
-				placeholder="🔍  Buscar…"
-				class="search-input"
+				placeholder="Buscar…"
 			/>
-			{#if searchQuery}
-				<button class="search-clear" onclick={() => searchQuery = ''} aria-label="Limpiar">✕</button>
-			{/if}
 		</div>
-		<select bind:value={sortOrder} class="sort-select">
+		<select class="sort" bind:value={sortOrder}>
 			<option value="recent">📅 Recientes</option>
 			<option value="duration_asc">⏱ Duración ↑</option>
 			<option value="duration_desc">⏱ Duración ↓</option>
@@ -518,16 +517,16 @@
 
 	<!-- Collection filter chips -->
 	{#if collections.length > 0}
-		<div class="collection-chips">
+		<div class="tabs" style="padding-top:0;">
 			<button
-				class="col-chip"
-				class:col-chip-active={activeCollection === null}
+				class="tab"
+				class:active={activeCollection === null}
 				onclick={() => activeCollection = null}
 			>Todas</button>
 			{#each collections as col}
 				<button
-					class="col-chip"
-					class:col-chip-active={activeCollection === col}
+					class="tab"
+					class:active={activeCollection === col}
 					onclick={() => activeCollection = activeCollection === col ? null : col}
 				>📁 {col}</button>
 			{/each}
@@ -536,13 +535,11 @@
 
 	<!-- Content list -->
 	{#if loading}
-		<p style="text-align:center; color:var(--text-muted);">Cargando…</p>
+		<p class="muted center">Cargando…</p>
 	{:else if contents.length === 0}
-		<div class="card" style="text-align:center; padding:2rem;">
-			<p style="font-size:1.2rem; margin-bottom:0.5rem;">🏛️</p>
-			<p style="color:var(--text-muted);">
-				{searchQuery ? 'Sin resultados para "' + searchQuery + '"' : 'La bóveda está vacía. ¡Añade contenido!'}
-			</p>
+		<div class="empty">
+			<span class="icon">🏛️</span>
+			<p>{searchQuery ? 'Sin resultados para "' + searchQuery + '"' : 'La bóveda está vacía. ¡Añade contenido!'}</p>
 		</div>
 	{:else}
 		<div class="content-grid">
@@ -553,37 +550,37 @@
 				{@const remaining = remainingMinutes(c)}
 				{@const landscape = isLandscape(c.content_type)}
 				<div
-					class="content-card"
-					class:card-landscape={landscape}
-					class:card-portrait={!landscape}
-					style="--card-accent:{TYPE_COLOR[c.content_type] ?? 'var(--border)'}"
+					class="c-card"
+					class:landscape
+					class:portrait={!landscape}
+					style="--card-accent:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}; --accent:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}"
 				>
 					{#if landscape}
-						<!-- Landscape: thumbnail banner at top (youtube, movie, series, game) -->
-						<div class="thumb-landscape">
+						<div class="thumb-land">
 							{#if c.thumbnail}
 								<img src={c.thumbnail} alt="" />
 							{:else}
-								<div class="thumb-landscape-ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
+								<div class="ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
 							{/if}
 						</div>
 					{:else}
-						<!-- Portrait: thumbnail fills full left column (books, music) -->
-						{#if c.thumbnail}
-							<img class="thumb-portrait" src={c.thumbnail} alt="" />
-						{:else}
-							<div class="thumb-portrait-ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
-						{/if}
+						<div class="thumb-port">
+							{#if c.thumbnail}
+								<img src={c.thumbnail} alt="" />
+							{:else}
+								<div class="ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
+							{/if}
+						</div>
 					{/if}
 					<div class="info">
 						<div class="title">
-							{#if c.pinned}<span class="pin-indicator" title="Prioritario">📌</span>{/if}
+							{#if c.pinned}<span title="Prioritario">📌</span>{/if}
 							{c.title}
 						</div>
 						<div class="meta">
-							<span class="badge {c.content_type}">{TYPE_LABELS[c.content_type]}</span>
+							<span class="badge">{TYPE_LABELS[c.content_type]}</span>
 							{#if c.collection}
-								<span class="collection-badge">📁 {c.collection}</span>
+								<span style="font-size:10px; color:var(--text-muted);">📁 {c.collection}</span>
 							{/if}
 							{#if c.content_type === 'series'}
 								{#if c.seasons && c.seasons > 0}<span>📺 {c.seasons}T</span>{/if}
@@ -595,18 +592,17 @@
 									<span>📚 {c.page_count} pág</span>
 								{/if}
 							{/if}
-							{#if c.author}<span class="author-meta">{c.author}</span>{/if}
+							{#if c.author}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">{c.author}</span>{/if}
 						</div>
 						{#if c.content_type === 'series' && c.episode_count && c.episode_count > 0 && c.duration_minutes > 0}
-							<div class="series-total">~{formatDuration(c.duration_minutes * c.episode_count)} en total</div>
+							<div style="font-size:11px; font-weight:600; color:var(--series);">~{formatDuration(c.duration_minutes * c.episode_count)} en total</div>
 						{/if}
 
-						<!-- Notes snippet -->
 						{#if c.notes}
-							<div class="notes-snippet" title={c.notes}>{c.notes}</div>
+							<div style="font-size:11px; color:var(--text-muted); font-style:italic; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;" title={c.notes}>{c.notes}</div>
 						{/if}
 
-						<!-- Progress bar (always visible for non-music) -->
+						<!-- Progress -->
 						{#if c.content_type !== 'music'}
 							{#if editingProgressId === c.id}
 								<div class="progress-edit-wrap">
@@ -616,31 +612,31 @@
 											type="number"
 											bind:value={progressValue}
 											min="0"
-											class="progress-input"
+											class="text progress-input"
 											onblur={() => saveProgress(c)}
 											onkeydown={(e) => e.key === 'Enter' && saveProgress(c)}
 											autofocus
 										/>
-										<button class="btn-secondary progress-save-btn" onclick={() => saveProgress(c)}>✓</button>
+										<button class="btn" onclick={() => saveProgress(c)}>✓</button>
 									</div>
 									{#if progressValue > 0}
-										<span class="progress-preview">
+										<span style="font-size:10px; color:var(--game);">
 											≈ {formatDuration(remainingMinutes({ ...c, progress: Math.floor(progressValue) }))} restante
 										</span>
 									{/if}
 								</div>
 							{:else}
 								<button class="progress-track-btn" onclick={() => startEditProgress(c)} title={hasProgress ? 'Editar progreso' : 'Añadir progreso'}>
-									<div class="progress-bar-bg">
-										<div class="progress-bar-fg" style="width:{pct}%; background:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}"></div>
+									<div class="progress-track" style="flex:1; margin:0;">
+										<div class="progress-fill" style="width:{pct}%; background:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}; box-shadow:0 0 8px {TYPE_COLOR[c.content_type] ?? 'var(--primary)'};"></div>
 									</div>
 									{#if hasProgress}
-										<span class="progress-label-txt">{progressLabel(c)}</span>
+										<span style="font-size:10px; color:var(--text-muted); white-space:nowrap;">{progressLabel(c)}</span>
 										{#if remaining < (c.content_type === 'series' && c.episode_count ? c.duration_minutes * c.episode_count : c.duration_minutes)}
-											<span class="progress-remaining">· {formatDuration(remaining)} restante</span>
+											<span style="font-size:10px; color:var(--text-dim); white-space:nowrap;">· {formatDuration(remaining)} restante</span>
 										{/if}
 									{:else}
-										<span class="progress-add-txt">+ progreso</span>
+										<span style="font-size:10px; color:var(--text-dim);">+ progreso</span>
 									{/if}
 								</button>
 							{/if}
@@ -649,37 +645,34 @@
 						<div class="actions">
 							{#if link}
 								<a href={link} target="_blank" rel="noopener">
-									<button class="btn-secondary">Abrir</button>
+									<button class="btn">Abrir</button>
 								</a>
 							{/if}
 							{#if c.url}
 								<button
-									class="btn-secondary"
+									class="btn"
 									onclick={() => refresh(c)}
 									disabled={refreshingId !== null}
 									title="Actualizar metadatos"
 									style={refreshingId === c.id ? 'animation: spin 0.8s linear infinite; opacity:0.7;' : ''}
 								>↻</button>
 							{/if}
-							<!-- Pin toggle -->
 							<button
-								class="btn-secondary pin-btn"
-								class:pin-btn-active={c.pinned}
+								class="btn"
+								class:pin-active={c.pinned}
 								onclick={() => togglePin(c)}
 								title={c.pinned ? 'Quitar prioridad' : 'Marcar prioritario'}
+								style="opacity:{c.pinned ? 1 : 0.5};"
 							>{c.pinned ? '📌' : '📍'}</button>
-							<!-- Edit -->
-							<button class="btn-secondary" onclick={() => startEdit(c)} title="Editar">✏️</button>
-							<!-- Consume -->
-							<button onclick={() => consume(c.id)} style="background:rgba(79,255,170,0.15); color:var(--game); box-shadow:none;">✓</button>
-							<!-- Delete (with confirm) -->
+							<button class="btn" onclick={() => startEdit(c)} title="Editar">✏️</button>
+							<button class="btn btn-consume" onclick={() => consume(c.id)}>✓</button>
 							{#if deletingId === c.id}
-								<span class="delete-confirm">
-									<button class="btn-danger" onclick={() => remove(c.id)}>Sí</button>
-									<button class="btn-secondary" onclick={() => deletingId = null}>No</button>
+								<span style="display:flex; gap:4px;">
+									<button class="btn btn-danger" onclick={() => remove(c.id)}>Sí</button>
+									<button class="btn" onclick={() => deletingId = null}>No</button>
 								</span>
 							{:else}
-								<button class="btn-danger" onclick={() => deletingId = c.id}>✕</button>
+								<button class="btn btn-danger" onclick={() => deletingId = c.id}>✕</button>
 							{/if}
 						</div>
 					</div>
@@ -688,84 +681,84 @@
 		</div>
 
 		{#if contents.length < total}
-			<div style="text-align:center; margin: 1rem 0 2rem;">
-				<button class="btn-secondary" onclick={loadMore} disabled={loadingMore}>
+			<div class="center mt16">
+				<button class="btn btn-lg" onclick={loadMore} disabled={loadingMore}>
 					{loadingMore ? 'Cargando…' : `Cargar más (${total - contents.length} restantes)`}
 				</button>
 			</div>
 		{/if}
 	{/if}
 
-	<button class="fab settings" onclick={() => showSettings = true} title="Ajustes">⚙️</button>
 	<button class="fab" onclick={() => showAdd = true}>+</button>
 
 	<!-- Edit modal -->
 	{#if editingItem}
 		<div class="overlay" onclick={() => editingItem = null} role="presentation">
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<div class="modal" onclick={e => e.stopPropagation()} role="dialog">
+			<div class="modal glass-strong" onclick={e => e.stopPropagation()} role="dialog">
+				<div class="modal-handle"></div>
 				<h2>Editar</h2>
-				<div class="form-group">
+				<div class="field">
 					<label for="edit-title">Título</label>
-					<input id="edit-title" bind:value={editTitle} />
+					<input id="edit-title" class="text" bind:value={editTitle} />
 				</div>
-				<div class="form-group">
+				<div class="field">
 					<label for="edit-author">Autor / Canal / Estudio</label>
-					<input id="edit-author" bind:value={editAuthor} />
+					<input id="edit-author" class="text" bind:value={editAuthor} />
 				</div>
-				<div class="form-group">
+				<div class="field">
 					<label for="edit-url">URL</label>
-					<input id="edit-url" bind:value={editUrl} placeholder="https://…" />
+					<input id="edit-url" class="text" bind:value={editUrl} placeholder="https://…" />
 				</div>
-				<div class="form-group">
+				<div class="field">
 					<label for="edit-duration">Duración{editingItem.content_type === 'series' ? ' por episodio' : ''} (minutos)</label>
-					<input id="edit-duration" type="number" bind:value={editDuration} min="0" />
+					<input id="edit-duration" class="text" type="number" bind:value={editDuration} min="0" />
 				</div>
 				{#if editingItem.content_type === 'book'}
-					<div class="form-group">
+					<div class="field">
 						<label for="edit-pages">Páginas</label>
-						<input id="edit-pages" type="number" bind:value={editPageCount} min="0" />
+						<input id="edit-pages" class="text" type="number" bind:value={editPageCount} min="0" />
 					</div>
 				{/if}
 				{#if editingItem.content_type === 'series'}
-					<div style="display:flex; gap:0.75rem;">
-						<div class="form-group" style="flex:1;">
+					<div class="row">
+						<div class="field" style="flex:1;">
 							<label for="edit-seasons">Temporadas</label>
-							<input id="edit-seasons" type="number" bind:value={editSeasons} min="0" />
+							<input id="edit-seasons" class="text" type="number" bind:value={editSeasons} min="0" />
 						</div>
-						<div class="form-group" style="flex:1;">
+						<div class="field" style="flex:1;">
 							<label for="edit-episodes">Episodios</label>
-							<input id="edit-episodes" type="number" bind:value={editEpisodeCount} min="0" />
+							<input id="edit-episodes" class="text" type="number" bind:value={editEpisodeCount} min="0" />
 						</div>
 					</div>
 				{/if}
-				<div class="form-group">
+				<div class="field">
 					<label for="edit-collection">Colección</label>
-					<input id="edit-collection" bind:value={editCollection} list="collections-list" placeholder="Sin colección" />
+					<input id="edit-collection" class="text" bind:value={editCollection} list="collections-list" placeholder="Sin colección" />
 					<datalist id="collections-list">
 						{#each collections as col}
 							<option value={col}></option>
 						{/each}
 					</datalist>
 				</div>
-				<div class="form-group">
+				<div class="field">
 					<label for="edit-thumbnail">URL de imagen</label>
-					<input id="edit-thumbnail" bind:value={editThumbnail} placeholder="https://…" />
+					<input id="edit-thumbnail" class="text" bind:value={editThumbnail} placeholder="https://…" />
 				</div>
-				<div class="form-group">
+				<div class="field">
 					<label for="edit-notes">Notas</label>
-					<textarea id="edit-notes" bind:value={editNotes}></textarea>
+					<textarea id="edit-notes" class="text" bind:value={editNotes}></textarea>
 				</div>
-				<div class="form-group pinned-row">
-					<label class="pinned-label">
+				<div class="field">
+					<label style="display:flex; align-items:center; gap:8px; text-transform:none; font-size:13px; cursor:pointer;">
 						<input type="checkbox" bind:checked={editPinned} />
 						Marcar como prioritario 📌
 					</label>
 				</div>
-				{#if editError}<p class="error">{editError}</p>{/if}
-				<div style="display:flex; gap:0.5rem; margin-top:1rem;">
-					<button onclick={saveEdit} style="flex:1;">Guardar</button>
-					<button class="btn-secondary" onclick={() => editingItem = null} style="flex:1;">Cancelar</button>
+				{#if editError}<p class="error-msg">{editError}</p>{/if}
+				<div class="row mt16">
+					<button class="btn btn-primary btn-lg" onclick={saveEdit} style="flex:1; justify-content:center;">Guardar</button>
+					<button class="btn btn-lg" onclick={() => editingItem = null} style="flex:1; justify-content:center;">Cancelar</button>
 				</div>
 			</div>
 		</div>
@@ -775,13 +768,14 @@
 	{#if showAdd}
 		<div class="overlay" onclick={() => showAdd = false} role="presentation">
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<div class="modal" onclick={e => e.stopPropagation()} role="dialog">
+			<div class="modal glass-strong" onclick={e => e.stopPropagation()} role="dialog">
+				<div class="modal-handle"></div>
 				<h2>Añadir contenido</h2>
-				<div class="form-group">
+				<div class="field">
 					<label for="add-url">URL (pega un enlace para autodetectar)</label>
-					<div style="display:flex; gap:0.5rem;">
-						<input id="add-url" bind:value={addUrl} placeholder="https://..." style="flex:1;" />
-						<button class="btn-secondary" onclick={() => lookupUrl()} disabled={lookupLoading} style="white-space:nowrap;">
+					<div class="row">
+						<input id="add-url" class="text" bind:value={addUrl} placeholder="https://..." style="flex:1;" />
+						<button class="btn" onclick={() => lookupUrl()} disabled={lookupLoading}>
 							{lookupLoading ? '…' : '🔍'}
 						</button>
 					</div>
@@ -792,9 +786,9 @@
 						</p>
 					{/if}
 				</div>
-				<div class="form-group">
+				<div class="field">
 					<label for="add-type">Tipo</label>
-					<select id="add-type" bind:value={addType}>
+					<select id="add-type" class="text" bind:value={addType}>
 						<option value="youtube">▶️ YouTube</option>
 						<option value="movie">🎬 Película</option>
 						<option value="series">📺 Serie</option>
@@ -803,39 +797,39 @@
 						<option value="game">🎮 Juego</option>
 					</select>
 				</div>
-				<div class="form-group">
+				<div class="field">
 					<label for="add-title">Título</label>
-					<input id="add-title" bind:value={addTitle} required />
+					<input id="add-title" class="text" bind:value={addTitle} required />
 				</div>
-				<div class="form-group">
+				<div class="field">
 					<label for="add-author">Autor / Canal / Estudio</label>
-					<input id="add-author" bind:value={addAuthor} />
+					<input id="add-author" class="text" bind:value={addAuthor} />
 				</div>
-				<div class="form-group">
+				<div class="field">
 					<label for="add-duration">Duración{addType === 'series' ? ' por episodio' : ''} (minutos)</label>
-					<input id="add-duration" type="number" bind:value={addDuration} min="0" />
+					<input id="add-duration" class="text" type="number" bind:value={addDuration} min="0" />
 				</div>
 				{#if addType === 'series'}
-					<div style="display:flex; gap:0.75rem;">
-						<div class="form-group" style="flex:1;">
+					<div class="row">
+						<div class="field" style="flex:1;">
 							<label for="add-seasons">Temporadas</label>
-							<input id="add-seasons" type="number" bind:value={addSeasons} min="0" />
+							<input id="add-seasons" class="text" type="number" bind:value={addSeasons} min="0" />
 						</div>
-						<div class="form-group" style="flex:1;">
+						<div class="field" style="flex:1;">
 							<label for="add-episodes">Episodios totales</label>
-							<input id="add-episodes" type="number" bind:value={addEpisodeCount} min="0" />
+							<input id="add-episodes" class="text" type="number" bind:value={addEpisodeCount} min="0" />
 						</div>
 					</div>
 					{#if addDuration > 0 && addEpisodeCount > 0}
-						<p style="font-size:0.85rem; color:var(--text-muted); margin-top:-0.25rem;">
+						<p class="muted" style="font-size:13px; margin-top:-4px;">
 							Duración total estimada: ~{formatDuration(addDuration * addEpisodeCount)}
 						</p>
 					{/if}
 				{/if}
 				{#if addType === 'book'}
-					<div class="form-group">
+					<div class="field">
 						<label for="add-book-format">Formato</label>
-						<select id="add-book-format" bind:value={addBookFormat} onchange={() => {
+						<select id="add-book-format" class="text" bind:value={addBookFormat} onchange={() => {
 							if (addBookFormat === 'manga') addWordsPerPage = 50;
 							else addWordsPerPage = readingWordsPerPage;
 						}}>
@@ -843,38 +837,38 @@
 							<option value="manga">Manga / Comic</option>
 						</select>
 					</div>
-					<div class="form-group">
+					<div class="field">
 						<label for="add-words-per-page">Palabras por página</label>
-						<input id="add-words-per-page" type="number" bind:value={addWordsPerPage} min="1" />
+						<input id="add-words-per-page" class="text" type="number" bind:value={addWordsPerPage} min="1" />
 					</div>
-					<div class="form-group">
+					<div class="field">
 						<label for="add-pages">Páginas</label>
-						<input id="add-pages" type="number" bind:value={addPageCount} min="0" />
+						<input id="add-pages" class="text" type="number" bind:value={addPageCount} min="0" />
 					</div>
 				{/if}
-				<div class="form-group">
+				<div class="field">
 					<label for="add-collection">Colección</label>
-					<input id="add-collection" bind:value={addCollection} list="collections-list-add" placeholder="Sin colección" />
+					<input id="add-collection" class="text" bind:value={addCollection} list="collections-list-add" placeholder="Sin colección" />
 					<datalist id="collections-list-add">
 						{#each collections as col}
 							<option value={col}></option>
 						{/each}
 					</datalist>
 				</div>
-				<div class="form-group">
+				<div class="field">
 					<label for="add-notes">Notas</label>
-					<textarea id="add-notes" bind:value={addNotes}></textarea>
+					<textarea id="add-notes" class="text" bind:value={addNotes}></textarea>
 				</div>
-				<div class="form-group pinned-row">
-					<label class="pinned-label">
+				<div class="field">
+					<label style="display:flex; align-items:center; gap:8px; text-transform:none; font-size:13px; cursor:pointer;">
 						<input type="checkbox" bind:checked={addPinned} />
 						Marcar como prioritario 📌
 					</label>
 				</div>
-				{#if addError}<p class="error">{addError}</p>{/if}
-				<div style="display:flex; gap:0.5rem; margin-top:1rem;">
-					<button onclick={submitAdd} style="flex:1;">Guardar</button>
-					<button class="btn-secondary" onclick={() => { showAdd = false; resetForm(); }} style="flex:1;">Cancelar</button>
+				{#if addError}<p class="error-msg">{addError}</p>{/if}
+				<div class="row mt16">
+					<button class="btn btn-primary btn-lg" onclick={submitAdd} style="flex:1; justify-content:center;">Guardar</button>
+					<button class="btn btn-lg" onclick={() => { showAdd = false; resetForm(); }} style="flex:1; justify-content:center;">Cancelar</button>
 				</div>
 			</div>
 		</div>
@@ -882,15 +876,16 @@
 
 	{#if showSettings}
 		<div class="overlay" onclick={() => showSettings = false} role="presentation">
-			<div class="modal" onclick={e => e.stopPropagation()} role="dialog">
+			<div class="modal glass-strong" onclick={e => e.stopPropagation()} role="dialog">
+				<div class="modal-handle"></div>
 				<h2>Ajustes</h2>
-				<div class="form-group">
+				<div class="field">
 					<label for="reading-wpm">Velocidad de lectura (palabras/minuto)</label>
-					<input id="reading-wpm" type="number" bind:value={readingWpm} min="50" max="2000" />
+					<input id="reading-wpm" class="text" type="number" bind:value={readingWpm} min="50" max="2000" />
 				</div>
-				<div style="display:flex; gap:0.5rem; margin-top:1rem;">
-					<button onclick={saveSettings} style="flex:1;">Guardar</button>
-					<button class="btn-secondary" onclick={() => { showSettings = false; }} style="flex:1;">Cancelar</button>
+				<div class="row mt16">
+					<button class="btn btn-primary btn-lg" onclick={saveSettings} style="flex:1; justify-content:center;">Guardar</button>
+					<button class="btn btn-lg" onclick={() => { showSettings = false; }} style="flex:1; justify-content:center;">Cancelar</button>
 				</div>
 			</div>
 		</div>
@@ -898,200 +893,35 @@
 {/if}
 
 <style>
-	/* Search + sort row */
-	.search-sort-row {
-		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 0.75rem;
-		align-items: center;
-	}
-	.search-wrap {
-		position: relative;
-	}
-	.search-input {
-		width: 100%;
-		padding-right: 2.2rem;
-	}
-	.search-clear {
-		position: absolute;
-		right: 0.5rem; top: 50%; transform: translateY(-50%);
-		background: none; box-shadow: none; border: none;
-		color: var(--text-muted); padding: 0.2rem 0.4rem;
-		font-size: 0.8rem; border-radius: 6px;
-	}
-	.search-clear:hover { background: var(--surface); color: var(--text); }
-	.sort-select {
-		flex-shrink: 0;
-		font-size: 0.78rem;
-		padding: 0.5rem 0.6rem;
-		border-radius: 10px;
-		white-space: nowrap;
-	}
-
-	/* Collection chips */
-	.collection-chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.35rem;
-		margin-bottom: 0.75rem;
-	}
-	.col-chip {
-		background: var(--surface2);
-		border: 1px solid var(--border);
-		color: var(--text-muted);
-		box-shadow: none;
-		padding: 0.25rem 0.65rem;
-		font-size: 0.75rem;
-		border-radius: 99px;
-	}
-	.col-chip:hover { background: var(--surface-hover); color: var(--text); box-shadow: none; }
-	.col-chip-active {
-		background: var(--primary-glow) !important;
-		border-color: var(--primary) !important;
-		color: var(--primary) !important;
-		font-weight: 700;
-	}
-
-	/* Thumb placeholder */
-	.thumb-placeholder {
-		display: flex; align-items: center; justify-content: center;
-		font-size: 1.8rem;
-		background: var(--surface2);
-	}
-
-	/* Pin indicator */
-	.pin-indicator {
-		font-size: 0.75rem;
-		margin-right: 0.2rem;
-		vertical-align: middle;
-	}
-
-	/* Collection badge on card */
-	.collection-badge {
-		font-size: 0.68rem;
-		background: rgba(255,255,255,0.07);
-		border: 1px solid var(--border);
-		border-radius: 6px;
-		padding: 0.05rem 0.35rem;
-		color: var(--text-muted);
-	}
-
-	/* Notes snippet */
-	.notes-snippet {
-		font-size: 0.72rem;
-		color: var(--text-muted);
-		margin: 0.2rem 0 0.1rem;
-		overflow: hidden;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		-webkit-box-orient: vertical;
-		line-height: 1.35;
-		font-style: italic;
-	}
-
-	/* Author meta truncated */
-	.author-meta {
-		overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-		max-width: 120px;
-	}
-
-	/* Pin button */
-	.pin-btn { font-size: 0.85rem; padding: 0.25rem 0.4rem; opacity: 0.5; }
-	.pin-btn:hover { opacity: 1; }
-	.pin-btn-active { opacity: 1 !important; }
-
-	/* Delete confirm */
-	.delete-confirm {
-		display: flex;
-		gap: 0.25rem;
-	}
-	.delete-confirm button {
-		font-size: 0.75rem;
-		padding: 0.25rem 0.5rem;
-	}
-
-	/* Progress bar (always-visible track) */
 	.progress-track-btn {
 		all: unset;
 		cursor: pointer;
 		display: flex;
 		align-items: center;
-		gap: 0.4rem;
+		gap: 6px;
 		width: 100%;
-		margin: 0.35rem 0 0.15rem;
-		padding: 0.1rem 0;
+		margin: 2px 0;
+		padding: 2px 0;
 	}
-	.progress-bar-bg {
-		flex-shrink: 0;
-		width: 56px;
-		height: 3px;
-		background: rgba(255,255,255,0.1);
-		border-radius: 2px;
-		overflow: hidden;
-	}
-	.progress-bar-fg {
-		height: 100%;
-		border-radius: 2px;
-		transition: width 0.3s;
-		min-width: 2px;
-	}
-	.progress-label-txt {
-		font-size: 0.72rem;
-		color: var(--primary-dim);
-		white-space: nowrap;
-	}
-	.progress-remaining {
-		font-size: 0.7rem;
-		color: var(--text-muted);
-		white-space: nowrap;
-	}
-	.progress-add-txt {
-		font-size: 0.7rem;
-		color: var(--text-muted);
-		opacity: 0.6;
-	}
-	.progress-track-btn:hover .progress-add-txt { opacity: 1; color: var(--primary-dim); }
-	.progress-track-btn:hover .progress-bar-bg { background: rgba(255,255,255,0.18); }
-
-	/* Progress edit mode */
 	.progress-edit-wrap {
-		margin: 0.35rem 0 0.15rem;
+		margin: 2px 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
+		gap: 4px;
 	}
 	.progress-edit-label {
-		font-size: 0.7rem;
+		font-size: 10px;
 		color: var(--text-muted);
 	}
 	.progress-edit-row {
 		display: flex;
-		gap: 0.4rem;
+		gap: 6px;
 		align-items: center;
 	}
 	.progress-input {
 		flex: 1;
-		font-size: 0.82rem;
-		padding: 0.3rem 0.5rem;
+		font-size: 13px;
+		padding: 6px 10px !important;
 		min-width: 0;
-	}
-	.progress-save-btn {
-		padding: 0.3rem 0.6rem;
-		font-size: 0.8rem;
-		flex-shrink: 0;
-	}
-	.progress-preview {
-		font-size: 0.7rem;
-		color: var(--game);
-	}
-
-	/* Pinned checkbox row */
-	.pinned-row { margin-top: 0.25rem; }
-	.pinned-label {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-size: 0.9rem;
-		cursor: pointer;
 	}
 </style>

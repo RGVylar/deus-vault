@@ -81,13 +81,12 @@
 		return weeks;
 	}
 
-	function heatColor(minutes: number, inYear: boolean): string {
-		if (!inYear) return 'transparent';
-		if (minutes === 0) return 'rgba(255,255,255,0.05)';
-		if (minutes < 60)  return '#0d4f3c';
-		if (minutes < 180) return '#1a7a55';
-		if (minutes < 360) return '#27ae60';
-		return '#4fffaa';
+	function heatLevel(minutes: number, inYear: boolean): string {
+		if (!inYear || minutes === 0) return '';
+		if (minutes < 60)  return 'l1';
+		if (minutes < 180) return 'l2';
+		if (minutes < 360) return 'l3';
+		return 'l4';
 	}
 
 	/** Returns week index (column) where each month starts */
@@ -124,99 +123,90 @@
 </script>
 
 {#if !auth.isLoggedIn}
-	<p>Redirigiendo…</p>
+	<p class="muted center">Redirigiendo…</p>
 {:else}
 
 <!-- Year picker -->
-<div class="year-picker">
-	<button class="btn-secondary year-arrow" onclick={() => year--}>‹</button>
-	<span class="year-label">Rewind {year}</span>
-	<button class="btn-secondary year-arrow" onclick={() => year++} disabled={year >= new Date().getFullYear()}>›</button>
+<div class="row" style="justify-content:center; margin:8px 0 20px; gap:16px;">
+	<button class="btn" onclick={() => year--}>‹</button>
+	<span style="font-size:18px; font-weight:700; color:var(--primary); min-width:140px; text-align:center;">Rewind {year}</span>
+	<button class="btn" onclick={() => year++} disabled={year >= new Date().getFullYear()}>›</button>
 </div>
 
 {#if loading}
-	<p style="text-align:center; color:var(--text-muted); margin-top:3rem;">Calculando tu año…</p>
+	<p class="muted center" style="margin-top:3rem;">Calculando tu año…</p>
 
 {:else if !stats || stats.total_consumed_count === 0}
-	<div class="card empty-state">
-		<p style="font-size:2rem; margin-bottom:0.5rem;">🪐</p>
+	<div class="glass empty">
+		<span class="icon">🪐</span>
 		<p>Sin contenido consumido en {year}.</p>
-		<p style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem;">
-			Marca ítems como consumidos para verlos aquí.
-		</p>
+		<p class="muted" style="font-size:13px; margin-top:6px;">Marca ítems como consumidos para verlos aquí.</p>
 	</div>
 
 {:else}
 
 <!-- Hero -->
-<div class="hero-number" style="margin-bottom:0.5rem;">
+<div class="hero">
 	<div class="kicker">TU AÑO EN CONTENIDO</div>
-	<div class="number">{stats.total_consumed_count}</div>
+	<div class="number" style="font-size:clamp(48px,16vw,96px);">{stats.total_consumed_count}</div>
 	<div class="unit">
 		{stats.total_consumed_count === 1 ? 'ítem consumido' : 'ítems consumidos'} ·
 		{formatDuration(stats.total_consumed_minutes)}
 	</div>
+	<div class="sub">{stats.percentage_of_year.toFixed(2)}% de tu año · ≈ {minutesToDays(stats.total_consumed_minutes)}</div>
 </div>
 
-<div class="card pct-card">
-	<span class="pct-number">{stats.percentage_of_year.toFixed(2)}%</span>
-	<span class="pct-label">de tu año {year} dedicado a contenido</span>
-	<span class="pct-sub">≈ {minutesToDays(stats.total_consumed_minutes)}</span>
-</div>
-
-<!-- Enhanced stat chips -->
-<div class="enhanced-stats">
+<!-- Estat chips -->
+<div class="estat-grid">
 	{#if stats.streak_current > 0}
-		<div class="estat-chip estat-streak">
-			<span class="estat-icon">🔥</span>
-			<span class="estat-val">{stats.streak_current}</span>
-			<span class="estat-label">días seguidos</span>
+		<div class="estat">
+			<div class="ei">🔥</div>
+			<div class="ev">{stats.streak_current}</div>
+			<div class="el">días seguidos</div>
 		</div>
 	{/if}
 	{#if stats.streak_max > 0}
-		<div class="estat-chip">
-			<span class="estat-icon">⚡</span>
-			<span class="estat-val">{stats.streak_max}</span>
-			<span class="estat-label">racha máx.</span>
+		<div class="estat">
+			<div class="ei">⚡</div>
+			<div class="ev">{stats.streak_max}</div>
+			<div class="el">racha máx.</div>
 		</div>
 	{/if}
 	{#if stats.best_month !== null}
-		<div class="estat-chip">
-			<span class="estat-icon">🏆</span>
-			<span class="estat-val">{MONTHS_ES[(stats.best_month ?? 1) - 1]}</span>
-			<span class="estat-label">mejor mes</span>
+		<div class="estat">
+			<div class="ei">🏆</div>
+			<div class="ev">{MONTHS_ES[(stats.best_month ?? 1) - 1]}</div>
+			<div class="el">mejor mes</div>
 		</div>
 	{/if}
 	{#if stats.avg_days_to_consume !== null}
-		<div class="estat-chip">
-			<span class="estat-icon">⏳</span>
-			<span class="estat-val">{stats.avg_days_to_consume}d</span>
-			<span class="estat-label">media a terminar</span>
+		<div class="estat">
+			<div class="ei">⏳</div>
+			<div class="ev">{stats.avg_days_to_consume}d</div>
+			<div class="el">media a terminar</div>
 		</div>
 	{/if}
 	{#if stats.favorite_type}
-		<div class="estat-chip">
-			<span class="estat-icon">{TYPE_ICONS[stats.favorite_type] ?? '📄'}</span>
-			<span class="estat-val">{TYPE_LABELS[stats.favorite_type] ?? stats.favorite_type}</span>
-			<span class="estat-label">favorito</span>
+		<div class="estat">
+			<div class="ei">{TYPE_ICONS[stats.favorite_type] ?? '📄'}</div>
+			<div class="ev">{TYPE_LABELS[stats.favorite_type] ?? stats.favorite_type}</div>
+			<div class="el">favorito</div>
 		</div>
 	{/if}
 </div>
 
 <!-- By type -->
 {#if Object.keys(stats.by_type).length > 0}
-<section class="section">
-	<h2 class="section-title">Por tipo</h2>
+<section class="rewind-section">
+	<h2>Por tipo</h2>
 	<div class="type-grid">
 		{#each Object.entries(stats.by_type).sort((a,b) => b[1].minutes - a[1].minutes) as [type, s]}
-			<div class="type-card" style="border-color:{TYPE_COLORS[type] ?? 'var(--border)'}20; background: {TYPE_COLORS[type] ?? 'var(--primary)'}0d;">
-				<div class="type-icon">{TYPE_ICONS[type] ?? '📄'}</div>
-				<div class="type-name">{TYPE_LABELS[type] ?? type}</div>
-				<div class="type-count">{s.count} ítem{s.count !== 1 ? 's' : ''}</div>
-				<div class="type-time">{formatDuration(s.minutes)}</div>
-				<div class="type-pct" style="color:{TYPE_COLORS[type] ?? 'var(--primary)'}">
-					{s.percentage_of_year < 0.01 ? '<0.01' : s.percentage_of_year.toFixed(2)}% del año
-				</div>
+			<div class="type-card" style="--accent:{TYPE_COLORS[type] ?? 'var(--primary)'}">
+				<div class="ico">{TYPE_ICONS[type] ?? '📄'}</div>
+				<div class="nm">{TYPE_LABELS[type] ?? type}</div>
+				<div class="ct">{s.count} ítem{s.count !== 1 ? 's' : ''}</div>
+				<div class="tm">{formatDuration(s.minutes)}</div>
+				<div class="pc">{s.percentage_of_year < 0.01 ? '<0.01' : s.percentage_of_year.toFixed(2)}% del año</div>
 			</div>
 		{/each}
 	</div>
@@ -224,39 +214,33 @@
 {/if}
 
 <!-- Heatmap calendar -->
-<section class="section">
-	<h2 class="section-title">Actividad diaria</h2>
-	<div class="heatmap-wrap">
+<section class="rewind-section">
+	<h2>Actividad diaria</h2>
+	<div class="glass" style="overflow-x:auto; padding:12px;">
 		<!-- Month labels row -->
-		<div class="heatmap-months" style="grid-template-columns: 28px repeat({calendarGrid.length}, 12px);">
-			<div></div><!-- spacer for day labels column -->
+		<div class="heatmap-months" style="grid-template-columns: 20px repeat({calendarGrid.length}, 12px); display:grid; gap:2px; margin-bottom:2px; min-width:max-content;">
+			<div></div>
 			{#each calendarGrid as _, col}
 				{@const label = calMonthLabels.find(m => m.col === col)}
-				<div class="month-label">{label ? label.label : ''}</div>
+				<div style="font-size:9px; color:var(--text-muted);">{label ? label.label : ''}</div>
 			{/each}
 		</div>
 
 		<!-- Day labels + grid -->
-		<div class="heatmap-body">
-			<!-- Day-of-week labels -->
-			<div class="day-labels">
+		<div style="display:flex; gap:4px; min-width:max-content;">
+			<div style="display:flex; flex-direction:column; gap:2px; width:12px;">
 				{#each DAYS_ES as d, i}
-					{#if i % 2 === 0}
-						<div class="day-label">{d}</div>
-					{:else}
-						<div class="day-label"></div>
-					{/if}
+					<div style="height:10px; font-size:8px; color:var(--text-muted); line-height:10px;">{i % 2 === 0 ? d : ''}</div>
 				{/each}
 			</div>
 
-			<!-- Week columns -->
-			<div class="heatmap-grid">
+			<div style="display:flex; gap:2px;">
 				{#each calendarGrid as week}
-					<div class="week-col">
+					<div style="display:flex; flex-direction:column; gap:2px;">
 						{#each week as day}
 							<div
-								class="heat-cell"
-								style="background:{heatColor(day.minutes, day.inYear)}"
+								class="heat {heatLevel(day.minutes, day.inYear)}"
+								style="width:10px; height:10px;{!day.inYear ? 'background:transparent; border-color:transparent;' : ''}"
 								title={day.inYear && day.count > 0
 									? `${day.key}: ${day.count} ítem${day.count !== 1 ? 's' : ''} · ${formatDuration(day.minutes)}`
 									: day.key}
@@ -268,54 +252,67 @@
 		</div>
 
 		<!-- Legend -->
-		<div class="heat-legend">
+		<div style="display:flex; align-items:center; gap:4px; margin-top:8px; font-size:10px; color:var(--text-muted);">
 			<span>Menos</span>
-			<div class="heat-cell legend-cell" style="background:rgba(255,255,255,0.05)"></div>
-			<div class="heat-cell legend-cell" style="background:#0d4f3c"></div>
-			<div class="heat-cell legend-cell" style="background:#1a7a55"></div>
-			<div class="heat-cell legend-cell" style="background:#27ae60"></div>
-			<div class="heat-cell legend-cell" style="background:#4fffaa"></div>
+			<div class="heat" style="width:10px;height:10px;"></div>
+			<div class="heat l1" style="width:10px;height:10px;"></div>
+			<div class="heat l2" style="width:10px;height:10px;"></div>
+			<div class="heat l3" style="width:10px;height:10px;"></div>
+			<div class="heat l4" style="width:10px;height:10px;"></div>
 			<span>Más</span>
 		</div>
 	</div>
 </section>
 
 <!-- Month breakdown -->
-<section class="section">
-	<h2 class="section-title">Por mes</h2>
-	<div class="months-chart">
-		{#each stats.by_month as m}
-			{@const pct = m.minutes / maxMonthMinutes * 100}
-			<div class="month-bar-wrap" title="{MONTHS_ES[m.month-1]}: {m.count} ítems · {formatDuration(m.minutes)}">
-				<div class="month-bar-col">
-					<div class="month-bar" style="height:{pct}%; background: var(--primary); opacity:{m.minutes > 0 ? 0.85 : 0.12};"></div>
+<section class="rewind-section">
+	<h2>Por mes</h2>
+	<div class="glass" style="padding:16px;">
+		<div class="month-bars">
+			{#each stats.by_month as m}
+				{@const pct = m.minutes / maxMonthMinutes * 100}
+				<div class="mb-col" title="{MONTHS_ES[m.month-1]}: {m.count} ítems · {formatDuration(m.minutes)}">
+					<div class="mb-bar" style="height:{Math.max(pct, m.minutes > 0 ? 3 : 0)}%; opacity:{m.minutes > 0 ? 1 : 0.15};"></div>
+					<div class="mb-lbl">{MONTHS_ES[m.month-1]}</div>
 				</div>
-				<div class="month-bar-label">{MONTHS_ES[m.month-1]}</div>
-				{#if m.count > 0}
-					<div class="month-bar-count">{m.count}</div>
-				{/if}
-			</div>
-		{/each}
+			{/each}
+		</div>
 	</div>
 </section>
 
 <!-- Item list -->
-<section class="section">
-	<h2 class="section-title">Todo lo consumido</h2>
-	<div style="display:flex; flex-direction:column; gap:0.4rem;">
+<section class="rewind-section">
+	<h2>Todo lo consumido</h2>
+	<div class="content-grid">
 		{#each stats.items as c (c.id)}
-			<div class="rewind-item">
-				{#if c.thumbnail}
-					<img class="rewind-thumb" src={c.thumbnail} alt="" />
+			{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series' || c.content_type === 'game'}
+			<div
+				class="c-card"
+				class:landscape
+				class:portrait={!landscape}
+				style="--card-accent:{TYPE_COLORS[c.content_type] ?? 'var(--primary)'}; --accent:{TYPE_COLORS[c.content_type] ?? 'var(--primary)'}"
+			>
+				{#if landscape}
+					<div class="thumb-land">
+						{#if c.thumbnail}
+							<img src={c.thumbnail} alt="" />
+						{:else}
+							<div class="ph">{TYPE_ICONS[c.content_type] ?? '📄'}</div>
+						{/if}
+					</div>
 				{:else}
-					<div class="rewind-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.1rem;">
-						{TYPE_ICONS[c.content_type] ?? '📄'}
+					<div class="thumb-port">
+						{#if c.thumbnail}
+							<img src={c.thumbnail} alt="" />
+						{:else}
+							<div class="ph">{TYPE_ICONS[c.content_type] ?? '📄'}</div>
+						{/if}
 					</div>
 				{/if}
-				<div class="rewind-item-info">
-					<div class="rewind-item-title">{c.title}</div>
-					<div class="rewind-item-meta">
-						<span class="badge {c.content_type}">{TYPE_LABELS[c.content_type]}</span>
+				<div class="info">
+					<div class="title">{c.title}</div>
+					<div class="meta">
+						<span class="badge">{TYPE_LABELS[c.content_type]}</span>
 						{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}</span>{/if}
 						{#if c.author}<span>{c.author}</span>{/if}
 						{#if c.consumed_at}
@@ -332,262 +329,15 @@
 {/if}
 
 <style>
-	.year-picker {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 1rem;
-		margin: 0.5rem 0 1.5rem;
+	.rewind-section {
+		margin-bottom: 28px;
 	}
-	.year-label {
-		font-size: 1.2rem;
-		font-weight: 700;
-		color: var(--primary);
-		min-width: 140px;
-		text-align: center;
-	}
-	.year-arrow {
-		padding: 0.3rem 0.8rem;
-		font-size: 1.2rem;
-		line-height: 1;
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: 3rem 1rem;
-		margin-top: 1rem;
-	}
-
-	.pct-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		padding: 1.25rem;
-		margin-bottom: 1.5rem;
-		gap: 0.2rem;
-	}
-	.pct-number {
-		font-size: 2.5rem;
-		font-weight: 900;
-		color: var(--primary);
-		line-height: 1;
-	}
-	.pct-label {
-		color: var(--text-muted);
-		font-size: 0.9rem;
-	}
-	.pct-sub {
-		font-size: 0.85rem;
-		color: var(--text-muted);
-	}
-
-	.section { margin-bottom: 2rem; }
-	.section-title {
-		font-size: 0.75rem;
+	.rewind-section h2 {
+		font-size: 11px;
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
 		color: var(--text-muted);
-		margin-bottom: 0.75rem;
-	}
-
-	/* Enhanced stat chips */
-	.enhanced-stats {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-		margin-bottom: 1.5rem;
-		justify-content: center;
-	}
-	.estat-chip {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.1rem;
-		background: var(--surface2);
-		border: 1px solid var(--border);
-		border-radius: 14px;
-		padding: 0.6rem 0.9rem;
-		min-width: 72px;
-	}
-	.estat-streak {
-		border-color: rgba(255, 140, 0, 0.4);
-		background: rgba(255, 140, 0, 0.06);
-	}
-	.estat-icon { font-size: 1.1rem; }
-	.estat-val {
-		font-size: 1rem;
-		font-weight: 800;
-		color: var(--text);
-		line-height: 1.1;
-	}
-	.estat-label {
-		font-size: 0.62rem;
-		color: var(--text-muted);
-		text-align: center;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-	}
-
-	/* Type grid */
-	.type-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-		gap: 0.6rem;
-	}
-	.type-card {
-		border: 1px solid var(--border);
-		border-radius: 12px;
-		padding: 0.75rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-	}
-	.type-icon { font-size: 1.4rem; }
-	.type-name { font-size: 0.8rem; font-weight: 600; }
-	.type-count { font-size: 0.75rem; color: var(--text-muted); }
-	.type-time { font-size: 0.9rem; font-weight: 700; }
-	.type-pct { font-size: 0.75rem; font-weight: 600; margin-top: 0.2rem; }
-
-	/* Heatmap */
-	.heatmap-wrap {
-		overflow-x: auto;
-		padding-bottom: 0.5rem;
-	}
-	.heatmap-months {
-		display: grid;
-		gap: 2px;
-		margin-bottom: 2px;
-		min-width: max-content;
-	}
-	.month-label {
-		font-size: 0.6rem;
-		color: var(--text-muted);
-		text-align: left;
-		white-space: nowrap;
-	}
-	.heatmap-body {
-		display: flex;
-		gap: 4px;
-		min-width: max-content;
-	}
-	.day-labels {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		width: 12px;
-	}
-	.day-label {
-		height: 10px;
-		font-size: 0.55rem;
-		color: var(--text-muted);
-		line-height: 10px;
-	}
-	.heatmap-grid {
-		display: flex;
-		gap: 2px;
-	}
-	.week-col {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-	.heat-cell {
-		width: 10px;
-		height: 10px;
-		border-radius: 2px;
-	}
-	.heat-legend {
-		display: flex;
-		align-items: center;
-		gap: 3px;
-		margin-top: 0.5rem;
-		font-size: 0.65rem;
-		color: var(--text-muted);
-	}
-	.legend-cell {
-		width: 10px;
-		height: 10px;
-		border-radius: 2px;
-	}
-
-	/* Month bar chart */
-	.months-chart {
-		display: flex;
-		gap: 4px;
-		align-items: flex-end;
-		height: 100px;
-		padding-bottom: 28px;
-		position: relative;
-	}
-	.month-bar-wrap {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		height: 100%;
-		justify-content: flex-end;
-		position: relative;
-		cursor: default;
-	}
-	.month-bar-col {
-		width: 100%;
-		flex: 1;
-		display: flex;
-		align-items: flex-end;
-	}
-	.month-bar {
-		width: 100%;
-		min-height: 2px;
-		border-radius: 4px 4px 0 0;
-		transition: opacity 0.2s;
-	}
-	.month-bar-label {
-		position: absolute;
-		bottom: 0;
-		font-size: 0.6rem;
-		color: var(--text-muted);
-		white-space: nowrap;
-	}
-	.month-bar-count {
-		position: absolute;
-		bottom: 12px;
-		font-size: 0.6rem;
-		color: var(--primary);
-		font-weight: 700;
-	}
-
-	/* Item list */
-	.rewind-item {
-		display: flex;
-		gap: 0.6rem;
-		align-items: center;
-		padding: 0.4rem 0.5rem;
-		border-radius: 10px;
-		background: var(--surface2);
-	}
-	.rewind-thumb {
-		width: 40px;
-		height: 40px;
-		object-fit: cover;
-		border-radius: 6px;
-		flex-shrink: 0;
-		background: var(--surface);
-	}
-	.rewind-item-info { flex: 1; min-width: 0; }
-	.rewind-item-title {
-		font-size: 0.85rem;
-		font-weight: 600;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-	.rewind-item-meta {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.3rem;
-		margin-top: 0.2rem;
-		font-size: 0.72rem;
-		color: var(--text-muted);
+		margin-bottom: 10px;
 	}
 </style>

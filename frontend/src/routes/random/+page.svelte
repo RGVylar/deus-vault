@@ -84,77 +84,84 @@
 				: 'Rango personalizado')
 			: TIME_PRESETS[selectedPreset].label
 	);
+
+	const TYPE_COLOR: Record<string, string> = {
+		youtube: 'var(--youtube)',
+		movie:   'var(--movie)',
+		series:  'var(--series)',
+		book:    'var(--book)',
+		game:    'var(--game)',
+		music:   'var(--music)',
+	};
 </script>
 
 {#if !auth.isLoggedIn}
-	<p>Redirigiendo…</p>
+	<p class="muted center">Redirigiendo…</p>
 {:else}
-<div class="random-page">
-	<h1 class="random-title">
-		<span>¿Qué consumo?</span>
-	</h1>
+<div class="roll-wrap">
+	<div style="text-align:center;">
+		<h1 style="margin-bottom:4px;">¿Qué consumo?</h1>
+		<p class="muted" style="font-size:13px;">Deja que el azar decida</p>
+	</div>
 
 	<!-- Type filter -->
 	<div class="tabs" style="justify-content:center;">
-		<button class:btn-secondary={filter !== 'all'} onclick={() => filter = 'all'}>Todo</button>
-		<button class:btn-secondary={filter !== 'youtube'} onclick={() => filter = 'youtube'}>▶️</button>
-		<button class:btn-secondary={filter !== 'movie'} onclick={() => filter = 'movie'}>🎬</button>
-		<button class:btn-secondary={filter !== 'series'} onclick={() => filter = 'series'}>📺</button>
-		<button class:btn-secondary={filter !== 'music'} onclick={() => filter = 'music'}>🎵</button>
-		<button class:btn-secondary={filter !== 'book'} onclick={() => filter = 'book'}>📖</button>
-		<button class:btn-secondary={filter !== 'game'} onclick={() => filter = 'game'}>🎮</button>
+		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>Todo</button>
+		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️</button>
+		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬</button>
+		<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺</button>
+		<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>🎵</button>
+		<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖</button>
+		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮</button>
 	</div>
 
+	<!-- Dice button -->
+	<button class="dice" class:spin={spinning} onclick={roll}>🎲</button>
+
 	<!-- Time filter -->
-	<div class="time-section">
-		<div class="time-label">⏱ ¿Cuánto tiempo tienes?</div>
-		<div class="time-presets">
+	<div class="glass time-section">
+		<div class="setting-group-title">⏱ ¿Cuánto tiempo tienes?</div>
+		<div class="tabs" style="padding:4px 0 8px; justify-content:center;">
 			{#each TIME_PRESETS as preset, i}
 				<button
-					class="time-btn"
-					class:time-btn-active={!showCustom && selectedPreset === i}
+					class="tab"
+					class:active={!showCustom && selectedPreset === i}
 					onclick={() => selectPreset(i)}
 				>{preset.label}</button>
 			{/each}
 			<button
-				class="time-btn"
-				class:time-btn-active={showCustom}
+				class="tab"
+				class:active={showCustom}
 				onclick={() => { showCustom = true; selectedPreset = -1; }}
 			>⚙️ Exacto</button>
 		</div>
 
 		{#if showCustom}
-			<div class="custom-range">
-				<div class="custom-range-row">
-					<div class="custom-field">
-						<label for="r-min">Mín (min)</label>
-						<input id="r-min" type="number" bind:value={customMin} min="0" placeholder="0" />
-					</div>
-					<span class="range-sep">–</span>
-					<div class="custom-field">
-						<label for="r-max">Máx (min)</label>
-						<input id="r-max" type="number" bind:value={customMax} min="0" placeholder="∞" />
-					</div>
+			<div class="sep"></div>
+			<div class="row" style="gap:12px; padding-top:8px;">
+				<div class="field" style="flex:1;">
+					<label for="r-min">Mín (min)</label>
+					<input id="r-min" class="text" type="number" bind:value={customMin} min="0" placeholder="0" />
 				</div>
-				{#if customMin || customMax}
-					<p class="range-hint">
-						{customMin ? formatDuration(Number(customMin)) : '0'}
-						–
-						{customMax ? formatDuration(Number(customMax)) : 'sin límite'}
-					</p>
-				{/if}
+				<span class="muted" style="padding-top:24px; font-weight:700;">–</span>
+				<div class="field" style="flex:1;">
+					<label for="r-max">Máx (min)</label>
+					<input id="r-max" class="text" type="number" bind:value={customMax} min="0" placeholder="∞" />
+				</div>
 			</div>
+			{#if customMin || customMax}
+				<p class="muted center" style="font-size:12px; margin-top:4px;">
+					{customMin ? formatDuration(Number(customMin)) : '0'}
+					–
+					{customMax ? formatDuration(Number(customMax)) : 'sin límite'}
+				</p>
+			{/if}
 		{/if}
 	</div>
 
-	<!-- Roll button -->
-	<button class="roll-btn" onclick={roll} disabled={spinning}>
-		{spinning ? '🎲 Buscando…' : '🎲 Elegir al azar'}
-	</button>
-
 	{#if error}
-		<div class="error-card">
-			<p>😶 {error === 'No pending content in that time range'
+		<div class="glass" style="padding:12px 16px; border-color:color-mix(in oklab, var(--danger) 30%, transparent);">
+			<p class="muted center">😶 {error === 'No pending content in that time range'
 				? 'Nada en ese rango de tiempo. Prueba con otro filtro.'
 				: error}
 			</p>
@@ -165,26 +172,35 @@
 	{#if pick}
 		{@const link = buildConsumeUrl(pick)}
 		{@const landscape = pick.content_type === 'youtube' || pick.content_type === 'movie' || pick.content_type === 'series' || pick.content_type === 'game'}
-		<div class="result-wrap">
-			<div class="result-kicker">Tu siguiente contenido</div>
-			<div class="content-card random-pick" class:card-landscape={landscape} class:card-portrait={!landscape} style="--card-accent:var(--{pick.content_type})">
+		<div style="width:100%;">
+			<p class="muted center" style="font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px;">Tu siguiente contenido</p>
+			<div
+				class="c-card random-pick"
+				class:landscape
+				class:portrait={!landscape}
+				style="--card-accent:{TYPE_COLOR[pick.content_type] ?? 'var(--primary)'}; --accent:{TYPE_COLOR[pick.content_type] ?? 'var(--primary)'}"
+			>
 				{#if landscape}
-					<div class="thumb-landscape">
+					<div class="thumb-land">
 						{#if pick.thumbnail}
 							<img src={pick.thumbnail} alt="" />
 						{:else}
-							<div class="thumb-landscape-ph">{TYPE_ICONS[pick.content_type] || '📄'}</div>
+							<div class="ph">{TYPE_ICONS[pick.content_type] || '📄'}</div>
 						{/if}
 					</div>
-				{:else if pick.thumbnail}
-					<img class="thumb-portrait" src={pick.thumbnail} alt="" />
 				{:else}
-					<div class="thumb-portrait-ph">{TYPE_ICONS[pick.content_type] || '📄'}</div>
+					<div class="thumb-port">
+						{#if pick.thumbnail}
+							<img src={pick.thumbnail} alt="" />
+						{:else}
+							<div class="ph">{TYPE_ICONS[pick.content_type] || '📄'}</div>
+						{/if}
+					</div>
 				{/if}
 				<div class="info">
-					<div class="title" style="font-size:1rem;">{pick.title}</div>
+					<div class="title" style="font-size:15px;">{pick.title}</div>
 					<div class="meta">
-						<span class="badge {pick.content_type}">{TYPE_LABELS[pick.content_type]}</span>
+						<span class="badge">{TYPE_LABELS[pick.content_type]}</span>
 						{#if pick.content_type === 'series'}
 							{#if pick.seasons && pick.seasons > 0}<span>📺 {pick.seasons}T</span>{/if}
 							{#if pick.episode_count && pick.episode_count > 0}<span>{pick.episode_count} ep</span>{/if}
@@ -195,18 +211,16 @@
 						{#if pick.author}<span>{pick.author}</span>{/if}
 					</div>
 					{#if pick.content_type === 'series' && pick.episode_count && pick.episode_count > 0 && pick.duration_minutes > 0}
-						<div class="series-total">~{formatDuration(pick.duration_minutes * pick.episode_count)} en total</div>
+						<div style="font-size:11px; font-weight:600; color:var(--series);">~{formatDuration(pick.duration_minutes * pick.episode_count)} en total</div>
 					{/if}
-					<div class="actions" style="margin-top:0.6rem; flex-wrap:wrap;">
+					<div class="actions" style="margin-top:10px;">
 						{#if link}
 							<a href={link} target="_blank" rel="noopener">
-								<button>🚀 ¡Vamos!</button>
+								<button class="btn btn-primary">🚀 ¡Vamos!</button>
 							</a>
 						{/if}
-						<button onclick={() => consume(pick!.id)} style="background:rgba(79,255,170,0.15); color:var(--game); box-shadow:none;">
-							✓ Hecho
-						</button>
-						<button class="btn-secondary" onclick={roll}>🔄 Otro</button>
+						<button class="btn btn-consume" onclick={() => consume(pick!.id)}>✓ Hecho</button>
+						<button class="btn" onclick={roll}>🔄 Otro</button>
 					</div>
 				</div>
 			</div>
@@ -216,136 +230,9 @@
 {/if}
 
 <style>
-	.random-page {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		min-height: 70dvh;
-		text-align: center;
-		gap: 1.25rem;
-		padding-top: 0.5rem;
-	}
-
-	.random-title {
-		font-size: 1.8rem;
-		font-weight: 900;
-		margin: 0;
-	}
-	.random-title span {
-		background: linear-gradient(135deg, var(--primary), var(--game));
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
-	}
-
-	/* Time filter section */
 	.time-section {
 		width: 100%;
-		max-width: 420px;
-		background: var(--surface);
-		border: 1px solid var(--border);
-		border-radius: 16px;
-		padding: 1rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.65rem;
-	}
-	.time-label {
-		font-size: 0.78rem;
-		font-weight: 700;
-		color: var(--text-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-	}
-	.time-presets {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.4rem;
-		justify-content: center;
-	}
-	.time-btn {
-		background: var(--surface2);
-		border: 1px solid var(--border);
-		color: var(--text-muted);
-		box-shadow: none;
-		padding: 0.35rem 0.75rem;
-		font-size: 0.8rem;
-		border-radius: 99px;
-	}
-	.time-btn:hover { background: var(--surface-hover); color: var(--text); box-shadow: none; }
-	.time-btn-active {
-		background: var(--primary-glow) !important;
-		border-color: var(--primary) !important;
-		color: var(--primary) !important;
-		font-weight: 700;
-	}
-
-	/* Custom range */
-	.custom-range {
-		border-top: 1px solid var(--border);
-		padding-top: 0.65rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-	}
-	.custom-range-row {
-		display: flex;
-		align-items: flex-end;
-		gap: 0.5rem;
-	}
-	.custom-field {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-		text-align: left;
-	}
-	.custom-field label { font-size: 0.72rem; color: var(--text-muted); }
-	.custom-field input { font-size: 0.85rem; padding: 0.4rem 0.6rem; }
-	.range-sep { color: var(--text-muted); padding-bottom: 0.5rem; font-weight: 700; }
-	.range-hint { font-size: 0.75rem; color: var(--primary-dim); text-align: center; }
-
-	/* Roll button */
-	.roll-btn {
-		font-size: 1.1rem;
-		padding: 1rem 2.5rem;
-		border-radius: 99px;
-		min-width: 200px;
-	}
-
-	/* Error */
-	.error-card {
-		background: rgba(255,90,90,0.08);
-		border: 1px solid rgba(255,90,90,0.2);
-		border-radius: 12px;
-		padding: 0.75rem 1.25rem;
-		color: var(--danger);
-		font-size: 0.9rem;
-		max-width: 400px;
-	}
-
-	/* Result */
-	.result-wrap {
-		width: 100%;
-		max-width: 480px;
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-		text-align: left;
-	}
-	.result-kicker {
-		font-size: 0.72rem;
-		font-weight: 700;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--text-muted);
-		text-align: center;
-	}
-
-	/* Thumb placeholder reused */
-	:global(.thumb-placeholder) {
-		display: flex;
-		align-items: center;
-		justify-content: center;
+		padding: 14px 16px;
+		border-radius: 18px;
 	}
 </style>

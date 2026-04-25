@@ -203,3 +203,7 @@ pct exec 210 -- bash -c "cd /opt/deus-vault/backend && bash test_bateria_lookup.
 
 pct exec 210 -- bash -lc 'curl -sG --data-urlencode "url=https://openlibrary.org/works/OL45883W" "http://127.0.0.1:8000/api/lookup/auto" -w "\nHTTPSTATUS:%{http_code}\n"'
 ```
+
+## Features a añadir
+Extension que se integre en youtube y en la busqueda de google para que puedas añadir directamente contenido a tu vault
+habilitar esa misma extension que detecte cuando tienes abierto un contenido de tu vault y te deje marcarlo como visto cuando termines el video o lo que sea

@@ -91,69 +91,90 @@
 		contents = contents.map(x => x.id === c.id ? { ...x, consumed_at: isoDate } : x);
 		await api.patch(`/contents/${c.id}`, { consumed_at: isoDate });
 	}
+
+	const TYPE_COLOR: Record<string, string> = {
+		youtube: 'var(--youtube)',
+		movie:   'var(--movie)',
+		series:  'var(--series)',
+		book:    'var(--book)',
+		game:    'var(--game)',
+		music:   'var(--music)',
+	};
 </script>
 
 {#if !auth.isLoggedIn}
-	<p>Redirigiendo…</p>
+	<p class="muted center">Redirigiendo…</p>
 {:else}
 	<h1>Consumido</h1>
 
 	{#if stats}
-		<div class="hero-number" style="padding:0.5rem 0;">
-			<div class="number" style="font-size:2rem;">{formatDuration(stats.total_consumed_minutes)}</div>
+		<div class="hero" style="padding:16px 12px;">
+			<div class="kicker">TOTAL CONSUMIDO</div>
+			<div class="number" style="font-size:clamp(40px,14vw,80px);">{formatDuration(stats.total_consumed_minutes)}</div>
 			<div class="unit">de contenido consumido</div>
 		</div>
-		<div class="stat-row">
-			<div class="stat-pill">
-				<span>✅</span> <span class="val">{stats.consumed_count}</span> items
+		<div class="pill-row">
+			<div class="pill">
+				<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">items</span>
 			</div>
 		</div>
 	{/if}
 
 	<div class="tabs">
-		<button class:btn-secondary={filter !== 'all'} onclick={() => filter = 'all'}>Todos</button>
-		<button class:btn-secondary={filter !== 'youtube'} onclick={() => filter = 'youtube'}>▶️</button>
-		<button class:btn-secondary={filter !== 'movie'} onclick={() => filter = 'movie'}>🎬</button>
-		<button class:btn-secondary={filter !== 'series'} onclick={() => filter = 'series'}>📺</button>
-		<button class:btn-secondary={filter !== 'book'} onclick={() => filter = 'book'}>📖</button>
-		<button class:btn-secondary={filter !== 'game'} onclick={() => filter = 'game'}>🎮</button>
+		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>Todos</button>
+		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️</button>
+		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬</button>
+		<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺</button>
+		<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖</button>
+		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮</button>
+		<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>🎵</button>
 	</div>
 
 	{#if loading}
-		<p style="text-align:center; color:var(--text-muted);">Cargando…</p>
+		<p class="muted center">Cargando…</p>
 	{:else if contents.length === 0}
-		<div class="card" style="text-align:center; padding:2rem;">
-			<p style="color:var(--text-muted);">Aún no has consumido nada. ¡A ello!</p>
+		<div class="empty">
+			<span class="icon">✅</span>
+			<p>Aún no has consumido nada. ¡A ello!</p>
 		</div>
 	{:else}
-		<div style="display:flex; flex-direction:column; gap:0.5rem;">
+		<div class="content-grid">
 			{#each contents as c (c.id)}
 				{@const link = buildConsumeUrl(c)}
 				{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series' || c.content_type === 'game'}
-				<div class="content-card" class:card-landscape={landscape} class:card-portrait={!landscape} style="opacity:0.8; --card-accent:var(--{c.content_type})">
+				<div
+					class="c-card"
+					class:landscape
+					class:portrait={!landscape}
+					style="opacity:0.85; --card-accent:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}; --accent:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}"
+				>
 					{#if landscape}
-						<div class="thumb-landscape">
+						<div class="thumb-land">
 							{#if c.thumbnail}
 								<img src={c.thumbnail} alt="" />
 							{:else}
-								<div class="thumb-landscape-ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
+								<div class="ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
 							{/if}
 						</div>
-					{:else if c.thumbnail}
-						<img class="thumb-portrait" src={c.thumbnail} alt="" />
 					{:else}
-						<div class="thumb-portrait-ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
+						<div class="thumb-port">
+							{#if c.thumbnail}
+								<img src={c.thumbnail} alt="" />
+							{:else}
+								<div class="ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
+							{/if}
+						</div>
 					{/if}
 					<div class="info">
 						<div class="title">{c.title}</div>
 						<div class="meta">
-							<span class="badge {c.content_type}">{TYPE_LABELS[c.content_type]}</span>
+							<span class="badge">{TYPE_LABELS[c.content_type]}</span>
 							{#if c.content_type === 'series'}
 								{#if c.seasons && c.seasons > 0}<span>📺 {c.seasons}T</span>{/if}
 								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} ep</span>{/if}
 								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>{/if}
 								{#if c.episode_count && c.episode_count > 0 && c.duration_minutes > 0}
-									<span class="series-total">~{formatDuration(c.duration_minutes * c.episode_count)} total</span>
+									<span style="font-size:10px; font-weight:600; color:var(--series);">~{formatDuration(c.duration_minutes * c.episode_count)} total</span>
 								{/if}
 							{:else if c.duration_minutes > 0}
 								<span>⏱ {formatDuration(c.duration_minutes)}</span>
@@ -164,12 +185,12 @@
 									<input
 										type="date"
 										bind:value={editDateValue}
-										class="date-input"
+										class="text date-input"
 										onblur={() => saveDate(c)}
 										onkeydown={(e) => { if (e.key === 'Enter') saveDate(c); if (e.key === 'Escape') editingDateId = null; }}
 										autofocus
 									/>
-									<button class="btn-secondary date-save-btn" onclick={() => saveDate(c)}>✓</button>
+									<button class="btn" onclick={() => saveDate(c)}>✓</button>
 								</span>
 							{:else if c.consumed_at}
 								<button class="date-btn" onclick={() => startEditDate(c)} title="Editar fecha">
@@ -184,10 +205,10 @@
 						<div class="actions">
 							{#if link}
 								<a href={link} target="_blank" rel="noopener">
-									<button class="btn-secondary">Abrir</button>
+									<button class="btn">Abrir</button>
 								</a>
 							{/if}
-							<button class="btn-secondary" onclick={() => unconsume(c.id)}>↩ Devolver</button>
+							<button class="btn" onclick={() => unconsume(c.id)}>↩ Devolver</button>
 						</div>
 					</div>
 				</div>
@@ -195,8 +216,8 @@
 		</div>
 
 		{#if contents.length < total}
-			<div style="text-align:center; margin: 1rem 0 2rem;">
-				<button class="btn-secondary" onclick={loadMore} disabled={loadingMore}>
+			<div class="center mt16">
+				<button class="btn btn-lg" onclick={loadMore} disabled={loadingMore}>
 					{loadingMore ? 'Cargando…' : `Cargar más (${total - contents.length} restantes)`}
 				</button>
 			</div>
@@ -205,32 +226,26 @@
 {/if}
 
 <style>
-	/* Editable consumed date */
 	.date-btn {
 		all: unset;
 		cursor: pointer;
-		font-size: 0.72rem;
+		font-size: 11px;
 		color: var(--text-muted);
-		border-bottom: 1px dashed var(--border);
+		border-bottom: 1px dashed var(--glass-border);
 		padding-bottom: 1px;
 		transition: color 0.15s;
 	}
-	.date-btn:hover { color: var(--primary); border-bottom-color: var(--primary); }
+	.date-btn:hover { color: var(--primary); }
 	.date-btn-empty { opacity: 0.5; }
 	.date-btn-empty:hover { opacity: 1; }
 
 	.date-edit-wrap {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.3rem;
+		gap: 4px;
 	}
 	.date-input {
-		font-size: 0.75rem;
-		padding: 0.15rem 0.35rem;
-		border-radius: 6px;
-	}
-	.date-save-btn {
-		font-size: 0.72rem;
-		padding: 0.15rem 0.4rem;
+		font-size: 12px !important;
+		padding: 4px 8px !important;
 	}
 </style>

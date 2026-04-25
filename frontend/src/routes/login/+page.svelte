@@ -31,38 +31,36 @@
 	}
 </script>
 
-<div style="display:flex; flex-direction:column; justify-content:center; min-height:80dvh;">
-	<h1 style="text-align:center; font-size:2.2rem; margin-bottom:0.3rem;">
-		<span style="background:linear-gradient(135deg, var(--primary), var(--game)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Deus Vault</span>
-	</h1>
-	<p style="text-align:center; color:var(--text-muted); margin-bottom:2rem;">Tu bóveda de contenido por consumir</p>
+<div class="login-wrap">
+	<div class="logo-title">DEUS VAULT</div>
+	<div class="logo-tag">Tu bóveda de contenido por consumir</div>
 
-	<div class="card">
-		<div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-			<button class:btn-secondary={mode !== 'login'} onclick={() => mode = 'login'} style="flex:1;">Login</button>
-			<button class:btn-secondary={mode !== 'register'} onclick={() => mode = 'register'} style="flex:1;">Registro</button>
+	<div class="glass login-card">
+		<div class="seg">
+			<button class:active={mode === 'login'} onclick={() => mode = 'login'}>Iniciar sesión</button>
+			<button class:active={mode === 'register'} onclick={() => mode = 'register'}>Crear cuenta</button>
 		</div>
 
 		<form onsubmit={e => { e.preventDefault(); submit(); }}>
 			{#if mode === 'register'}
-				<div class="form-group">
+				<div class="field">
 					<label for="name">Nombre</label>
-					<input id="name" bind:value={name} required />
+					<input id="name" class="text" bind:value={name} required />
 				</div>
 			{/if}
-			<div class="form-group">
+			<div class="field">
 				<label for="email">Email</label>
-				<input id="email" type="email" bind:value={email} required />
+				<input id="email" class="text" type="email" bind:value={email} required />
 			</div>
-			<div class="form-group">
+			<div class="field">
 				<label for="password">Contraseña</label>
-				<input id="password" type="password" bind:value={password} minlength="8" required />
+				<input id="password" class="text" type="password" bind:value={password} minlength="8" required />
 			</div>
 
-			{#if error}<p class="error">{error}</p>{/if}
+			{#if error}<p class="error-msg">{error}</p>{/if}
 
-			<button type="submit" disabled={loading} style="width:100%; margin-top:0.5rem;">
-				{loading ? '...' : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
+			<button type="submit" class="btn btn-primary btn-lg" disabled={loading} style="width:100%; margin-top:8px; justify-content:center;">
+				{loading ? '…' : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
 			</button>
 		</form>
 	</div>
