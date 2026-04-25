@@ -431,7 +431,7 @@ input.text::placeholder, textarea.text::placeholder { color: var(--text-dim); }
 .c-card.portrait { flex-direction: row; }
 .c-card .thumb-port {
   width: 38%;
-  min-height: 120px;
+  aspect-ratio: 2/3;
   background-size: cover;
   background-position: center;
   position: relative;
