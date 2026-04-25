@@ -1519,3 +1519,24 @@ h2 {
   .login-wrap .logo-title { display: none; }
   .login-wrap .logo-tag   { display: none; }
 }
+
+/* ───────── MODAL — desktop overrides ───────── */
+@media (min-width: 1024px) {
+  .overlay {
+    align-items: center;
+    padding: 24px;
+  }
+  .modal {
+    max-width: 600px;
+    max-height: 85vh;
+    border-radius: 28px;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.7), var(--glass-inner);
+    animation: fadeup 0.25s cubic-bezier(0.2,0.8,0.2,1);
+  }
+  .modal-handle { display: none; }
+}
+
+@keyframes fadeup {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
