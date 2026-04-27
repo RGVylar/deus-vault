@@ -1209,10 +1209,14 @@ h2 {
 
 /* ─── HERO GRID (desk) ─── */
 .desk-hero-grid {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 18px;
   margin-bottom: 22px;
+}
+@media (min-width: 1024px) {
+  .desk-hero-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 18px;
+  }
 }
 .desk-hero {
   position: relative;
