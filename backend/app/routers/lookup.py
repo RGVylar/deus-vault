@@ -22,6 +22,7 @@ STREAMING_HOST_PATTERNS: dict[str, tuple[str, ...]] = {
     "disney": ("disneyplus.com",),
     "stremio": ("strem.io", "stremio.com", "stremio"),
     "spotify": ("open.spotify.com",),
+    "crunchyroll": ("crunchyroll.com",),
 }
 
 # Hosts that should be treated as books for autodetection
@@ -39,6 +40,7 @@ PROVIDER_LABELS: dict[str, str] = {
     "disney": "Disney+",
     "stremio": "Stremio",
     "spotify": "Spotify",
+    "crunchyroll": "Crunchyroll",
     "openlibrary": "Open Library",
     "goodreads": "Goodreads",
     "amazon": "Amazon",
@@ -611,7 +613,7 @@ def _clean_title(title: str, provider: str) -> str:
         cleaned,
         flags=re.IGNORECASE,
     )
-    cleaned = re.sub(r"^(prime\s*video|netflix|hbo\s*max|max|disney\+)\s*[:\-]\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^(prime\s*video|netflix|hbo\s*max|max|disney\+|crunchyroll)\s*[:\-]\s*", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\s+", " ", cleaned)
     return cleaned.strip()
 
@@ -677,6 +679,12 @@ def _extract_source_id(url: str, provider: str) -> str:
         if imdb_match:
             return imdb_match.group(1)
         match = re.search(r"stremio(?:://|\.com/)(?:detail/)?(?:movie|series)?/?([A-Za-z0-9:_-]+)", url)
+        return match.group(1) if match else ""
+
+    if provider == "crunchyroll":
+        # e.g. crunchyroll.com/series/GY1XW7V0Y/attack-on-titan
+        #      crunchyroll.com/es/series/GY1XW7V0Y/attack-on-titan
+        match = re.search(r"crunchyroll\.com/(?:[a-z]{2}/)?(?:series|watch)/([A-Z0-9]+)", url)
         return match.group(1) if match else ""
 
     return ""
@@ -996,7 +1004,8 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
         source_id = extracted_source_id or (tmdb.get("source_id", "") if tmdb else "")
 
     # Decide suggested content type: prefer TMDb media type (tv -> series, movie -> movie)
-    suggested_type = "movie"
+    # Crunchyroll defaults to series (anime) when TMDb doesn't resolve
+    suggested_type = "series" if provider == "crunchyroll" else "movie"
     if tmdb:
         media_type = tmdb.get("media_type")
         if media_type == "tv":
@@ -1040,5 +1049,5 @@ async def lookup_auto(
 
     raise HTTPException(
         status.HTTP_400_BAD_REQUEST,
-        "Unsupported URL. Try YouTube, Steam, Spotify, Netflix, Prime Video, Max, Disney+, Spotify, Stremio, or book links (OpenLibrary/Goodreads/GoogleBooks).",
+        "Unsupported URL. Try YouTube, Steam, Spotify, Netflix, Prime Video, Max, Disney+, Crunchyroll, Stremio, or book links (OpenLibrary/Goodreads/GoogleBooks).",
     )
