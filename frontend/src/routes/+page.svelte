@@ -196,6 +196,7 @@
 				h.includes('max.com') || h.includes('hbomax.com') ||
 				h.includes('disneyplus.com') || h.includes('strem.io') ||
 				h.includes('stremio.com') || h.includes('open.spotify.com') ||
+				h.includes('crunchyroll.com') ||
 				h.includes('openlibrary.org') || h.includes('goodreads.com') ||
 				h.includes('books.google.com');
 		} catch { return false; }
