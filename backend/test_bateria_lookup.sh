@@ -17,6 +17,7 @@ DISNEY_SERIES_URL="https://www.disneyplus.com/series/andor/3xsQKWG00GL5"
 PRIME_SERIES_URL="https://www.primevideo.com/dp/amzn1.dv.gti.ba61bdfa-2247-4ccb-8d15-6fc553d36ca7?autoplay=0&ref_=atv_cf_strg_wb"
 MAX_SERIES_URL="https://play.hbomax.com/page/urn:hbo:page:GVU2cggagzYNJjhsJATwo:type:series"
 STREMIO_SERIES_URL="https://app.strem.io/shell-v4.4/#/detail/series/tt0944947/tt0944947"
+CRUNCHYROLL_SERIES_URL="https://www.crunchyroll.com/series/GY1XW7V0Y/attack-on-titan"
 
 # ── Libros ───────────────────────────────────────────────────
 OPENLIBRARY_URL="https://openlibrary.org/works/OL45883W"
@@ -58,6 +59,7 @@ probar "Disney+ (serie)" "$DISNEY_SERIES_URL"
 probar "Prime Video (serie)" "$PRIME_SERIES_URL"
 probar "Max (serie)" "$MAX_SERIES_URL"
 probar "Stremio (serie)" "$STREMIO_SERIES_URL"
+probar "Crunchyroll (serie)" "$CRUNCHYROLL_SERIES_URL"
 
 echo "\n════════════════════════════════════════"
 echo "  LIBROS"
