@@ -153,8 +153,16 @@
 
 {:else}
 
+<!-- Mobile hero -->
+<div class="hero mobile-only" style="padding: 20px 12px 8px;">
+	<div class="kicker">TU AÑO EN CONTENIDO</div>
+	<div class="number" style="font-size:clamp(64px,20vw,100px); background:linear-gradient(180deg,#fff,oklch(0.78 0.18 300)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 0 28px oklch(0.75 0.18 300 / 0.5));">{stats.total_consumed_count}</div>
+	<div class="unit">{stats.total_consumed_count === 1 ? 'ítem consumido' : 'ítems consumidos'} · {formatDuration(stats.total_consumed_minutes)}</div>
+	<div class="sub">{stats.percentage_of_year.toFixed(2)}% de tu año · ≈ {minutesToDays(stats.total_consumed_minutes)}</div>
+</div>
+
 <!-- Desktop rewind grid -->
-<div class="desk-rewind-grid">
+<div class="desk-rewind-grid desk-only">
 
 	<!-- Hero row: spans full width on desktop -->
 	<div class="desk-rewind-hero">
@@ -264,7 +272,7 @@
 	{/if}
 </div>
 
-<!-- Mobile-only heatmap + month bars -->
+<!-- Mobile heatmap -->
 <section class="rewind-section mobile-only">
 	<h2>Actividad diaria</h2>
 	<div class="glass" style="overflow-x:auto; padding:12px;">
@@ -303,6 +311,7 @@
 	</div>
 </section>
 
+<!-- Mobile month bars -->
 <section class="rewind-section mobile-only">
 	<h2>Por mes</h2>
 	<div class="glass" style="padding:16px;">
