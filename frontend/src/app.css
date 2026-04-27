@@ -640,6 +640,7 @@ button { font-family: inherit; }
   align-items: flex-end;
   justify-content: center;
   padding: 16px;
+  padding-bottom: 96px; /* espacio sobre el tab bar (bottom:12px + altura ~68px + margen) */
   animation: fadein 0.25s ease;
 }
 .modal {
@@ -1528,7 +1529,7 @@ h2 {
 @media (min-width: 1024px) {
   .overlay {
     align-items: center;
-    padding: 24px;
+    padding: 24px; /* reset — no hay tab bar en desktop */
   }
   .modal {
     max-width: 600px;
