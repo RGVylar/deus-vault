@@ -192,6 +192,12 @@
 				{#if stats.favorite_type}
 					<div class="estat" style="min-width:0;"><div class="ei">{TYPE_ICONS[stats.favorite_type] ?? '📄'}</div><div class="ev">{TYPE_LABELS[stats.favorite_type] ?? stats.favorite_type}</div><div class="el">favorito</div></div>
 				{/if}
+				{#if stats.completion_rate !== null}
+					<div class="estat" style="min-width:0;"><div class="ei">📊</div><div class="ev">{stats.completion_rate}%</div><div class="el">tasa éxito</div></div>
+				{/if}
+				{#if stats.abandoned_count > 0}
+					<div class="estat" style="min-width:0;"><div class="ei">🚫</div><div class="ev">{stats.abandoned_count}</div><div class="el">abandonados</div></div>
+				{/if}
 			</div>
 		</div>
 	</div>
@@ -269,6 +275,12 @@
 	{/if}
 	{#if stats.favorite_type}
 		<div class="estat"><div class="ei">{TYPE_ICONS[stats.favorite_type] ?? '📄'}</div><div class="ev">{TYPE_LABELS[stats.favorite_type] ?? stats.favorite_type}</div><div class="el">favorito</div></div>
+	{/if}
+	{#if stats.completion_rate !== null}
+		<div class="estat"><div class="ei">📊</div><div class="ev">{stats.completion_rate}%</div><div class="el">tasa éxito</div></div>
+	{/if}
+	{#if stats.abandoned_count > 0}
+		<div class="estat"><div class="ei">🚫</div><div class="ev">{stats.abandoned_count}</div><div class="el">abandonados</div></div>
 	{/if}
 </div>
 

@@ -552,6 +552,13 @@ button { font-family: inherit; }
   color: var(--game);
   border-color: color-mix(in oklab, var(--game) 40%, transparent);
 }
+.btn-abandon {
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+  color: var(--danger);
+  border-color: color-mix(in oklab, var(--danger) 28%, transparent);
+  opacity: 0.7;
+}
+.btn-abandon:hover { opacity: 1; }
 .btn-danger {
   background: color-mix(in oklab, var(--danger) 18%, transparent);
   color: var(--danger);

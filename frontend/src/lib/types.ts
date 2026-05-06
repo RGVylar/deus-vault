@@ -24,6 +24,8 @@ export interface Content {
 	seasons?: number | null;
 	consumed: boolean;
 	consumed_at: string | null;
+	abandoned: boolean;
+	abandoned_at: string | null;
 	created_at: string;
 	source_id: string | null;
 	author: string | null;
@@ -46,6 +48,7 @@ export interface VaultStats {
 	total_consumed_minutes: number;
 	pending_count: number;
 	consumed_count: number;
+	abandoned_count: number;
 	by_type: Record<string, number>;
 }
 
@@ -96,4 +99,8 @@ export interface RewindStats {
 	best_month: number | null;
 	avg_days_to_consume: number | null;
 	favorite_type: string | null;
+	abandoned_count: number;
+	abandoned_minutes: number;
+	most_abandoned_type: string | null;
+	completion_rate: number | null;
 }

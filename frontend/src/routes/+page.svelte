@@ -294,6 +294,7 @@
 	}
 
 	async function consume(id: number) { await api.post(`/contents/${id}/consume`); load(); }
+	async function abandon(id: number) { await api.post(`/contents/${id}/abandon`); load(); }
 	async function remove(id: number) {
 		deletingId = null;
 		await api.del(`/contents/${id}`);
@@ -710,7 +711,8 @@
 								style="opacity:{c.pinned ? 1 : 0.5};"
 							>{c.pinned ? '📌' : '📍'}</button>
 							<button class="btn" onclick={() => startEdit(c)} title="Editar">✏️</button>
-							<button class="btn btn-consume" onclick={() => consume(c.id)}>✓</button>
+							<button class="btn btn-consume" onclick={() => consume(c.id)} title="Marcar como consumido">✓</button>
+							<button class="btn btn-abandon" onclick={() => abandon(c.id)} title="Abandonar">🚫</button>
 							{#if deletingId === c.id}
 								<span style="display:flex; gap:4px;">
 									<button class="btn btn-danger" onclick={() => remove(c.id)}>Sí</button>

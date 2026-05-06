@@ -72,12 +72,21 @@ def vault_stats(
     """Pending debt (progress-aware) and consumed totals."""
     pending_items = list(
         db.scalars(
-            select(Content).where(Content.user_id == user.id, Content.consumed == False)  # noqa: E712
+            select(Content).where(
+                Content.user_id == user.id,
+                Content.consumed == False,  # noqa: E712
+                Content.abandoned == False,  # noqa: E712
+            )
         ).all()
     )
     consumed_items = list(
         db.scalars(
             select(Content).where(Content.user_id == user.id, Content.consumed == True)  # noqa: E712
+        ).all()
+    )
+    abandoned_items = list(
+        db.scalars(
+            select(Content).where(Content.user_id == user.id, Content.abandoned == True)  # noqa: E712
         ).all()
     )
 
@@ -94,6 +103,7 @@ def vault_stats(
         total_consumed_minutes=total_consumed,
         pending_count=len(pending_items),
         consumed_count=len(consumed_items),
+        abandoned_count=len(abandoned_items),
         by_type={k: v for k, v in by_type.items() if v > 0},
     )
 
@@ -213,6 +223,34 @@ def rewind(
     if by_type:
         favorite_type = max(by_type, key=lambda k: by_type[k].count)
 
+    # --- Abandoned stats for this year ---
+    abandoned_items_year = list(
+        db.scalars(
+            select(Content)
+            .where(
+                Content.user_id == user.id,
+                Content.abandoned == True,  # noqa: E712
+                Content.abandoned_at >= start,
+                Content.abandoned_at < end,
+            )
+        ).all()
+    )
+    abandoned_count = len(abandoned_items_year)
+    abandoned_minutes = sum(_effective_duration(c) for c in abandoned_items_year)
+
+    most_abandoned_type: str | None = None
+    if abandoned_items_year:
+        type_counts: dict[str, int] = {}
+        for c in abandoned_items_year:
+            key = c.content_type.value
+            type_counts[key] = type_counts.get(key, 0) + 1
+        most_abandoned_type = max(type_counts, key=lambda k: type_counts[k])
+
+    total_finished = len(items) + abandoned_count
+    completion_rate: float | None = None
+    if total_finished > 0:
+        completion_rate = round(len(items) / total_finished * 100, 1)
+
     return RewindStats(
         year=year,
         total_consumed_minutes=total_minutes,
@@ -227,6 +265,10 @@ def rewind(
         best_month=best_month,
         avg_days_to_consume=avg_days_to_consume,
         favorite_type=favorite_type,
+        abandoned_count=abandoned_count,
+        abandoned_minutes=abandoned_minutes,
+        most_abandoned_type=most_abandoned_type,
+        completion_rate=completion_rate,
     )
 
 
@@ -248,6 +290,7 @@ def list_collections(
 @router.get("", response_model=PaginatedContents)
 def list_contents(
     consumed: bool | None = Query(None),
+    abandoned: bool | None = Query(None),
     content_type: ContentType | None = Query(None),
     collection: str | None = Query(None, max_length=100),
     search: str | None = Query(None, max_length=200),
@@ -258,8 +301,16 @@ def list_contents(
     db: Session = Depends(get_db),
 ) -> PaginatedContents:
     q = select(Content).where(Content.user_id == user.id)
+    if abandoned is not None:
+        q = q.where(Content.abandoned == abandoned)
+        if abandoned is False:
+            # when fetching non-abandoned, also exclude abandoned items
+            pass
     if consumed is not None:
         q = q.where(Content.consumed == consumed)
+        # When fetching pending (consumed=False), exclude abandoned by default
+        if consumed is False and abandoned is None:
+            q = q.where(Content.abandoned == False)  # noqa: E712
     if content_type is not None:
         q = q.where(Content.content_type == content_type)
     if collection is not None:
@@ -335,6 +386,43 @@ def mark_consumed(
     return content
 
 
+@router.post("/{content_id}/abandon", response_model=ContentOut)
+def mark_abandoned(
+    content_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Content:
+    content = db.get(Content, content_id)
+    if not content or content.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Content not found")
+    content.abandoned = True
+    content.abandoned_at = datetime.now(timezone.utc)
+    content.consumed = False
+    content.consumed_at = None
+    db.commit()
+    db.refresh(content)
+    return content
+
+
+@router.post("/{content_id}/restore", response_model=ContentOut)
+def restore_content(
+    content_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Content:
+    """Restore an abandoned (or consumed) item back to pending."""
+    content = db.get(Content, content_id)
+    if not content or content.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Content not found")
+    content.abandoned = False
+    content.abandoned_at = None
+    content.consumed = False
+    content.consumed_at = None
+    db.commit()
+    db.refresh(content)
+    return content
+
+
 @router.post("/{content_id}/unconsume", response_model=ContentOut)
 def mark_unconsumed(
     content_id: int,
@@ -374,7 +462,11 @@ def random_pick(
 ) -> Content:
     """Pick a random pending content item, optionally filtered by available time.
     Pinned items have double weight."""
-    q = select(Content).where(Content.user_id == user.id, Content.consumed == False)  # noqa: E712
+    q = select(Content).where(
+        Content.user_id == user.id,
+        Content.consumed == False,  # noqa: E712
+        Content.abandoned == False,  # noqa: E712
+    )
     if content_type is not None:
         q = q.where(Content.content_type == content_type)
     items = list(db.scalars(q).all())

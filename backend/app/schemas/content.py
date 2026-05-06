@@ -52,6 +52,8 @@ class ContentOut(BaseModel):
     seasons: int | None
     consumed: bool
     consumed_at: datetime | None
+    abandoned: bool
+    abandoned_at: datetime | None
     created_at: datetime
     source_id: str | None
     author: str | None
@@ -68,6 +70,7 @@ class VaultStats(BaseModel):
     total_consumed_minutes: int
     pending_count: int
     consumed_count: int
+    abandoned_count: int
     by_type: dict[str, int]  # pending minutes per type
 
 
@@ -110,3 +113,8 @@ class RewindStats(BaseModel):
     best_month: int | None          # month number (1-12)
     avg_days_to_consume: float | None
     favorite_type: str | None
+    # Abandoned stats
+    abandoned_count: int
+    abandoned_minutes: int
+    most_abandoned_type: str | None
+    completion_rate: float | None   # consumed / (consumed + abandoned) * 100

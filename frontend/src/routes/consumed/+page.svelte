@@ -11,6 +11,7 @@
 	let contents: Content[] = $state([]);
 	let stats: VaultStats | null = $state(null);
 	let filter: ContentType | 'all' = $state('all');
+	let tab: 'consumed' | 'abandoned' = $state('consumed');
 	let loading = $state(true);
 	let loadingMore = $state(false);
 	let total = $state(0);
@@ -26,7 +27,9 @@
 	});
 
 	function buildUrl(type: ContentType | 'all', off: number) {
-		let url = `/contents?consumed=true&limit=${LIMIT}&offset=${off}`;
+		let url = tab === 'consumed'
+			? `/contents?consumed=true&limit=${LIMIT}&offset=${off}`
+			: `/contents?abandoned=true&limit=${LIMIT}&offset=${off}`;
 		if (type !== 'all') url += `&content_type=${type}`;
 		return url;
 	}
@@ -56,16 +59,18 @@
 		} finally { loadingMore = false; }
 	}
 
-	let filterMounted = false;
+	let controlsMounted = false;
 	$effect(() => {
 		const _filter = filter;
-		if (!filterMounted) { filterMounted = true; return; }
+		const _tab = tab;
+		if (!controlsMounted) { controlsMounted = true; return; }
 		if (!auth.isLoggedIn) return;
 		offset = 0;
+		loading = true;
 		api.get<PaginatedContents>(buildUrl(_filter, 0)).then(p => {
 			contents = p.items;
 			total = p.total;
-		});
+		}).finally(() => { loading = false; });
 	});
 
 	async function unconsume(id: number) {
@@ -73,9 +78,18 @@
 		load();
 	}
 
+	async function restore(id: number) {
+		await api.post(`/contents/${id}/restore`);
+		load();
+	}
+
+	async function consume(id: number) {
+		await api.post(`/contents/${id}/consume`);
+		load();
+	}
+
 	function startEditDate(c: Content) {
 		editingDateId = c.id;
-		// Format consumed_at as "YYYY-MM-DD" for date input
 		if (c.consumed_at) {
 			editDateValue = c.consumed_at.slice(0, 10);
 		} else {
@@ -85,7 +99,6 @@
 
 	async function saveDate(c: Content) {
 		if (!editDateValue) { editingDateId = null; return; }
-		// Build an ISO datetime from the date string (noon UTC to avoid timezone day-shift)
 		const isoDate = `${editDateValue}T12:00:00Z`;
 		editingDateId = null;
 		contents = contents.map(x => x.id === c.id ? { ...x, consumed_at: isoDate } : x);
@@ -108,50 +121,89 @@
 
 	<!-- Desktop topbar -->
 	<div class="desk-topbar desk-only">
-		<h1 class="desk-title">Consumido</h1>
+		<h1 class="desk-title">{tab === 'consumed' ? 'Consumido' : 'Abandonado'}</h1>
 	</div>
 
 	{#if stats}
 		<!-- Hero + logros grid -->
 		<div class="desk-hero-grid">
 			<div class="hero" style="padding:16px 12px;">
-				<div class="kicker">TOTAL CONSUMIDO</div>
-				<div class="number" style="font-size:clamp(40px,14vw,80px); background:linear-gradient(180deg,#fff,oklch(0.84 0.17 150)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 0 30px oklch(0.80 0.18 150 / 0.4));">{formatDuration(stats.total_consumed_minutes)}</div>
-				<div class="unit">{stats.consumed_count} ítems completados</div>
+				{#if tab === 'consumed'}
+					<div class="kicker">TOTAL CONSUMIDO</div>
+					<div class="number" style="font-size:clamp(40px,14vw,80px); background:linear-gradient(180deg,#fff,oklch(0.84 0.17 150)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 0 30px oklch(0.80 0.18 150 / 0.4));">{formatDuration(stats.total_consumed_minutes)}</div>
+					<div class="unit">{stats.consumed_count} ítems completados</div>
+				{:else}
+					<div class="kicker">ABANDONADO</div>
+					<div class="number" style="font-size:clamp(40px,14vw,80px); background:linear-gradient(180deg,#fff,oklch(0.70 0.18 25)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 0 30px oklch(0.65 0.20 25 / 0.4));">{stats.abandoned_count}</div>
+					<div class="unit">{stats.abandoned_count === 1 ? 'ítem abandonado' : 'ítems abandonados'}</div>
+				{/if}
 			</div>
 
-			<!-- Logros card: desktop only -->
+			<!-- Stats card: desktop only -->
 			<div class="desk-quick desk-only">
-				<h3>Logros</h3>
-				<div class="dq-row">
-					<span class="lbl">✅ Total consumido</span>
-					<span class="val">{stats.consumed_count}</span>
-				</div>
-				<div class="dq-row">
-					<span class="lbl">⏱ Tiempo total</span>
-					<span class="val" style="font-size:13px;">{formatDuration(stats.total_consumed_minutes)}</span>
-				</div>
-				{#if stats.consumed_count > 0}
+				{#if tab === 'consumed'}
+					<h3>Logros</h3>
 					<div class="dq-row">
-						<span class="lbl">📊 Media por ítem</span>
-						<span class="val" style="font-size:13px;">{formatDuration(Math.round(stats.total_consumed_minutes / stats.consumed_count))}</span>
+						<span class="lbl">✅ Total consumido</span>
+						<span class="val">{stats.consumed_count}</span>
+					</div>
+					<div class="dq-row">
+						<span class="lbl">⏱ Tiempo total</span>
+						<span class="val" style="font-size:13px;">{formatDuration(stats.total_consumed_minutes)}</span>
+					</div>
+					{#if stats.consumed_count > 0}
+						<div class="dq-row">
+							<span class="lbl">📊 Media por ítem</span>
+							<span class="val" style="font-size:13px;">{formatDuration(Math.round(stats.total_consumed_minutes / stats.consumed_count))}</span>
+						</div>
+					{/if}
+					<div class="dq-row">
+						<span class="lbl">📦 Aún pendientes</span>
+						<span class="val">{stats.pending_count}</span>
+					</div>
+					<div class="dq-row" style="border-bottom:none;">
+						<span class="lbl">🚫 Abandonados</span>
+						<span class="val">{stats.abandoned_count}</span>
+					</div>
+				{:else}
+					<h3>Abandonado</h3>
+					<div class="dq-row">
+						<span class="lbl">🚫 Total abandonado</span>
+						<span class="val">{stats.abandoned_count}</span>
+					</div>
+					<div class="dq-row">
+						<span class="lbl">✅ Completados</span>
+						<span class="val">{stats.consumed_count}</span>
+					</div>
+					<div class="dq-row" style="border-bottom:none;">
+						<span class="lbl">📦 Pendientes</span>
+						<span class="val">{stats.pending_count}</span>
 					</div>
 				{/if}
-				<div class="dq-row">
-					<span class="lbl">📦 Aún pendientes</span>
-					<span class="val">{stats.pending_count}</span>
-				</div>
 			</div>
 		</div>
 
 		<!-- Mobile-only pill -->
 		<div class="pill-row mobile-only">
-			<div class="pill">
-				<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">items</span>
-			</div>
+			{#if tab === 'consumed'}
+				<div class="pill">
+					<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">completados</span>
+				</div>
+			{:else}
+				<div class="pill">
+					<span>🚫</span> <span class="val">{stats.abandoned_count}</span> <span class="lbl">abandonados</span>
+				</div>
+			{/if}
 		</div>
 	{/if}
 
+	<!-- Tab switcher: Consumido / Abandonado -->
+	<div class="seg" style="margin-bottom: 12px;">
+		<button class:active={tab === 'consumed'} onclick={() => tab = 'consumed'}>✅ Completado</button>
+		<button class:active={tab === 'abandoned'} onclick={() => tab = 'abandoned'}>🚫 Abandonado</button>
+	</div>
+
+	<!-- Type filter -->
 	<div class="tabs desk-tabs">
 		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>Todos</button>
 		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️</button>
@@ -166,8 +218,8 @@
 		<p class="muted center">Cargando…</p>
 	{:else if contents.length === 0}
 		<div class="empty">
-			<span class="icon">✅</span>
-			<p>Aún no has consumido nada. ¡A ello!</p>
+			<span class="icon">{tab === 'consumed' ? '✅' : '🚫'}</span>
+			<p>{tab === 'consumed' ? '¡Aún no has consumido nada. A ello!' : 'Ningún ítem abandonado.'}</p>
 		</div>
 	{:else}
 		<div class="content-grid">
@@ -211,27 +263,31 @@
 							{:else if c.duration_minutes > 0}
 								<span>⏱ {formatDuration(c.duration_minutes)}</span>
 							{/if}
-							<!-- Consumed date (editable) -->
-							{#if editingDateId === c.id}
-								<span class="date-edit-wrap">
-									<input
-										type="date"
-										bind:value={editDateValue}
-										class="text date-input"
-										onblur={() => saveDate(c)}
-										onkeydown={(e) => { if (e.key === 'Enter') saveDate(c); if (e.key === 'Escape') editingDateId = null; }}
-										autofocus
-									/>
-									<button class="btn" onclick={() => saveDate(c)}>✓</button>
-								</span>
-							{:else if c.consumed_at}
-								<button class="date-btn" onclick={() => startEditDate(c)} title="Editar fecha">
-									📅 {new Date(c.consumed_at).toLocaleDateString('es')}
-								</button>
-							{:else}
-								<button class="date-btn date-btn-empty" onclick={() => startEditDate(c)} title="Añadir fecha">
-									📅 Sin fecha
-								</button>
+							<!-- Date -->
+							{#if tab === 'consumed'}
+								{#if editingDateId === c.id}
+									<span class="date-edit-wrap">
+										<input
+											type="date"
+											bind:value={editDateValue}
+											class="text date-input"
+											onblur={() => saveDate(c)}
+											onkeydown={(e) => { if (e.key === 'Enter') saveDate(c); if (e.key === 'Escape') editingDateId = null; }}
+											autofocus
+										/>
+										<button class="btn" onclick={() => saveDate(c)}>✓</button>
+									</span>
+								{:else if c.consumed_at}
+									<button class="date-btn" onclick={() => startEditDate(c)} title="Editar fecha">
+										📅 {new Date(c.consumed_at).toLocaleDateString('es')}
+									</button>
+								{:else}
+									<button class="date-btn date-btn-empty" onclick={() => startEditDate(c)} title="Añadir fecha">
+										📅 Sin fecha
+									</button>
+								{/if}
+							{:else if c.abandoned_at}
+								<span class="date-btn" style="cursor:default;">🚫 {new Date(c.abandoned_at).toLocaleDateString('es')}</span>
 							{/if}
 						</div>
 						<div class="actions">
@@ -240,7 +296,12 @@
 									<button class="btn">Abrir</button>
 								</a>
 							{/if}
-							<button class="btn" onclick={() => unconsume(c.id)}>↩ Devolver</button>
+							{#if tab === 'consumed'}
+								<button class="btn" onclick={() => unconsume(c.id)}>↩ Devolver</button>
+							{:else}
+								<button class="btn btn-consume" onclick={() => consume(c.id)} title="Marcar como completado">✓ Completar</button>
+								<button class="btn" onclick={() => restore(c.id)} title="Retomar">↩ Retomar</button>
+							{/if}
 						</div>
 					</div>
 				</div>
