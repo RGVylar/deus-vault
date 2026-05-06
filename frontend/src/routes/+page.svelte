@@ -113,7 +113,28 @@
 			} catch (e) {}
 		};
 		window.addEventListener('deus_vault_settings_changed', handler as EventListener);
-		return () => window.removeEventListener('deus_vault_settings_changed', handler as EventListener);
+
+		// Global paste: if pasting a supported URL while the modal is closed → open & autodetect
+		const pasteHandler = (ev: ClipboardEvent) => {
+			// Don't intercept if user is typing in an input/textarea
+			const target = ev.target as HTMLElement;
+			if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+			const text = ev.clipboardData?.getData('text/plain')?.trim() ?? '';
+			if (!text.startsWith('http')) return;
+			if (!isLookupCandidate(text)) return;
+			if (showAdd) return; // already open
+			ev.preventDefault();
+			resetForm();
+			addUrl = text;
+			showAdd = true;
+			// lookupUrl fires via $effect watching addUrl
+		};
+		window.addEventListener('paste', pasteHandler);
+
+		return () => {
+			window.removeEventListener('deus_vault_settings_changed', handler as EventListener);
+			window.removeEventListener('paste', pasteHandler);
+		};
 	});
 
 	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string, sort = 'recent', col: string | null = null) {
