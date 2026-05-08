@@ -17,6 +17,9 @@ from app.schemas.content import (
     MonthStats,
     PaginatedContents,
     RewindStats,
+    StreamingPlatform,
+    TopAuthor,
+    TopItem,
     TypeRewindStats,
     VaultStats,
 )
@@ -251,6 +254,71 @@ def rewind(
     if total_finished > 0:
         completion_rate = round(len(items) / total_finished * 100, 1)
 
+    # --- Deep stats ---
+
+    # Top YouTube channels (by author, minutes watched)
+    yt_authors: dict[str, dict] = {}
+    for c in items:
+        if c.content_type == ContentType.youtube and c.author:
+            key = c.author.strip()
+            if key not in yt_authors:
+                yt_authors[key] = {"name": key, "count": 0, "minutes": 0}
+            yt_authors[key]["count"] += 1
+            yt_authors[key]["minutes"] += _effective_duration(c)
+    top_youtube_channels = [
+        TopAuthor(**v)
+        for v in sorted(yt_authors.values(), key=lambda x: x["minutes"], reverse=True)[:5]
+    ]
+
+    # Top 3 items per content type (by effective duration)
+    top_items_by_type: dict[str, list[TopItem]] = {}
+    for ct in ContentType:
+        type_items = [c for c in items if c.content_type == ct]
+        if type_items:
+            sorted_items = sorted(type_items, key=_effective_duration, reverse=True)[:3]
+            top_items_by_type[ct.value] = [
+                TopItem(
+                    id=c.id,
+                    title=c.title,
+                    author=c.author,
+                    thumbnail=c.thumbnail,
+                    minutes=_effective_duration(c),
+                )
+                for c in sorted_items
+            ]
+
+    # Streaming platform breakdown for movies + series
+    PLATFORM_NAMES = {"netflix", "prime video", "max", "disney+", "crunchyroll", "stremio", "hbo", "apple tv+", "paramount+", "peacock", "hulu"}
+    platform_data: dict[str, dict] = {}
+    for c in items:
+        if c.content_type in (ContentType.movie, ContentType.series) and c.author:
+            plat = c.author.strip()
+            plat_lower = plat.lower()
+            # Only count known platforms, not random author names
+            if any(p in plat_lower for p in PLATFORM_NAMES):
+                if plat not in platform_data:
+                    platform_data[plat] = {"name": plat, "count": 0, "minutes": 0}
+                platform_data[plat]["count"] += 1
+                platform_data[plat]["minutes"] += _effective_duration(c)
+    streaming_breakdown = [
+        StreamingPlatform(**v)
+        for v in sorted(platform_data.values(), key=lambda x: x["minutes"], reverse=True)
+    ]
+
+    # Top book authors
+    book_authors: dict[str, dict] = {}
+    for c in items:
+        if c.content_type == ContentType.book and c.author:
+            key = c.author.strip()
+            if key not in book_authors:
+                book_authors[key] = {"name": key, "count": 0, "minutes": 0}
+            book_authors[key]["count"] += 1
+            book_authors[key]["minutes"] += _effective_duration(c)
+    top_book_authors = [
+        TopAuthor(**v)
+        for v in sorted(book_authors.values(), key=lambda x: x["minutes"], reverse=True)[:5]
+    ]
+
     return RewindStats(
         year=year,
         total_consumed_minutes=total_minutes,
@@ -269,6 +337,10 @@ def rewind(
         abandoned_minutes=abandoned_minutes,
         most_abandoned_type=most_abandoned_type,
         completion_rate=completion_rate,
+        top_youtube_channels=top_youtube_channels,
+        top_items_by_type=top_items_by_type,
+        streaming_breakdown=streaming_breakdown,
+        top_book_authors=top_book_authors,
     )
 
 

@@ -68,6 +68,26 @@ export interface LookupResult {
 	duration_minutes: number;
 }
 
+export interface TopItem {
+	id: number;
+	title: string;
+	author: string | null;
+	thumbnail: string | null;
+	minutes: number;
+}
+
+export interface TopAuthor {
+	name: string;
+	count: number;
+	minutes: number;
+}
+
+export interface StreamingPlatform {
+	name: string;
+	count: number;
+	minutes: number;
+}
+
 export interface TypeRewindStats {
 	count: number;
 	minutes: number;
@@ -103,4 +123,8 @@ export interface RewindStats {
 	abandoned_minutes: number;
 	most_abandoned_type: string | null;
 	completion_rate: number | null;
+	top_youtube_channels: TopAuthor[];
+	top_items_by_type: Record<string, TopItem[]>;
+	streaming_breakdown: StreamingPlatform[];
+	top_book_authors: TopAuthor[];
 }

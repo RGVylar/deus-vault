@@ -339,6 +339,191 @@
 	</div>
 </section>
 
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- DEEP STATS — desktop-first, collapsible on mobile   -->
+<!-- ══════════════════════════════════════════════════════ -->
+
+<!-- YouTube: top channels -->
+{#if stats.top_youtube_channels.length > 0}
+<section class="rewind-section deep-section">
+	<h2>▶️ Canales más vistos</h2>
+	<div class="deep-grid">
+		{#each stats.top_youtube_channels as ch, i}
+			<div class="deep-card" style="--accent:var(--youtube);">
+				<div class="dc-rank">#{i + 1}</div>
+				<div class="dc-body">
+					<div class="dc-name">{ch.name}</div>
+					<div class="dc-meta">{ch.count} vídeo{ch.count !== 1 ? 's' : ''}</div>
+				</div>
+				<div class="dc-time">{formatDuration(ch.minutes)}</div>
+			</div>
+		{/each}
+	</div>
+</section>
+{/if}
+
+<!-- Top items: YouTube -->
+{#if stats.top_items_by_type['youtube']?.length > 0}
+<section class="rewind-section deep-section">
+	<h2>▶️ Vídeos más largos</h2>
+	<div class="top-items-grid">
+		{#each stats.top_items_by_type['youtube'] as item, i}
+			<div class="top-item-card" style="--accent:var(--youtube);">
+				<div class="tic-rank">#{i + 1}</div>
+				{#if item.thumbnail}
+					<img class="tic-thumb" src={item.thumbnail} alt="" />
+				{:else}
+					<div class="tic-thumb tic-ph">▶️</div>
+				{/if}
+				<div class="tic-info">
+					<div class="tic-title">{item.title}</div>
+					{#if item.author}<div class="tic-author">{item.author}</div>{/if}
+					<div class="tic-time">{formatDuration(item.minutes)}</div>
+				</div>
+			</div>
+		{/each}
+	</div>
+</section>
+{/if}
+
+<!-- Streaming breakdown -->
+{#if stats.streaming_breakdown.length > 0}
+<section class="rewind-section deep-section">
+	<h2>🎬 Plataformas de streaming</h2>
+	{@const maxStreamMins = Math.max(...stats.streaming_breakdown.map(p => p.minutes))}
+	<div class="deep-grid">
+		{#each stats.streaming_breakdown as plat, i}
+			<div class="deep-card" style="--accent:var(--movie);">
+				<div class="dc-rank">#{i + 1}</div>
+				<div class="dc-body">
+					<div class="dc-name">{plat.name}</div>
+					<div class="dc-bar-wrap">
+						<div class="dc-bar" style="width:{Math.round(plat.minutes / maxStreamMins * 100)}%; background:var(--movie);"></div>
+					</div>
+					<div class="dc-meta">{plat.count} título{plat.count !== 1 ? 's' : ''}</div>
+				</div>
+				<div class="dc-time">{formatDuration(plat.minutes)}</div>
+			</div>
+		{/each}
+	</div>
+</section>
+{/if}
+
+<!-- Top movies -->
+{#if stats.top_items_by_type['movie']?.length > 0}
+<section class="rewind-section deep-section">
+	<h2>🎬 Películas más largas</h2>
+	<div class="top-items-grid">
+		{#each stats.top_items_by_type['movie'] as item, i}
+			<div class="top-item-card" style="--accent:var(--movie);">
+				<div class="tic-rank">#{i + 1}</div>
+				{#if item.thumbnail}
+					<img class="tic-thumb" src={item.thumbnail} alt="" />
+				{:else}
+					<div class="tic-thumb tic-ph">🎬</div>
+				{/if}
+				<div class="tic-info">
+					<div class="tic-title">{item.title}</div>
+					{#if item.author}<div class="tic-author">{item.author}</div>{/if}
+					<div class="tic-time">{formatDuration(item.minutes)}</div>
+				</div>
+			</div>
+		{/each}
+	</div>
+</section>
+{/if}
+
+<!-- Top series -->
+{#if stats.top_items_by_type['series']?.length > 0}
+<section class="rewind-section deep-section">
+	<h2>📺 Series más largas</h2>
+	<div class="top-items-grid">
+		{#each stats.top_items_by_type['series'] as item, i}
+			<div class="top-item-card" style="--accent:var(--series);">
+				<div class="tic-rank">#{i + 1}</div>
+				{#if item.thumbnail}
+					<img class="tic-thumb" src={item.thumbnail} alt="" />
+				{:else}
+					<div class="tic-thumb tic-ph">📺</div>
+				{/if}
+				<div class="tic-info">
+					<div class="tic-title">{item.title}</div>
+					{#if item.author}<div class="tic-author">{item.author}</div>{/if}
+					<div class="tic-time">{formatDuration(item.minutes)}</div>
+				</div>
+			</div>
+		{/each}
+	</div>
+</section>
+{/if}
+
+<!-- Top book authors -->
+{#if stats.top_book_authors.length > 0}
+<section class="rewind-section deep-section">
+	<h2>📖 Autores más leídos</h2>
+	<div class="deep-grid">
+		{#each stats.top_book_authors as author, i}
+			<div class="deep-card" style="--accent:var(--book);">
+				<div class="dc-rank">#{i + 1}</div>
+				<div class="dc-body">
+					<div class="dc-name">{author.name}</div>
+					<div class="dc-meta">{author.count} libro{author.count !== 1 ? 's' : ''}</div>
+				</div>
+				<div class="dc-time">{formatDuration(author.minutes)}</div>
+			</div>
+		{/each}
+	</div>
+</section>
+{/if}
+
+<!-- Top books -->
+{#if stats.top_items_by_type['book']?.length > 0}
+<section class="rewind-section deep-section">
+	<h2>📖 Libros más largos</h2>
+	<div class="top-items-grid">
+		{#each stats.top_items_by_type['book'] as item, i}
+			<div class="top-item-card" style="--accent:var(--book);">
+				<div class="tic-rank">#{i + 1}</div>
+				{#if item.thumbnail}
+					<img class="tic-thumb tic-thumb-port" src={item.thumbnail} alt="" />
+				{:else}
+					<div class="tic-thumb tic-ph">📖</div>
+				{/if}
+				<div class="tic-info">
+					<div class="tic-title">{item.title}</div>
+					{#if item.author}<div class="tic-author">{item.author}</div>{/if}
+					<div class="tic-time">{formatDuration(item.minutes)}</div>
+				</div>
+			</div>
+		{/each}
+	</div>
+</section>
+{/if}
+
+<!-- Top games -->
+{#if stats.top_items_by_type['game']?.length > 0}
+<section class="rewind-section deep-section">
+	<h2>🎮 Juegos más largos</h2>
+	<div class="top-items-grid">
+		{#each stats.top_items_by_type['game'] as item, i}
+			<div class="top-item-card" style="--accent:var(--game);">
+				<div class="tic-rank">#{i + 1}</div>
+				{#if item.thumbnail}
+					<img class="tic-thumb" src={item.thumbnail} alt="" />
+				{:else}
+					<div class="tic-thumb tic-ph">🎮</div>
+				{/if}
+				<div class="tic-info">
+					<div class="tic-title">{item.title}</div>
+					{#if item.author}<div class="tic-author">{item.author}</div>{/if}
+					<div class="tic-time">{formatDuration(item.minutes)}</div>
+				</div>
+			</div>
+		{/each}
+	</div>
+</section>
+{/if}
+
 <!-- By type (auto-fill grid, shared) -->
 {#if Object.keys(stats.by_type).length > 0}
 <section class="rewind-section">
@@ -406,5 +591,93 @@
 	.rw-label {
 		font-size: 11px; font-weight: 700; text-transform: uppercase;
 		letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 14px;
+	}
+
+	/* ── Deep stats sections ── */
+	.deep-section { }
+
+	/* Ranking cards (channels, platforms, authors) */
+	.deep-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.deep-card {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 12px 16px;
+		background: var(--glass-bg);
+		border: 1px solid var(--glass-border);
+		border-radius: 16px;
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		transition: border-color 0.15s;
+	}
+	.deep-card:hover { border-color: var(--glass-border-bright); }
+	.dc-rank {
+		font-size: 11px; font-weight: 800; color: var(--accent, var(--primary));
+		min-width: 24px; text-align: center; opacity: 0.8;
+	}
+	.dc-body { flex: 1; min-width: 0; }
+	.dc-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.dc-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+	.dc-time { font-size: 13px; font-weight: 700; color: var(--accent, var(--primary)); white-space: nowrap; }
+	.dc-bar-wrap {
+		height: 3px; background: var(--glass-border); border-radius: 2px;
+		margin: 6px 0 4px; overflow: hidden;
+	}
+	.dc-bar { height: 100%; border-radius: 2px; opacity: 0.8; transition: width 0.6s ease; }
+
+	/* Top-3 item cards (with thumbnail) */
+	.top-items-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 10px;
+	}
+	.top-item-card {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 10px 14px 10px 10px;
+		background: var(--glass-bg);
+		border: 1px solid var(--glass-border);
+		border-left: 3px solid var(--accent, var(--primary));
+		border-radius: 16px;
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		transition: border-color 0.15s;
+	}
+	.top-item-card:hover { background: var(--glass-bg-strong); }
+	.tic-rank {
+		font-size: 18px; font-weight: 900; color: var(--accent, var(--primary));
+		min-width: 28px; text-align: center; opacity: 0.6;
+	}
+	.tic-thumb {
+		width: 56px; height: 40px; object-fit: cover;
+		border-radius: 8px; flex-shrink: 0;
+	}
+	.tic-thumb-port {
+		width: 32px; height: 48px; object-fit: cover; border-radius: 6px;
+	}
+	.tic-ph {
+		display: flex; align-items: center; justify-content: center;
+		background: var(--glass-bg-weak); font-size: 20px;
+	}
+	.tic-info { flex: 1; min-width: 0; }
+	.tic-title { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.tic-author { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.tic-time { font-size: 12px; font-weight: 700; color: var(--accent, var(--primary)); margin-top: 4px; }
+
+	@media (min-width: 1024px) {
+		/* On desktop, pair sections side by side */
+		.deep-section { }
+		.top-items-grid {
+			grid-template-columns: repeat(3, 1fr);
+		}
+		.deep-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+		}
 	}
 </style>

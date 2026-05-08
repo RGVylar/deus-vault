@@ -81,6 +81,26 @@ class PaginatedContents(BaseModel):
     limit: int
 
 
+class TopItem(BaseModel):
+    id: int
+    title: str
+    author: str | None
+    thumbnail: str | None
+    minutes: int
+
+
+class TopAuthor(BaseModel):
+    name: str
+    count: int
+    minutes: int
+
+
+class StreamingPlatform(BaseModel):
+    name: str
+    count: int
+    minutes: int
+
+
 class TypeRewindStats(BaseModel):
     count: int
     minutes: int
@@ -118,3 +138,8 @@ class RewindStats(BaseModel):
     abandoned_minutes: int
     most_abandoned_type: str | None
     completion_rate: float | None   # consumed / (consumed + abandoned) * 100
+    # Deep stats
+    top_youtube_channels: list[TopAuthor]      # top channels by watch time
+    top_items_by_type: dict[str, list[TopItem]]  # top 3 per type
+    streaming_breakdown: list[StreamingPlatform]  # platforms for movies+series
+    top_book_authors: list[TopAuthor]           # top book authors
