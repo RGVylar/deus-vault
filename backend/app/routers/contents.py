@@ -1,8 +1,11 @@
 import asyncio
+import logging
 import random
 from datetime import date, datetime, timedelta, timezone
 
 import httpx
+
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -604,6 +607,12 @@ async def backfill_channel_thumbnails(
         ).all()
     )
 
+    if not items:
+        logger.info("backfill: no YouTube items missing channel thumbnails for user %s", user.id)
+        return {"updated": 0, "failed": 0, "total": 0}
+
+    logger.info("backfill: found %d YouTube items without channel thumbnail for user %s", len(items), user.id)
+
     updated = 0
     failed = 0
 
@@ -616,12 +625,16 @@ async def backfill_channel_thumbnails(
                 if thumb:
                     item.channel_thumbnail = thumb
                     updated += 1
+                    logger.info("backfill: [OK]  %s — %s", item.source_id, item.title[:50])
                 else:
                     failed += 1
-            except Exception:
+                    logger.warning("backfill: [MISS] %s — %s (no thumbnail in page)", item.source_id, item.title[:50])
+            except Exception as exc:
                 failed += 1
+                logger.warning("backfill: [ERR]  %s — %s: %s", item.source_id, item.title[:50], exc)
             # Small delay to be polite to YouTube
             await asyncio.sleep(0.5)
 
     db.commit()
+    logger.info("backfill: done — updated=%d failed=%d total=%d", updated, failed, len(items))
     return {"updated": updated, "failed": failed, "total": len(items)}
