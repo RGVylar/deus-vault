@@ -17,6 +17,26 @@
 		music:    'var(--music)',
 	};
 
+	const PLATFORM_COLORS: Record<string, string> = {
+		'Netflix':    '#e50914',
+		'Prime Video':'#00a8e1',
+		'Disney+':    '#113ccf',
+		'HBO':        'oklch(0.72 0.19 40)',
+		'Max':        'oklch(0.72 0.19 40)',
+		'Crunchyroll':'#f47521',
+		'Apple TV+':  'rgba(230,230,230,0.85)',
+		'Movistar+':  'oklch(0.72 0.19 220)',
+		'Filmin':     'oklch(0.76 0.18 280)',
+		'SkyShowtime':'oklch(0.78 0.18 200)',
+	};
+
+	/** Deterministic hue from a string → oklch avatar color */
+	function channelColor(name: string): string {
+		let h = 0;
+		for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+		return `oklch(0.62 0.22 ${h % 360})`;
+	}
+
 	let year = $state(new Date().getFullYear());
 	let stats: RewindStats | null = $state(null);
 	let loading = $state(false);
@@ -346,46 +366,56 @@
 	</div>
 </section>
 
-<!-- ══════════════════════════════════════════════════════ -->
-<!-- DEEP STATS — desktop-first, collapsible on mobile   -->
-<!-- ══════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- DEEP STATS                                                   -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="deep-divider">
+	<div class="dd-line"></div>
+	<span class="dd-label">DEEP STATS</span>
+	<div class="dd-line"></div>
+</div>
 
 <!-- YouTube: top channels -->
 {#if stats.top_youtube_channels.length > 0}
-<section class="rewind-section deep-section">
+<section class="rewind-section">
 	<h2>▶️ Canales más vistos</h2>
-	<div class="deep-grid">
+	<div class="channel-grid">
 		{#each stats.top_youtube_channels as ch, i}
-			<div class="deep-card" style="--accent:var(--youtube);">
-				<div class="dc-rank">#{i + 1}</div>
-				<div class="dc-body">
-					<div class="dc-name">{ch.name}</div>
-					<div class="dc-meta">{ch.count} vídeo{ch.count !== 1 ? 's' : ''}</div>
+			<div class="channel-card glass" style="--ch-color:{channelColor(ch.name)}">
+				<div class="ch-rank">#{i + 1}</div>
+				<div class="ch-avatar">{ch.name[0]?.toUpperCase() ?? '?'}</div>
+				<div class="ch-info">
+					<div class="ch-name">{ch.name}</div>
+					<div class="ch-meta">
+						{ch.count} vídeo{ch.count !== 1 ? 's' : ''}
+						&nbsp;·&nbsp;
+						⌀ {formatDuration(Math.round(ch.minutes / ch.count))} / vídeo
+					</div>
 				</div>
-				<div class="dc-time">{formatDuration(ch.minutes)}</div>
+				<div class="ch-time">{formatDuration(ch.minutes)}</div>
 			</div>
 		{/each}
 	</div>
 </section>
 {/if}
 
-<!-- Top items: YouTube -->
+<!-- YouTube: top videos -->
 {#if stats.top_items_by_type['youtube']?.length > 0}
-<section class="rewind-section deep-section">
+<section class="rewind-section">
 	<h2>▶️ Vídeos más largos</h2>
-	<div class="top-items-grid">
+	<div class="podium-grid">
 		{#each stats.top_items_by_type['youtube'] as item, i}
-			<div class="top-item-card" style="--accent:var(--youtube);">
-				<div class="tic-rank">#{i + 1}</div>
+			<div class="podium-card" style="--accent:var(--youtube)">
+				<div class="podium-no">{i + 1}</div>
 				{#if item.thumbnail}
-					<img class="tic-thumb" src={item.thumbnail} alt="" />
+					<img class="podium-img land" src={item.thumbnail} alt="" loading="lazy" />
 				{:else}
-					<div class="tic-thumb tic-ph">▶️</div>
+					<div class="podium-img land ph">▶️</div>
 				{/if}
-				<div class="tic-info">
-					<div class="tic-title">{item.title}</div>
-					{#if item.author}<div class="tic-author">{item.author}</div>{/if}
-					<div class="tic-time">{formatDuration(item.minutes)}</div>
+				<div class="podium-body">
+					<div class="podium-title">{item.title}</div>
+					{#if item.author}<div class="podium-sub">{item.author}</div>{/if}
+					<div class="podium-badge">{formatDuration(item.minutes)}</div>
 				</div>
 			</div>
 		{/each}
@@ -395,20 +425,25 @@
 
 <!-- Streaming breakdown -->
 {#if stats.streaming_breakdown.length > 0}
-<section class="rewind-section deep-section">
+<section class="rewind-section">
 	<h2>🎬 Plataformas de streaming</h2>
-	<div class="deep-grid">
+	<div class="platform-list glass">
 		{#each stats.streaming_breakdown as plat, i}
-			<div class="deep-card" style="--accent:var(--movie);">
-				<div class="dc-rank">#{i + 1}</div>
-				<div class="dc-body">
-					<div class="dc-name">{plat.name}</div>
-					<div class="dc-bar-wrap">
-						<div class="dc-bar" style="width:{Math.round(plat.minutes / maxStreamingMins * 100)}%; background:var(--movie);"></div>
+			{@const pct = Math.round(plat.minutes / maxStreamingMins * 100)}
+			{@const pc = PLATFORM_COLORS[plat.name] ?? 'var(--movie)'}
+			<div class="plat-row" style="--pc:{pc}">
+				<div class="plat-rank">#{i + 1}</div>
+				<div class="plat-dot"></div>
+				<div class="plat-info">
+					<div class="plat-name">{plat.name}</div>
+					<div class="plat-bar-wrap">
+						<div class="plat-bar" style="width:{pct}%;"></div>
 					</div>
-					<div class="dc-meta">{plat.count} título{plat.count !== 1 ? 's' : ''}</div>
 				</div>
-				<div class="dc-time">{formatDuration(plat.minutes)}</div>
+				<div class="plat-stats">
+					<div class="plat-time">{formatDuration(plat.minutes)}</div>
+					<div class="plat-count">{plat.count} título{plat.count !== 1 ? 's' : ''}</div>
+				</div>
 			</div>
 		{/each}
 	</div>
@@ -417,21 +452,21 @@
 
 <!-- Top movies -->
 {#if stats.top_items_by_type['movie']?.length > 0}
-<section class="rewind-section deep-section">
+<section class="rewind-section">
 	<h2>🎬 Películas más largas</h2>
-	<div class="top-items-grid">
+	<div class="podium-grid">
 		{#each stats.top_items_by_type['movie'] as item, i}
-			<div class="top-item-card" style="--accent:var(--movie);">
-				<div class="tic-rank">#{i + 1}</div>
+			<div class="podium-card" style="--accent:var(--movie)">
+				<div class="podium-no">{i + 1}</div>
 				{#if item.thumbnail}
-					<img class="tic-thumb" src={item.thumbnail} alt="" />
+					<img class="podium-img land" src={item.thumbnail} alt="" loading="lazy" />
 				{:else}
-					<div class="tic-thumb tic-ph">🎬</div>
+					<div class="podium-img land ph">🎬</div>
 				{/if}
-				<div class="tic-info">
-					<div class="tic-title">{item.title}</div>
-					{#if item.author}<div class="tic-author">{item.author}</div>{/if}
-					<div class="tic-time">{formatDuration(item.minutes)}</div>
+				<div class="podium-body">
+					<div class="podium-title">{item.title}</div>
+					{#if item.author}<div class="podium-sub">{item.author}</div>{/if}
+					<div class="podium-badge">{formatDuration(item.minutes)}</div>
 				</div>
 			</div>
 		{/each}
@@ -441,21 +476,21 @@
 
 <!-- Top series -->
 {#if stats.top_items_by_type['series']?.length > 0}
-<section class="rewind-section deep-section">
+<section class="rewind-section">
 	<h2>📺 Series más largas</h2>
-	<div class="top-items-grid">
+	<div class="podium-grid">
 		{#each stats.top_items_by_type['series'] as item, i}
-			<div class="top-item-card" style="--accent:var(--series);">
-				<div class="tic-rank">#{i + 1}</div>
+			<div class="podium-card" style="--accent:var(--series)">
+				<div class="podium-no">{i + 1}</div>
 				{#if item.thumbnail}
-					<img class="tic-thumb" src={item.thumbnail} alt="" />
+					<img class="podium-img land" src={item.thumbnail} alt="" loading="lazy" />
 				{:else}
-					<div class="tic-thumb tic-ph">📺</div>
+					<div class="podium-img land ph">📺</div>
 				{/if}
-				<div class="tic-info">
-					<div class="tic-title">{item.title}</div>
-					{#if item.author}<div class="tic-author">{item.author}</div>{/if}
-					<div class="tic-time">{formatDuration(item.minutes)}</div>
+				<div class="podium-body">
+					<div class="podium-title">{item.title}</div>
+					{#if item.author}<div class="podium-sub">{item.author}</div>{/if}
+					<div class="podium-badge">{formatDuration(item.minutes)}</div>
 				</div>
 			</div>
 		{/each}
@@ -465,17 +500,18 @@
 
 <!-- Top book authors -->
 {#if stats.top_book_authors.length > 0}
-<section class="rewind-section deep-section">
+<section class="rewind-section">
 	<h2>📖 Autores más leídos</h2>
-	<div class="deep-grid">
+	<div class="channel-grid">
 		{#each stats.top_book_authors as author, i}
-			<div class="deep-card" style="--accent:var(--book);">
-				<div class="dc-rank">#{i + 1}</div>
-				<div class="dc-body">
-					<div class="dc-name">{author.name}</div>
-					<div class="dc-meta">{author.count} libro{author.count !== 1 ? 's' : ''}</div>
+			<div class="channel-card glass" style="--ch-color:var(--book)">
+				<div class="ch-rank">#{i + 1}</div>
+				<div class="ch-avatar" style="background:var(--book)">{author.name[0]?.toUpperCase() ?? '?'}</div>
+				<div class="ch-info">
+					<div class="ch-name">{author.name}</div>
+					<div class="ch-meta">{author.count} libro{author.count !== 1 ? 's' : ''}</div>
 				</div>
-				<div class="dc-time">{formatDuration(author.minutes)}</div>
+				<div class="ch-time" style="color:var(--book)">{formatDuration(author.minutes)}</div>
 			</div>
 		{/each}
 	</div>
@@ -484,21 +520,21 @@
 
 <!-- Top books -->
 {#if stats.top_items_by_type['book']?.length > 0}
-<section class="rewind-section deep-section">
+<section class="rewind-section">
 	<h2>📖 Libros más largos</h2>
-	<div class="top-items-grid">
+	<div class="podium-grid">
 		{#each stats.top_items_by_type['book'] as item, i}
-			<div class="top-item-card" style="--accent:var(--book);">
-				<div class="tic-rank">#{i + 1}</div>
+			<div class="podium-card" style="--accent:var(--book)">
+				<div class="podium-no">{i + 1}</div>
 				{#if item.thumbnail}
-					<img class="tic-thumb tic-thumb-port" src={item.thumbnail} alt="" />
+					<img class="podium-img port" src={item.thumbnail} alt="" loading="lazy" />
 				{:else}
-					<div class="tic-thumb tic-ph">📖</div>
+					<div class="podium-img port ph">📖</div>
 				{/if}
-				<div class="tic-info">
-					<div class="tic-title">{item.title}</div>
-					{#if item.author}<div class="tic-author">{item.author}</div>{/if}
-					<div class="tic-time">{formatDuration(item.minutes)}</div>
+				<div class="podium-body">
+					<div class="podium-title">{item.title}</div>
+					{#if item.author}<div class="podium-sub">{item.author}</div>{/if}
+					<div class="podium-badge">{formatDuration(item.minutes)}</div>
 				</div>
 			</div>
 		{/each}
@@ -508,21 +544,21 @@
 
 <!-- Top games -->
 {#if stats.top_items_by_type['game']?.length > 0}
-<section class="rewind-section deep-section">
+<section class="rewind-section">
 	<h2>🎮 Juegos más largos</h2>
-	<div class="top-items-grid">
+	<div class="podium-grid">
 		{#each stats.top_items_by_type['game'] as item, i}
-			<div class="top-item-card" style="--accent:var(--game);">
-				<div class="tic-rank">#{i + 1}</div>
+			<div class="podium-card" style="--accent:var(--game)">
+				<div class="podium-no">{i + 1}</div>
 				{#if item.thumbnail}
-					<img class="tic-thumb" src={item.thumbnail} alt="" />
+					<img class="podium-img land" src={item.thumbnail} alt="" loading="lazy" />
 				{:else}
-					<div class="tic-thumb tic-ph">🎮</div>
+					<div class="podium-img land ph">🎮</div>
 				{/if}
-				<div class="tic-info">
-					<div class="tic-title">{item.title}</div>
-					{#if item.author}<div class="tic-author">{item.author}</div>{/if}
-					<div class="tic-time">{formatDuration(item.minutes)}</div>
+				<div class="podium-body">
+					<div class="podium-title">{item.title}</div>
+					{#if item.author}<div class="podium-sub">{item.author}</div>{/if}
+					<div class="podium-badge">{formatDuration(item.minutes)}</div>
 				</div>
 			</div>
 		{/each}
@@ -599,91 +635,199 @@
 		letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 14px;
 	}
 
-	/* ── Deep stats sections ── */
-	.deep-section { }
+	/* ── Deep divider ──────────────────────────────────────── */
+	.deep-divider {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		margin: 44px 0 32px;
+	}
+	.dd-line {
+		flex: 1;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+	}
+	.dd-label {
+		font-size: 9px;
+		font-weight: 900;
+		letter-spacing: 0.22em;
+		color: var(--text-dim);
+	}
 
-	/* Ranking cards (channels, platforms, authors) */
-	.deep-grid {
+	/* ── Channel / author cards ─────────────────────────────── */
+	.channel-grid {
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
 	}
-	.deep-card {
+	.channel-card {
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		padding: 12px 16px;
-		background: var(--glass-bg);
-		border: 1px solid var(--glass-border);
-		border-radius: 16px;
-		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-		transition: border-color 0.15s;
+		gap: 14px;
+		padding: 14px 18px;
+		border-radius: 20px;
+		position: relative;
+		overflow: hidden;
+		transition: background 0.15s;
 	}
-	.deep-card:hover { border-color: var(--glass-border-bright); }
-	.dc-rank {
-		font-size: 11px; font-weight: 800; color: var(--accent, var(--primary));
-		min-width: 24px; text-align: center; opacity: 0.8;
+	.channel-card::before {
+		content: '';
+		position: absolute;
+		left: 0; top: 0; bottom: 0;
+		width: 3px;
+		background: var(--ch-color, var(--primary));
+		box-shadow: 0 0 10px var(--ch-color, var(--primary));
+		border-radius: 0 2px 2px 0;
 	}
-	.dc-body { flex: 1; min-width: 0; }
-	.dc-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.dc-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-	.dc-time { font-size: 13px; font-weight: 700; color: var(--accent, var(--primary)); white-space: nowrap; }
-	.dc-bar-wrap {
-		height: 3px; background: var(--glass-border); border-radius: 2px;
-		margin: 6px 0 4px; overflow: hidden;
+	.channel-card:hover { background: var(--glass-bg-strong); }
+	.ch-rank {
+		font-size: 10px; font-weight: 800;
+		color: var(--text-dim); min-width: 22px; text-align: right;
 	}
-	.dc-bar { height: 100%; border-radius: 2px; opacity: 0.8; transition: width 0.6s ease; }
+	.ch-avatar {
+		width: 44px; height: 44px;
+		border-radius: 50%;
+		background: var(--ch-color, var(--primary));
+		box-shadow: 0 0 18px color-mix(in srgb, var(--ch-color, var(--primary)) 55%, transparent);
+		display: flex; align-items: center; justify-content: center;
+		font-size: 18px; font-weight: 900; color: #fff;
+		flex-shrink: 0;
+		text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+	}
+	.ch-info { flex: 1; min-width: 0; }
+	.ch-name {
+		font-size: 14px; font-weight: 700; color: var(--text);
+		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+	}
+	.ch-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+	.ch-time {
+		font-size: 14px; font-weight: 800;
+		color: var(--ch-color, var(--primary)); white-space: nowrap;
+		text-shadow: 0 0 14px color-mix(in srgb, var(--ch-color, var(--primary)) 55%, transparent);
+	}
 
-	/* Top-3 item cards (with thumbnail) */
-	.top-items-grid {
+	/* ── Podium cards (top items with thumbnail) ──────────── */
+	.podium-grid {
 		display: grid;
 		grid-template-columns: 1fr;
 		gap: 10px;
 	}
-	.top-item-card {
+	.podium-card {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		padding: 12px 16px 12px 12px;
+		background: var(--glass-bg);
+		border: 1px solid var(--glass-border);
+		border-radius: 20px;
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		position: relative;
+		overflow: hidden;
+		transition: background 0.15s, transform 0.15s;
+	}
+	.podium-card::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		background: linear-gradient(135deg,
+			color-mix(in srgb, var(--accent) 10%, transparent) 0%,
+			transparent 55%);
+		pointer-events: none;
+	}
+	.podium-card:hover { background: var(--glass-bg-strong); transform: translateY(-1px); }
+	.podium-no {
+		font-size: 40px; font-weight: 900;
+		color: var(--accent); opacity: 0.15;
+		line-height: 1; min-width: 38px; text-align: center;
+		flex-shrink: 0; font-variant-numeric: tabular-nums;
+	}
+	.podium-img {
+		flex-shrink: 0; object-fit: cover; border-radius: 10px;
+	}
+	.podium-img.land { width: 80px; height: 48px; }
+	.podium-img.port { width: 36px; height: 54px; }
+	.podium-img.ph {
+		display: flex; align-items: center; justify-content: center;
+		background: var(--glass-bg-strong); font-size: 22px;
+	}
+	.podium-body { flex: 1; min-width: 0; }
+	.podium-title {
+		font-size: 14px; font-weight: 700; color: var(--text);
+		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+	}
+	.podium-sub {
+		font-size: 11px; color: var(--text-muted); margin-top: 2px;
+		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+	}
+	.podium-badge {
+		display: inline-block;
+		margin-top: 6px;
+		padding: 2px 9px;
+		background: color-mix(in srgb, var(--accent) 18%, transparent);
+		border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+		border-radius: 100px;
+		font-size: 11px; font-weight: 700;
+		color: var(--accent);
+	}
+
+	/* ── Streaming platforms ────────────────────────────────── */
+	.platform-list {
+		border-radius: 20px;
+		overflow: hidden;
+		padding: 0 !important;
+	}
+	.plat-row {
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		padding: 10px 14px 10px 10px;
-		background: var(--glass-bg);
-		border: 1px solid var(--glass-border);
-		border-left: 3px solid var(--accent, var(--primary));
-		border-radius: 16px;
-		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-		transition: border-color 0.15s;
+		padding: 15px 18px;
+		border-bottom: 1px solid var(--glass-border);
+		transition: background 0.12s;
 	}
-	.top-item-card:hover { background: var(--glass-bg-strong); }
-	.tic-rank {
-		font-size: 18px; font-weight: 900; color: var(--accent, var(--primary));
-		min-width: 28px; text-align: center; opacity: 0.6;
+	.plat-row:last-child { border-bottom: none; }
+	.plat-row:hover { background: var(--glass-bg-strong); }
+	.plat-rank {
+		font-size: 10px; font-weight: 800;
+		color: var(--text-dim); min-width: 20px;
 	}
-	.tic-thumb {
-		width: 56px; height: 40px; object-fit: cover;
-		border-radius: 8px; flex-shrink: 0;
+	.plat-dot {
+		width: 10px; height: 10px;
+		border-radius: 50%;
+		background: var(--pc);
+		box-shadow: 0 0 8px var(--pc);
+		flex-shrink: 0;
 	}
-	.tic-thumb-port {
-		width: 32px; height: 48px; object-fit: cover; border-radius: 6px;
+	.plat-info { flex: 1; min-width: 0; }
+	.plat-name { font-size: 14px; font-weight: 700; color: var(--text); }
+	.plat-bar-wrap {
+		height: 3px;
+		background: var(--glass-border);
+		border-radius: 2px;
+		margin-top: 7px;
+		overflow: hidden;
 	}
-	.tic-ph {
-		display: flex; align-items: center; justify-content: center;
-		background: var(--glass-bg-weak); font-size: 20px;
+	.plat-bar {
+		height: 100%;
+		background: var(--pc);
+		box-shadow: 0 0 6px var(--pc);
+		border-radius: 2px;
+		transition: width 0.8s cubic-bezier(.2,.8,.4,1);
 	}
-	.tic-info { flex: 1; min-width: 0; }
-	.tic-title { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.tic-author { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.tic-time { font-size: 12px; font-weight: 700; color: var(--accent, var(--primary)); margin-top: 4px; }
+	.plat-stats { text-align: right; flex-shrink: 0; }
+	.plat-time {
+		font-size: 14px; font-weight: 800;
+		color: var(--pc);
+		text-shadow: 0 0 12px color-mix(in srgb, var(--pc) 60%, transparent);
+	}
+	.plat-count { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
 
 	@media (min-width: 1024px) {
-		/* On desktop, pair sections side by side */
-		.deep-section { }
-		.top-items-grid {
-			grid-template-columns: repeat(3, 1fr);
-		}
-		.deep-grid {
+		.podium-grid { grid-template-columns: repeat(3, 1fr); }
+		.channel-grid {
 			display: grid;
-			grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+			grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 		}
 	}
 </style>
