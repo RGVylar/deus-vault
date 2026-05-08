@@ -120,6 +120,13 @@
 	const maxMonthMinutes = $derived(
 		stats ? Math.max(1, ...stats.by_month.map(m => m.minutes)) : 1
 	);
+
+	// Max streaming minutes (for bar width %)
+	const maxStreamingMins = $derived(
+		stats?.streaming_breakdown.length
+			? Math.max(1, ...stats.streaming_breakdown.map(p => p.minutes))
+			: 1
+	);
 </script>
 
 {#if !auth.isLoggedIn}
@@ -390,7 +397,6 @@
 {#if stats.streaming_breakdown.length > 0}
 <section class="rewind-section deep-section">
 	<h2>🎬 Plataformas de streaming</h2>
-	{@const maxStreamMins = Math.max(...stats.streaming_breakdown.map(p => p.minutes))}
 	<div class="deep-grid">
 		{#each stats.streaming_breakdown as plat, i}
 			<div class="deep-card" style="--accent:var(--movie);">
@@ -398,7 +404,7 @@
 				<div class="dc-body">
 					<div class="dc-name">{plat.name}</div>
 					<div class="dc-bar-wrap">
-						<div class="dc-bar" style="width:{Math.round(plat.minutes / maxStreamMins * 100)}%; background:var(--movie);"></div>
+						<div class="dc-bar" style="width:{Math.round(plat.minutes / maxStreamingMins * 100)}%; background:var(--movie);"></div>
 					</div>
 					<div class="dc-meta">{plat.count} título{plat.count !== 1 ? 's' : ''}</div>
 				</div>

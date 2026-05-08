@@ -267,6 +267,7 @@
 							{#if tab === 'consumed'}
 								{#if editingDateId === c.id}
 									<span class="date-edit-wrap">
+										<!-- svelte-ignore a11y_autofocus -->
 										<input
 											type="date"
 											bind:value={editDateValue}

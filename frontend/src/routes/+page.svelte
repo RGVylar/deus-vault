@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
@@ -19,8 +19,8 @@
 		music:   'var(--music)',
 	};
 
-	// Landscape layout: video + game content has wide thumbnails → banner at top
-	// Books and music have portrait/square covers → side column
+	// Landscape layout: video + game content has wide thumbnails â†’ banner at top
+	// Books and music have portrait/square covers â†’ side column
 	function isLandscape(type: ContentType): boolean {
 		return type === 'youtube' || type === 'movie' || type === 'series' || type === 'game';
 	}
@@ -76,7 +76,7 @@
 	let addUrl = $state('');
 	let addDuration = $state(0);
 	let addPageCount = $state(0);
-	let addWordsPerPage = $state(readingWordsPerPage);
+	let addWordsPerPage = $state(300); // reset to readingWordsPerPage in resetForm()
 	let addBookFormat: 'book' | 'manga' = $state('book');
 	let addEpisodeCount = $state(0);
 	let addSeasons = $state(0);
@@ -416,17 +416,17 @@ $effect(() => {
 	function progressLabel(c: Content): string {
 		const p = c.progress ?? 0;
 		if (p <= 0) return '';
-		if (c.content_type === 'book') return `Pág. ${p}${c.page_count ? ' / ' + c.page_count : ''}`;
+		if (c.content_type === 'book') return `PÃ¡g. ${p}${c.page_count ? ' / ' + c.page_count : ''}`;
 		if (c.content_type === 'game') return `${p}%`;
 		if (c.content_type === 'series') return `Ep. ${p}${c.episode_count ? ' / ' + c.episode_count : ''}`;
 		return `${p} min`;
 	}
 
 	function progressInputLabel(c: Content): string {
-		if (c.content_type === 'book') return `Página actual${c.page_count ? ' (1–' + c.page_count + ')' : ''}`;
-		if (c.content_type === 'game') return '% completado (0–100)';
-		if (c.content_type === 'series') return `Episodio${c.episode_count ? ' (1–' + c.episode_count + ')' : ''}`;
-		return `Minuto actual${c.duration_minutes ? ' (0–' + c.duration_minutes + ')' : ''}`;
+		if (c.content_type === 'book') return `PÃ¡gina actual${c.page_count ? ' (1â€“' + c.page_count + ')' : ''}`;
+		if (c.content_type === 'game') return '% completado (0â€“100)';
+		if (c.content_type === 'series') return `Episodio${c.episode_count ? ' (1â€“' + c.episode_count + ')' : ''}`;
+		return `Minuto actual${c.duration_minutes ? ' (0â€“' + c.duration_minutes + ')' : ''}`;
 	}
 
 	function startEditProgress(c: Content) {
@@ -455,21 +455,21 @@ $effect(() => {
 </script>
 
 {#if !auth.isLoggedIn}
-	<p class="muted center">Redirigiendo…</p>
+	<p class="muted center">Redirigiendoâ€¦</p>
 {:else}
 
-	<!-- ── Desktop topbar (search + sort integrated) ── -->
+	<!-- â”€â”€ Desktop topbar (search + sort integrated) â”€â”€ -->
 	<div class="desk-topbar desk-only">
-		<h1 class="desk-title">Bóveda</h1>
+		<h1 class="desk-title">BÃ³veda</h1>
 		<div class="desk-search">
-			<span class="ico">🔍</span>
-			<input type="search" bind:value={searchQuery} placeholder="Buscar en la bóveda…" />
+			<span class="ico">ðŸ”</span>
+			<input type="search" bind:value={searchQuery} placeholder="Buscar en la bÃ³vedaâ€¦" />
 		</div>
 		<select class="sort" bind:value={sortOrder} style="max-width:150px;">
-			<option value="recent">📅 Recientes</option>
-			<option value="duration_asc">⏱ Duración ↑</option>
-			<option value="duration_desc">⏱ Duración ↓</option>
-			<option value="title_asc">🔤 Título A–Z</option>
+			<option value="recent">ðŸ“… Recientes</option>
+			<option value="duration_asc">â± DuraciÃ³n â†‘</option>
+			<option value="duration_desc">â± DuraciÃ³n â†“</option>
+			<option value="title_asc">ðŸ”¤ TÃ­tulo Aâ€“Z</option>
 		</select>
 	</div>
 
@@ -480,24 +480,24 @@ $effect(() => {
 				<div class="kicker">DEUDA PENDIENTE</div>
 				<div class="number">{formatHeroTime(stats.total_pending_minutes)}</div>
 				<div class="unit">{formatDuration(stats.total_pending_minutes)} totales por consumir</div>
-				<div class="sub">La bóveda no espera</div>
+				<div class="sub">La bÃ³veda no espera</div>
 			</div>
 
 			<!-- Distribution card: desktop only -->
 			{#if Object.keys(stats.by_type).length > 0}
 				<div class="desk-quick desk-only">
-					<h3>Distribución</h3>
+					<h3>DistribuciÃ³n</h3>
 					{#each Object.entries(stats.by_type).sort((a,b) => b[1]-a[1]) as [type, mins]}
 						{@const pct = totalByTypeMins > 0 ? (mins / totalByTypeMins) * 100 : 0}
 						<div class="dq-row">
-							<span class="lbl"><span>{TYPE_ICONS[type] || '📄'}</span>{TYPE_LABELS[type] || type}</span>
+							<span class="lbl"><span>{TYPE_ICONS[type] || 'ðŸ“„'}</span>{TYPE_LABELS[type] || type}</span>
 							<div class="dq-bar"><div class="dq-bar-fill" style="width:{pct}%; --bar-color:{TYPE_COLOR[type] ?? 'var(--primary)'}"></div></div>
 							<span class="val">{formatDuration(mins)}</span>
 						</div>
 					{/each}
 					<div class="dq-footer">
-						<span style="font-size:12px; color:var(--text-muted);">{stats.pending_count} pendientes · {stats.consumed_count} consumidos</span>
-						<button class="btn btn-primary" onclick={() => showAdd = true} style="padding:6px 14px; font-size:12px;">+ Añadir</button>
+						<span style="font-size:12px; color:var(--text-muted);">{stats.pending_count} pendientes Â· {stats.consumed_count} consumidos</span>
+						<button class="btn btn-primary" onclick={() => showAdd = true} style="padding:6px 14px; font-size:12px;">+ AÃ±adir</button>
 					</div>
 				</div>
 			{/if}
@@ -507,10 +507,10 @@ $effect(() => {
 		<div class="mobile-only">
 			<div class="pill-row">
 				<div class="pill">
-					<span>📦</span> <span class="val">{stats.pending_count}</span> <span class="lbl">pendientes</span>
+					<span>ðŸ“¦</span> <span class="val">{stats.pending_count}</span> <span class="lbl">pendientes</span>
 				</div>
 				<div class="pill">
-					<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">consumidos</span>
+					<span>âœ…</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">consumidos</span>
 				</div>
 			</div>
 			{#if Object.keys(stats.by_type).length > 0}
@@ -518,7 +518,7 @@ $effect(() => {
 					{#each Object.entries(stats.by_type) as [type, mins]}
 						{@const pct = totalByTypeMins > 0 ? (mins / totalByTypeMins) * 100 : 0}
 						<div class="pill pill-typed" style="--pill-color:{TYPE_COLOR[type] ?? 'var(--primary)'}">
-							<span>{TYPE_ICONS[type] || '📄'}</span>
+							<span>{TYPE_ICONS[type] || 'ðŸ“„'}</span>
 							<span class="val">{formatDuration(mins)}</span>
 							{TYPE_LABELS[type] || type}
 							<span class="pill-bar" style="width:{pct}%"></span>
@@ -532,33 +532,33 @@ $effect(() => {
 	<!-- Section header + filter tabs -->
 	<div class="desk-section desk-only">
 		<h2>Pendiente</h2>
-		<span class="more">{total} ítems</span>
+		<span class="more">{total} Ã­tems</span>
 	</div>
 	<div class="tabs desk-tabs">
 		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>Todos</button>
-		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️ YouTube</button>
-		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬 Películas</button>
-		<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺 Series</button>
-		<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>🎵 Música</button>
-		<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖 Libros</button>
-		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮 Juegos</button>
+		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>â–¶ï¸ YouTube</button>
+		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>ðŸŽ¬ PelÃ­culas</button>
+		<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>ðŸ“º Series</button>
+		<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>ðŸŽµ MÃºsica</button>
+		<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>ðŸ“– Libros</button>
+		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>ðŸŽ® Juegos</button>
 	</div>
 
-	<!-- Search + sort (mobile only — desktop has it in topbar) -->
+	<!-- Search + sort (mobile only â€” desktop has it in topbar) -->
 	<div class="search-row mobile-only">
 		<div class="search">
-			<span class="ico">🔍</span>
+			<span class="ico">ðŸ”</span>
 			<input
 				type="search"
 				bind:value={searchQuery}
-				placeholder="Buscar…"
+				placeholder="Buscarâ€¦"
 			/>
 		</div>
 		<select class="sort" bind:value={sortOrder}>
-			<option value="recent">📅 Recientes</option>
-			<option value="duration_asc">⏱ Duración ↑</option>
-			<option value="duration_desc">⏱ Duración ↓</option>
-			<option value="title_asc">🔤 Título A–Z</option>
+			<option value="recent">ðŸ“… Recientes</option>
+			<option value="duration_asc">â± DuraciÃ³n â†‘</option>
+			<option value="duration_desc">â± DuraciÃ³n â†“</option>
+			<option value="title_asc">ðŸ”¤ TÃ­tulo Aâ€“Z</option>
 		</select>
 	</div>
 
@@ -575,18 +575,18 @@ $effect(() => {
 					class="tab"
 					class:active={activeCollection === col}
 					onclick={() => activeCollection = activeCollection === col ? null : col}
-				>📁 {col}</button>
+				>ðŸ“ {col}</button>
 			{/each}
 		</div>
 	{/if}
 
 	<!-- Content list -->
 	{#if loading}
-		<p class="muted center">Cargando…</p>
+		<p class="muted center">Cargandoâ€¦</p>
 	{:else if contents.length === 0}
 		<div class="empty">
-			<span class="icon">🏛️</span>
-			<p>{searchQuery ? 'Sin resultados para "' + searchQuery + '"' : 'La bóveda está vacía. ¡Añade contenido!'}</p>
+			<span class="icon">ðŸ›ï¸</span>
+			<p>{searchQuery ? 'Sin resultados para "' + searchQuery + '"' : 'La bÃ³veda estÃ¡ vacÃ­a. Â¡AÃ±ade contenido!'}</p>
 		</div>
 	{:else}
 		<div class="content-grid">
@@ -607,7 +607,7 @@ $effect(() => {
 							{#if c.thumbnail}
 								<img src={c.thumbnail} alt="" />
 							{:else}
-								<div class="ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
+								<div class="ph">{TYPE_ICONS[c.content_type] || 'ðŸ“„'}</div>
 							{/if}
 						</div>
 					{:else}
@@ -615,28 +615,28 @@ $effect(() => {
 							{#if c.thumbnail}
 								<img src={c.thumbnail} alt="" />
 							{:else}
-								<div class="ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
+								<div class="ph">{TYPE_ICONS[c.content_type] || 'ðŸ“„'}</div>
 							{/if}
 						</div>
 					{/if}
 					<div class="info">
 						<div class="title">
-							{#if c.pinned}<span title="Prioritario">📌</span>{/if}
+							{#if c.pinned}<span title="Prioritario">ðŸ“Œ</span>{/if}
 							{c.title}
 						</div>
 						<div class="meta">
 							<span class="badge">{TYPE_LABELS[c.content_type]}</span>
 							{#if c.collection}
-								<span style="font-size:10px; color:var(--text-muted);">📁 {c.collection}</span>
+								<span style="font-size:10px; color:var(--text-muted);">ðŸ“ {c.collection}</span>
 							{/if}
 							{#if c.content_type === 'series'}
-								{#if c.seasons && c.seasons > 0}<span>📺 {c.seasons}T</span>{/if}
+								{#if c.seasons && c.seasons > 0}<span>ðŸ“º {c.seasons}T</span>{/if}
 								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} ep</span>{/if}
-								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>{/if}
+								{#if c.duration_minutes > 0}<span>â± {formatDuration(c.duration_minutes)}/ep</span>{/if}
 							{:else}
-								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}</span>{/if}
+								{#if c.duration_minutes > 0}<span>â± {formatDuration(c.duration_minutes)}</span>{/if}
 								{#if c.content_type === 'book' && c.page_count && Number(c.page_count) > 0}
-									<span>📚 {c.page_count} pág</span>
+									<span>ðŸ“š {c.page_count} pÃ¡g</span>
 								{/if}
 							{/if}
 							{#if c.author}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">{c.author}</span>{/if}
@@ -655,7 +655,7 @@ $effect(() => {
 								<div class="progress-edit-wrap">
 									<span class="progress-edit-label">{progressInputLabel(c)}</span>
 									<div class="progress-edit-row">
-										<input
+										<!-- svelte-ignore a11y_autofocus --><input
 											type="number"
 											bind:value={progressValue}
 											min="0"
@@ -664,23 +664,23 @@ $effect(() => {
 											onkeydown={(e) => e.key === 'Enter' && saveProgress(c)}
 											autofocus
 										/>
-										<button class="btn" onclick={() => saveProgress(c)}>✓</button>
+										<button class="btn" onclick={() => saveProgress(c)}>âœ“</button>
 									</div>
 									{#if progressValue > 0}
 										<span style="font-size:10px; color:var(--game);">
-											≈ {formatDuration(remainingMinutes({ ...c, progress: Math.floor(progressValue) }))} restante
+											â‰ˆ {formatDuration(remainingMinutes({ ...c, progress: Math.floor(progressValue) }))} restante
 										</span>
 									{/if}
 								</div>
 							{:else}
-								<button class="progress-track-btn" onclick={() => startEditProgress(c)} title={hasProgress ? 'Editar progreso' : 'Añadir progreso'}>
+								<button class="progress-track-btn" onclick={() => startEditProgress(c)} title={hasProgress ? 'Editar progreso' : 'AÃ±adir progreso'}>
 									<div class="progress-track" style="flex:1; margin:0;">
 										<div class="progress-fill" style="width:{pct}%; background:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}; box-shadow:0 0 8px {TYPE_COLOR[c.content_type] ?? 'var(--primary)'};"></div>
 									</div>
 									{#if hasProgress}
 										<span style="font-size:10px; color:var(--text-muted); white-space:nowrap;">{progressLabel(c)}</span>
 										{#if remaining < (c.content_type === 'series' && c.episode_count ? c.duration_minutes * c.episode_count : c.duration_minutes)}
-											<span style="font-size:10px; color:var(--text-dim); white-space:nowrap;">· {formatDuration(remaining)} restante</span>
+											<span style="font-size:10px; color:var(--text-dim); white-space:nowrap;">Â· {formatDuration(remaining)} restante</span>
 										{/if}
 									{:else}
 										<span style="font-size:10px; color:var(--text-dim);">+ progreso</span>
@@ -702,7 +702,7 @@ $effect(() => {
 									disabled={refreshingId !== null}
 									title="Actualizar metadatos"
 									style={refreshingId === c.id ? 'animation: spin 0.8s linear infinite; opacity:0.7;' : ''}
-								>↻</button>
+								>â†»</button>
 							{/if}
 							<button
 								class="btn"
@@ -710,17 +710,17 @@ $effect(() => {
 								onclick={() => togglePin(c)}
 								title={c.pinned ? 'Quitar prioridad' : 'Marcar prioritario'}
 								style="opacity:{c.pinned ? 1 : 0.5};"
-							>{c.pinned ? '📌' : '📍'}</button>
-							<button class="btn" onclick={() => startEdit(c)} title="Editar">✏️</button>
-							<button class="btn btn-consume" onclick={() => consume(c.id)} title="Marcar como consumido">✓</button>
-							<button class="btn btn-abandon" onclick={() => abandon(c.id)} title="Abandonar">🚫</button>
+							>{c.pinned ? 'ðŸ“Œ' : 'ðŸ“'}</button>
+							<button class="btn" onclick={() => startEdit(c)} title="Editar">âœï¸</button>
+							<button class="btn btn-consume" onclick={() => consume(c.id)} title="Marcar como consumido">âœ“</button>
+							<button class="btn btn-abandon" onclick={() => abandon(c.id)} title="Abandonar">ðŸš«</button>
 							{#if deletingId === c.id}
 								<span style="display:flex; gap:4px;">
-									<button class="btn btn-danger" onclick={() => remove(c.id)}>Sí</button>
+									<button class="btn btn-danger" onclick={() => remove(c.id)}>SÃ­</button>
 									<button class="btn" onclick={() => deletingId = null}>No</button>
 								</span>
 							{:else}
-								<button class="btn btn-danger" onclick={() => deletingId = c.id}>✕</button>
+								<button class="btn btn-danger" onclick={() => deletingId = c.id}>âœ•</button>
 							{/if}
 						</div>
 					</div>
@@ -731,7 +731,7 @@ $effect(() => {
 		{#if contents.length < total}
 			<div class="center mt16">
 				<button class="btn btn-lg" onclick={loadMore} disabled={loadingMore}>
-					{loadingMore ? 'Cargando…' : `Cargar más (${total - contents.length} restantes)`}
+					{loadingMore ? 'Cargandoâ€¦' : `Cargar mÃ¡s (${total - contents.length} restantes)`}
 				</button>
 			</div>
 		{/if}
@@ -741,18 +741,18 @@ $effect(() => {
 	<button class="fab" onclick={() => showAdd = true}>+</button>
 	<!-- Desktop FAB pill (hidden on mobile) -->
 	<button class="desk-fab" onclick={() => showAdd = true}>
-		<span class="plus">+</span> Añadir contenido
+		<span class="plus">+</span> AÃ±adir contenido
 	</button>
 
 	<!-- Edit modal -->
 	{#if editingItem}
 		<div class="overlay" onclick={() => editingItem = null} role="presentation">
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<div class="modal glass-strong" onclick={e => e.stopPropagation()} role="dialog">
+			<div class="modal glass-strong" onclick={e => e.stopPropagation()} role="dialog" tabindex="-1">
 				<div class="modal-handle"></div>
 				<h2>Editar</h2>
 				<div class="field">
-					<label for="edit-title">Título</label>
+					<label for="edit-title">TÃ­tulo</label>
 					<input id="edit-title" class="text" bind:value={editTitle} />
 				</div>
 				<div class="field">
@@ -761,15 +761,15 @@ $effect(() => {
 				</div>
 				<div class="field">
 					<label for="edit-url">URL</label>
-					<input id="edit-url" class="text" bind:value={editUrl} placeholder="https://…" />
+					<input id="edit-url" class="text" bind:value={editUrl} placeholder="https://â€¦" />
 				</div>
 				<div class="field">
-					<label for="edit-duration">Duración{editingItem.content_type === 'series' ? ' por episodio' : ''} (minutos)</label>
+					<label for="edit-duration">DuraciÃ³n{editingItem.content_type === 'series' ? ' por episodio' : ''} (minutos)</label>
 					<input id="edit-duration" class="text" type="number" bind:value={editDuration} min="0" />
 				</div>
 				{#if editingItem.content_type === 'book'}
 					<div class="field">
-						<label for="edit-pages">Páginas</label>
+						<label for="edit-pages">PÃ¡ginas</label>
 						<input id="edit-pages" class="text" type="number" bind:value={editPageCount} min="0" />
 					</div>
 				{/if}
@@ -786,8 +786,8 @@ $effect(() => {
 					</div>
 				{/if}
 				<div class="field">
-					<label for="edit-collection">Colección</label>
-					<input id="edit-collection" class="text" bind:value={editCollection} list="collections-list" placeholder="Sin colección" />
+					<label for="edit-collection">ColecciÃ³n</label>
+					<input id="edit-collection" class="text" bind:value={editCollection} list="collections-list" placeholder="Sin colecciÃ³n" />
 					<datalist id="collections-list">
 						{#each collections as col}
 							<option value={col}></option>
@@ -796,7 +796,7 @@ $effect(() => {
 				</div>
 				<div class="field">
 					<label for="edit-thumbnail">URL de imagen</label>
-					<input id="edit-thumbnail" class="text" bind:value={editThumbnail} placeholder="https://…" />
+					<input id="edit-thumbnail" class="text" bind:value={editThumbnail} placeholder="https://â€¦" />
 				</div>
 				<div class="field">
 					<label for="edit-notes">Notas</label>
@@ -805,7 +805,7 @@ $effect(() => {
 				<div class="field">
 					<label style="display:flex; align-items:center; gap:8px; text-transform:none; font-size:13px; cursor:pointer;">
 						<input type="checkbox" bind:checked={editPinned} />
-						Marcar como prioritario 📌
+						Marcar como prioritario ðŸ“Œ
 					</label>
 				</div>
 				{#if editError}<p class="error-msg">{editError}</p>{/if}
@@ -821,37 +821,37 @@ $effect(() => {
 	{#if showAdd}
 		<div class="overlay" onclick={() => showAdd = false} role="presentation">
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<div class="modal glass-strong" onclick={e => e.stopPropagation()} role="dialog">
+			<div class="modal glass-strong" onclick={e => e.stopPropagation()} role="dialog" tabindex="-1">
 				<div class="modal-handle"></div>
-				<h2>Añadir contenido</h2>
+				<h2>AÃ±adir contenido</h2>
 				<div class="field">
 					<label for="add-url">URL (pega un enlace para autodetectar)</label>
 					<div class="row">
 						<input id="add-url" class="text" bind:value={addUrl} placeholder="https://..." style="flex:1;" />
 						<button class="btn" onclick={() => lookupUrl()} disabled={lookupLoading}>
-							{lookupLoading ? '…' : '🔍'}
+							{lookupLoading ? 'â€¦' : 'ðŸ”'}
 						</button>
 					</div>
 					{#if lookupLoading}
 						<p class="lookup-status" aria-live="polite">
 							<span class="lookup-dot" aria-hidden="true"></span>
-							Buscando información del enlace...
+							Buscando informaciÃ³n del enlace...
 						</p>
 					{/if}
 				</div>
 				<div class="field">
 					<label for="add-type">Tipo</label>
 					<select id="add-type" class="text" bind:value={addType}>
-						<option value="youtube">▶️ YouTube</option>
-						<option value="movie">🎬 Película</option>
-						<option value="series">📺 Serie</option>
-						<option value="music">🎵 Música</option>
-						<option value="book">📖 Libro</option>
-						<option value="game">🎮 Juego</option>
+						<option value="youtube">â–¶ï¸ YouTube</option>
+						<option value="movie">ðŸŽ¬ PelÃ­cula</option>
+						<option value="series">ðŸ“º Serie</option>
+						<option value="music">ðŸŽµ MÃºsica</option>
+						<option value="book">ðŸ“– Libro</option>
+						<option value="game">ðŸŽ® Juego</option>
 					</select>
 				</div>
 				<div class="field">
-					<label for="add-title">Título</label>
+					<label for="add-title">TÃ­tulo</label>
 					<input id="add-title" class="text" bind:value={addTitle} required />
 				</div>
 				<div class="field">
@@ -859,7 +859,7 @@ $effect(() => {
 					<input id="add-author" class="text" bind:value={addAuthor} />
 				</div>
 				<div class="field">
-					<label for="add-duration">Duración{addType === 'series' ? ' por episodio' : ''} (minutos)</label>
+					<label for="add-duration">DuraciÃ³n{addType === 'series' ? ' por episodio' : ''} (minutos)</label>
 					<input id="add-duration" class="text" type="number" bind:value={addDuration} min="0" />
 				</div>
 				{#if addType === 'series'}
@@ -875,7 +875,7 @@ $effect(() => {
 					</div>
 					{#if addDuration > 0 && addEpisodeCount > 0}
 						<p class="muted" style="font-size:13px; margin-top:-4px;">
-							Duración total estimada: ~{formatDuration(addDuration * addEpisodeCount)}
+							DuraciÃ³n total estimada: ~{formatDuration(addDuration * addEpisodeCount)}
 						</p>
 					{/if}
 				{/if}
@@ -891,17 +891,17 @@ $effect(() => {
 						</select>
 					</div>
 					<div class="field">
-						<label for="add-words-per-page">Palabras por página</label>
+						<label for="add-words-per-page">Palabras por pÃ¡gina</label>
 						<input id="add-words-per-page" class="text" type="number" bind:value={addWordsPerPage} min="1" />
 					</div>
 					<div class="field">
-						<label for="add-pages">Páginas</label>
+						<label for="add-pages">PÃ¡ginas</label>
 						<input id="add-pages" class="text" type="number" bind:value={addPageCount} min="0" />
 					</div>
 				{/if}
 				<div class="field">
-					<label for="add-collection">Colección</label>
-					<input id="add-collection" class="text" bind:value={addCollection} list="collections-list-add" placeholder="Sin colección" />
+					<label for="add-collection">ColecciÃ³n</label>
+					<input id="add-collection" class="text" bind:value={addCollection} list="collections-list-add" placeholder="Sin colecciÃ³n" />
 					<datalist id="collections-list-add">
 						{#each collections as col}
 							<option value={col}></option>
@@ -920,7 +920,7 @@ $effect(() => {
 						onclick={() => addPinned = !addPinned}
 						type="button"
 					>
-						<span class="toggle-ico">📌</span>
+						<span class="toggle-ico">ðŸ“Œ</span>
 						<span>Prioritario</span>
 					</button>
 					<button
@@ -929,7 +929,7 @@ $effect(() => {
 						onclick={() => addAlreadyConsumed = !addAlreadyConsumed}
 						type="button"
 					>
-						<span class="toggle-ico">✅</span>
+						<span class="toggle-ico">âœ…</span>
 						<span>Ya consumido</span>
 					</button>
 				</div>
@@ -944,7 +944,8 @@ $effect(() => {
 
 	{#if showSettings}
 		<div class="overlay" onclick={() => showSettings = false} role="presentation">
-			<div class="modal glass-strong" onclick={e => e.stopPropagation()} role="dialog">
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div class="modal glass-strong" onclick={e => e.stopPropagation()} role="dialog" tabindex="-1">
 				<div class="modal-handle"></div>
 				<h2>Ajustes</h2>
 				<div class="field">
