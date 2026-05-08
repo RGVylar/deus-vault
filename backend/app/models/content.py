@@ -57,5 +57,6 @@ class Content(Base):
     source_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     author: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    channel_thumbnail: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="contents")  # noqa: F821

@@ -83,6 +83,7 @@
 	let addAuthor = $state('');
 	let addNotes = $state('');
 	let addThumbnail = $state('');
+	let addChannelThumbnail = $state('');
 	let addSourceId = $state('');
 	let addCollection = $state('');
 	let addPinned = $state(false);
@@ -227,6 +228,7 @@ $effect(() => {
 			addTitle = data.title || addTitle;
 			addAuthor = data.author || addAuthor;
 			addThumbnail = data.thumbnail || '';
+			addChannelThumbnail = data.channel_thumbnail || '';
 			addSourceId = data.source_id || '';
 			const suggestedType = data.suggested_content_type;
 			if (suggestedType) addType = suggestedType;
@@ -267,6 +269,7 @@ $effect(() => {
 				seasons: addType === 'series' && addSeasons > 0 ? addSeasons : null,
 				source_id: addSourceId || null, author: addAuthor || null, notes: addNotes || null,
 				collection: addCollection.trim() || null, pinned: addPinned,
+				channel_thumbnail: addChannelThumbnail || null,
 			});
 			if (addAlreadyConsumed && created?.id) {
 				await api.post(`/contents/${created.id}/consume`);
@@ -288,7 +291,7 @@ $effect(() => {
 
 	function resetForm() {
 		addTitle = ''; addUrl = ''; addDuration = 0; addAuthor = '';
-		addNotes = ''; addThumbnail = ''; addSourceId = ''; addType = 'youtube';
+		addNotes = ''; addThumbnail = ''; addChannelThumbnail = ''; addSourceId = ''; addType = 'youtube';
 		addPageCount = 0; addWordsPerPage = readingWordsPerPage; addBookFormat = 'book';
 		addEpisodeCount = 0; addSeasons = 0; lastLookupUrl = '';
 		addCollection = ''; addPinned = false; addAlreadyConsumed = false;

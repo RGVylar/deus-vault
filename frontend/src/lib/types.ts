@@ -33,6 +33,7 @@ export interface Content {
 	progress?: number | null;
 	pinned: boolean;
 	collection: string | null;
+	channel_thumbnail?: string | null;
 }
 
 /** Effective duration for stats/display: series multiply by episode count */
@@ -80,6 +81,7 @@ export interface TopAuthor {
 	name: string;
 	count: number;
 	minutes: number;
+	thumbnail?: string | null;
 }
 
 export interface StreamingPlatform {

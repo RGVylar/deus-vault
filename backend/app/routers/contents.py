@@ -262,9 +262,12 @@ def rewind(
         if c.content_type == ContentType.youtube and c.author:
             key = c.author.strip()
             if key not in yt_authors:
-                yt_authors[key] = {"name": key, "count": 0, "minutes": 0}
+                yt_authors[key] = {"name": key, "count": 0, "minutes": 0, "thumbnail": None}
             yt_authors[key]["count"] += 1
             yt_authors[key]["minutes"] += _effective_duration(c)
+            # Keep the first channel_thumbnail we find for this author
+            if not yt_authors[key]["thumbnail"] and c.channel_thumbnail:
+                yt_authors[key]["thumbnail"] = c.channel_thumbnail
     top_youtube_channels = [
         TopAuthor(**v)
         for v in sorted(yt_authors.values(), key=lambda x: x["minutes"], reverse=True)[:5]

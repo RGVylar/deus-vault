@@ -20,6 +20,7 @@ class ContentCreate(BaseModel):
     notes: str | None = None
     pinned: bool = False
     collection: str | None = None
+    channel_thumbnail: str | None = None
 
 
 class ContentUpdate(BaseModel):
@@ -61,6 +62,7 @@ class ContentOut(BaseModel):
     progress: int | None
     pinned: bool
     collection: str | None
+    channel_thumbnail: str | None
 
     model_config = {"from_attributes": True}
 
@@ -93,6 +95,7 @@ class TopAuthor(BaseModel):
     name: str
     count: int
     minutes: int
+    thumbnail: str | None = None
 
 
 class StreamingPlatform(BaseModel):

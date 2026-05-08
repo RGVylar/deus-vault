@@ -48,6 +48,23 @@ PROVIDER_LABELS: dict[str, str] = {
 }
 
 
+def _extract_channel_thumbnail(html: str) -> str:
+    """Extract channel avatar URL from YouTube watch page HTML (ytInitialData)."""
+    if not html:
+        return ""
+    # The videoOwnerRenderer block contains the channel avatar thumbnail
+    m = re.search(
+        r'"videoOwnerRenderer"\s*:\s*\{.*?"thumbnail"\s*:\s*\{"thumbnails"\s*:\s*\[.*?"url"\s*:\s*"(https://yt3[^"]+)"',
+        html, re.DOTALL
+    )
+    if m:
+        url = m.group(1).replace("\\u0026", "&")
+        # Upgrade to 88px resolution for better quality in UI
+        url = re.sub(r"=s\d+", "=s88", url)
+        return url
+    return ""
+
+
 def _extract_duration_minutes(html: str) -> int:
     """Extract duration from YouTube watch page HTML without requiring API keys."""
     if not html:
@@ -901,12 +918,15 @@ async def lookup_youtube(url: str) -> dict:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Video not found")
 
     data = resp.json()
-    duration_minutes = _extract_duration_minutes(watch_resp.text if watch_resp.status_code == 200 else "")
+    watch_html = watch_resp.text if watch_resp.status_code == 200 else ""
+    duration_minutes = _extract_duration_minutes(watch_html)
+    channel_thumbnail = _extract_channel_thumbnail(watch_html)
 
     return {
         "title": data.get("title", ""),
         "author": data.get("author_name", ""),
         "thumbnail": f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
+        "channel_thumbnail": channel_thumbnail,
         "source_id": video_id,
         "url": watch_url,
         "duration_minutes": duration_minutes,

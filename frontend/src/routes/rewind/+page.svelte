@@ -383,7 +383,11 @@
 		{#each stats.top_youtube_channels as ch, i}
 			<div class="channel-card glass" style="--ch-color:{channelColor(ch.name)}">
 				<div class="ch-rank">#{i + 1}</div>
-				<div class="ch-avatar">{ch.name[0]?.toUpperCase() ?? '?'}</div>
+				{#if ch.thumbnail}
+					<img class="ch-avatar ch-avatar-img" src={ch.thumbnail} alt={ch.name} />
+				{:else}
+					<div class="ch-avatar">{ch.name[0]?.toUpperCase() ?? '?'}</div>
+				{/if}
 				<div class="ch-info">
 					<div class="ch-name">{ch.name}</div>
 					<div class="ch-meta">
@@ -693,6 +697,10 @@
 		font-size: 18px; font-weight: 900; color: #fff;
 		flex-shrink: 0;
 		text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+	}
+	.ch-avatar-img {
+		object-fit: cover;
+		background: var(--glass-bg-strong);
 	}
 	.ch-info { flex: 1; min-width: 0; }
 	.ch-name {
