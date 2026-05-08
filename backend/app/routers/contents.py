@@ -576,12 +576,14 @@ def random_pick(
 
 @router.post("/backfill-channel-thumbnails")
 async def backfill_channel_thumbnails(
+    force: bool = Query(False, description="Re-fetch even items that already have a thumbnail"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Re-fetch YouTube channel thumbnails for all items that are missing one.
+    """Re-fetch YouTube channel thumbnails for items that are missing one.
 
-    Safe to call multiple times — only touches rows where channel_thumbnail IS NULL.
+    Pass ?force=true to also overwrite existing (potentially wrong) thumbnails.
+    Safe to call multiple times — without force, only touches NULL rows.
     Returns counts of how many were updated vs failed.
     """
     from app.routers.lookup import _extract_channel_thumbnail
@@ -595,17 +597,15 @@ async def backfill_channel_thumbnails(
         "Cookie": "CONSENT=YES+cb.20210328-17-p0.en+FX+119",
     }
 
-    # Find all YouTube items for this user without a channel thumbnail
-    items = list(
-        db.scalars(
-            select(Content).where(
-                Content.user_id == user.id,
-                Content.content_type == "youtube",
-                Content.channel_thumbnail.is_(None),
-                Content.source_id.isnot(None),
-            )
-        ).all()
+    # Find YouTube items to process
+    q = select(Content).where(
+        Content.user_id == user.id,
+        Content.content_type == "youtube",
+        Content.source_id.isnot(None),
     )
+    if not force:
+        q = q.where(Content.channel_thumbnail.is_(None))
+    items = list(db.scalars(q).all())
 
     if not items:
         logger.info("backfill: no YouTube items missing channel thumbnails for user %s", user.id)

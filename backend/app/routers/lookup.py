@@ -51,48 +51,52 @@ PROVIDER_LABELS: dict[str, str] = {
 def _extract_channel_thumbnail(html: str) -> str:
     """Extract channel avatar URL from YouTube watch page HTML.
 
-    YouTube's page structure varies by layout version, so we try several anchors:
-    1. channelAvatarViewModel — new layout, closest to the avatar src
-    2. videoOwnerRenderer:{ — older layout object (not the bare string in the schema list)
-    Both are searched in a window large enough to contain the thumbnail URLs.
+    Strategy: find videoOwnerRenderer:{ (the actual object, not the bare name
+    that appears in YouTube's renderer registry), then look for channelAvatarViewModel
+    or a direct yt3 URL within that block.  The block can be large (~100KB in the
+    new layout) so we use a generous window.
+
+    Falls back to the first yt3.ggpht.com/ytc/ URL appearing *after* the
+    videoOwnerRenderer object to avoid picking up sidebar recommendations.
     """
     if not html:
         return ""
 
-    def _search_chunk(start_idx: int, window: int = 3000) -> str:
-        chunk = html[start_idx: start_idx + window]
-        m = re.search(r'"url"\s*:\s*"(https://yt3\.ggpht\.com/ytc/[^"\\]+)"', chunk)
+    def _first_yt3(text: str) -> str:
+        m = re.search(r'"url"\s*:\s*"(https://yt3\.ggpht\.com/ytc/[^"\\]+)"', text)
         if m:
             url = m.group(1).replace("\\u0026", "&")
-            url = re.sub(r"=s\d+(-c[^\"\\]*)?", "=s88-c-k-c0x00ffffff-no-rj", url)
-            return url
+            return re.sub(r"=s\d+(-c[^\"\\]*)?", "=s88-c-k-c0x00ffffff-no-rj", url)
         return ""
 
-    # Anchor 1: channelAvatarViewModel (new layout — thumbnail is within ~500 chars)
-    idx = html.find('"channelAvatarViewModel":{')
-    if idx >= 0:
-        result = _search_chunk(idx, 1500)
+    # Find the videoOwnerRenderer *object* (followed by '{', not a bare string)
+    owner_idx = html.find('"videoOwnerRenderer":{')
+    if owner_idx < 0:
+        owner_idx = 0  # fallback: search from start
+
+    # Within the owner block, prefer channelAvatarViewModel (new layout)
+    avatar_idx = html.find('"channelAvatarViewModel":{', owner_idx)
+    if avatar_idx >= 0:
+        result = _first_yt3(html[avatar_idx: avatar_idx + 1500])
         if result:
             return result
 
-    # Anchor 2: videoOwnerRenderer object (older layout)
-    idx = html.find('"videoOwnerRenderer":{')
-    if idx >= 0:
-        result = _search_chunk(idx, 3000)
+    # Older layout: videoOwnerRenderer thumbnail block directly
+    # The thumbnail can be up to ~100KB into the object in new layouts
+    if owner_idx > 0:
+        result = _first_yt3(html[owner_idx: owner_idx + 120_000])
         if result:
             return result
 
-    # Anchor 3: broadest fallback — first yt3.ggpht.com/ytc/ URL in the page
-    # (channel avatars use /ytc/, video thumbnails use i.ytimg.com)
-    idx = html.find("yt3.ggpht.com/ytc/")
+    # Last resort: first yt3.ggpht.com/ytc/ anywhere after the owner block
+    search_start = owner_idx
+    idx = html.find("yt3.ggpht.com/ytc/", search_start)
     if idx >= 0:
-        start = max(0, idx - 8)
-        chunk = html[start: idx + 300]
+        chunk = html[max(0, idx - 8): idx + 300]
         m = re.search(r'https://yt3\.ggpht\.com/ytc/[^\s"\'\\]+', chunk)
         if m:
             url = m.group(0).replace("\\u0026", "&")
-            url = re.sub(r"=s\d+(-c[^\"\\]*)?", "=s88-c-k-c0x00ffffff-no-rj", url)
-            return url
+            return re.sub(r"=s\d+(-c[^\"\\]*)?", "=s88-c-k-c0x00ffffff-no-rj", url)
 
     return ""
 
