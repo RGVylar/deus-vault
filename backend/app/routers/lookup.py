@@ -52,14 +52,20 @@ def _extract_channel_thumbnail(html: str) -> str:
     """Extract channel avatar URL from YouTube watch page HTML (ytInitialData)."""
     if not html:
         return ""
-    # The videoOwnerRenderer block contains the channel avatar thumbnail
-    m = re.search(
-        r'"videoOwnerRenderer"\s*:\s*\{.*?"thumbnail"\s*:\s*\{"thumbnails"\s*:\s*\[.*?"url"\s*:\s*"(https://yt3[^"]+)"',
-        html, re.DOTALL
-    )
+    # Find the videoOwnerRenderer block, then grab the first yt3 URL within it.
+    # This is more robust than a single regex spanning the whole blob.
+    idx = html.find('"videoOwnerRenderer"')
+    if idx < 0:
+        # Fallback: look for channelThumbnailSupportedRenderers
+        idx = html.find('"channelAvatar"')
+    if idx < 0:
+        return ""
+    # Search within the next 4000 characters — enough to contain the avatar thumbnails
+    chunk = html[idx: idx + 4000]
+    m = re.search(r'"url"\s*:\s*"(https://yt3[^"\\]+)', chunk)
     if m:
         url = m.group(1).replace("\\u0026", "&")
-        # Upgrade to 88px resolution for better quality in UI
+        # Upgrade to 88px resolution
         url = re.sub(r"=s\d+", "=s88", url)
         return url
     return ""

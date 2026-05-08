@@ -30,11 +30,11 @@
 		'SkyShowtime':'oklch(0.78 0.18 200)',
 	};
 
-	/** Deterministic hue from a string → oklch avatar color */
+	/** Deterministic hue from a string → oklch avatar color (bright, for dark card backgrounds) */
 	function channelColor(name: string): string {
 		let h = 0;
 		for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
-		return `oklch(0.62 0.22 ${h % 360})`;
+		return `oklch(0.72 0.20 ${h % 360})`;
 	}
 
 	let year = $state(new Date().getFullYear());
@@ -381,7 +381,7 @@
 	<h2>▶️ Canales más vistos</h2>
 	<div class="channel-grid">
 		{#each stats.top_youtube_channels as ch, i}
-			<div class="channel-card glass" style="--ch-color:{channelColor(ch.name)}">
+			<div class="channel-card" style="--ch-color:{channelColor(ch.name)}">
 				<div class="ch-rank">#{i + 1}</div>
 				{#if ch.thumbnail}
 					<img class="ch-avatar ch-avatar-img" src={ch.thumbnail} alt={ch.name} />
@@ -658,6 +658,14 @@
 		color: var(--text-dim);
 	}
 
+	/* ── Shared dark-glass base for all deep stat cards ─────── */
+	.deep-card-base {
+		background: rgba(0, 0, 0, 0.42);
+		border: 1px solid rgba(255,255,255,0.10);
+		backdrop-filter: blur(var(--blur)) saturate(1.2);
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
+	}
+
 	/* ── Channel / author cards ─────────────────────────────── */
 	.channel-grid {
 		display: flex;
@@ -670,6 +678,10 @@
 		gap: 14px;
 		padding: 14px 18px;
 		border-radius: 20px;
+		background: rgba(0, 0, 0, 0.42);
+		border: 1px solid rgba(255,255,255,0.10);
+		backdrop-filter: blur(var(--blur)) saturate(1.2);
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
 		position: relative;
 		overflow: hidden;
 		transition: background 0.15s;
@@ -680,38 +692,38 @@
 		left: 0; top: 0; bottom: 0;
 		width: 3px;
 		background: var(--ch-color, var(--primary));
-		box-shadow: 0 0 10px var(--ch-color, var(--primary));
+		box-shadow: 0 0 8px var(--ch-color, var(--primary));
 		border-radius: 0 2px 2px 0;
 	}
-	.channel-card:hover { background: var(--glass-bg-strong); }
+	.channel-card:hover { background: rgba(0, 0, 0, 0.55); }
 	.ch-rank {
 		font-size: 10px; font-weight: 800;
-		color: var(--text-dim); min-width: 22px; text-align: right;
+		color: rgba(255,255,255,0.35); min-width: 22px; text-align: right;
 	}
 	.ch-avatar {
 		width: 44px; height: 44px;
 		border-radius: 50%;
 		background: var(--ch-color, var(--primary));
-		box-shadow: 0 0 18px color-mix(in srgb, var(--ch-color, var(--primary)) 55%, transparent);
+		box-shadow: 0 0 14px color-mix(in srgb, var(--ch-color, var(--primary)) 45%, transparent);
 		display: flex; align-items: center; justify-content: center;
 		font-size: 18px; font-weight: 900; color: #fff;
 		flex-shrink: 0;
-		text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+		text-shadow: 0 1px 4px rgba(0,0,0,0.6);
 	}
 	.ch-avatar-img {
 		object-fit: cover;
-		background: var(--glass-bg-strong);
+		background: rgba(0,0,0,0.3);
 	}
 	.ch-info { flex: 1; min-width: 0; }
 	.ch-name {
-		font-size: 14px; font-weight: 700; color: var(--text);
+		font-size: 14px; font-weight: 700; color: #fff;
 		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 	}
-	.ch-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+	.ch-meta { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 3px; }
 	.ch-time {
 		font-size: 14px; font-weight: 800;
 		color: var(--ch-color, var(--primary)); white-space: nowrap;
-		text-shadow: 0 0 14px color-mix(in srgb, var(--ch-color, var(--primary)) 55%, transparent);
+		filter: brightness(1.3);
 	}
 
 	/* ── Podium cards (top items with thumbnail) ──────────── */
@@ -725,11 +737,11 @@
 		align-items: center;
 		gap: 14px;
 		padding: 12px 16px 12px 12px;
-		background: var(--glass-bg);
-		border: 1px solid var(--glass-border);
+		background: rgba(0, 0, 0, 0.42);
+		border: 1px solid rgba(255,255,255,0.10);
 		border-radius: 20px;
-		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		backdrop-filter: blur(var(--blur)) saturate(1.2);
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
 		position: relative;
 		overflow: hidden;
 		transition: background 0.15s, transform 0.15s;
@@ -740,14 +752,14 @@
 		inset: 0;
 		border-radius: inherit;
 		background: linear-gradient(135deg,
-			color-mix(in srgb, var(--accent) 10%, transparent) 0%,
-			transparent 55%);
+			color-mix(in srgb, var(--accent) 8%, transparent) 0%,
+			transparent 50%);
 		pointer-events: none;
 	}
-	.podium-card:hover { background: var(--glass-bg-strong); transform: translateY(-1px); }
+	.podium-card:hover { background: rgba(0,0,0,0.55); transform: translateY(-1px); }
 	.podium-no {
 		font-size: 40px; font-weight: 900;
-		color: var(--accent); opacity: 0.15;
+		color: var(--accent); opacity: 0.18;
 		line-height: 1; min-width: 38px; text-align: center;
 		flex-shrink: 0; font-variant-numeric: tabular-nums;
 	}
@@ -758,26 +770,27 @@
 	.podium-img.port { width: 36px; height: 54px; }
 	.podium-img.ph {
 		display: flex; align-items: center; justify-content: center;
-		background: var(--glass-bg-strong); font-size: 22px;
+		background: rgba(255,255,255,0.06); font-size: 22px;
 	}
 	.podium-body { flex: 1; min-width: 0; }
 	.podium-title {
-		font-size: 14px; font-weight: 700; color: var(--text);
+		font-size: 14px; font-weight: 700; color: #fff;
 		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 	}
 	.podium-sub {
-		font-size: 11px; color: var(--text-muted); margin-top: 2px;
+		font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px;
 		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 	}
 	.podium-badge {
 		display: inline-block;
 		margin-top: 6px;
 		padding: 2px 9px;
-		background: color-mix(in srgb, var(--accent) 18%, transparent);
-		border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+		background: color-mix(in srgb, var(--accent) 22%, transparent);
+		border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
 		border-radius: 100px;
 		font-size: 11px; font-weight: 700;
 		color: var(--accent);
+		filter: brightness(1.2);
 	}
 
 	/* ── Streaming platforms ────────────────────────────────── */
@@ -785,20 +798,24 @@
 		border-radius: 20px;
 		overflow: hidden;
 		padding: 0 !important;
+		background: rgba(0, 0, 0, 0.42) !important;
+		border: 1px solid rgba(255,255,255,0.10) !important;
+		backdrop-filter: blur(var(--blur)) saturate(1.2);
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
 	}
 	.plat-row {
 		display: flex;
 		align-items: center;
 		gap: 12px;
 		padding: 15px 18px;
-		border-bottom: 1px solid var(--glass-border);
+		border-bottom: 1px solid rgba(255,255,255,0.07);
 		transition: background 0.12s;
 	}
 	.plat-row:last-child { border-bottom: none; }
-	.plat-row:hover { background: var(--glass-bg-strong); }
+	.plat-row:hover { background: rgba(255,255,255,0.05); }
 	.plat-rank {
 		font-size: 10px; font-weight: 800;
-		color: var(--text-dim); min-width: 20px;
+		color: rgba(255,255,255,0.3); min-width: 20px;
 	}
 	.plat-dot {
 		width: 10px; height: 10px;
@@ -808,10 +825,10 @@
 		flex-shrink: 0;
 	}
 	.plat-info { flex: 1; min-width: 0; }
-	.plat-name { font-size: 14px; font-weight: 700; color: var(--text); }
+	.plat-name { font-size: 14px; font-weight: 700; color: #fff; }
 	.plat-bar-wrap {
 		height: 3px;
-		background: var(--glass-border);
+		background: rgba(255,255,255,0.08);
 		border-radius: 2px;
 		margin-top: 7px;
 		overflow: hidden;
@@ -827,9 +844,9 @@
 	.plat-time {
 		font-size: 14px; font-weight: 800;
 		color: var(--pc);
-		text-shadow: 0 0 12px color-mix(in srgb, var(--pc) 60%, transparent);
+		filter: brightness(1.2);
 	}
-	.plat-count { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+	.plat-count { font-size: 10px; color: rgba(255,255,255,0.45); margin-top: 2px; }
 
 	@media (min-width: 1024px) {
 		.podium-grid { grid-template-columns: repeat(3, 1fr); }
