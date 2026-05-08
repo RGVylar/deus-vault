@@ -1,6 +1,8 @@
+import asyncio
 import random
 from datetime import date, datetime, timedelta, timezone
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -567,3 +569,59 @@ def random_pick(
             pool.append(c)
 
     return random.choice(pool)
+
+
+@router.post("/backfill-channel-thumbnails")
+async def backfill_channel_thumbnails(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Re-fetch YouTube channel thumbnails for all items that are missing one.
+
+    Safe to call multiple times — only touches rows where channel_thumbnail IS NULL.
+    Returns counts of how many were updated vs failed.
+    """
+    from app.routers.lookup import _extract_channel_thumbnail
+
+    HEADERS = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+        ),
+        "Accept-Language": "en-US,en;q=0.9",
+        "Cookie": "CONSENT=YES+cb.20210328-17-p0.en+FX+119",
+    }
+
+    # Find all YouTube items for this user without a channel thumbnail
+    items = list(
+        db.scalars(
+            select(Content).where(
+                Content.user_id == user.id,
+                Content.content_type == "youtube",
+                Content.channel_thumbnail.is_(None),
+                Content.source_id.isnot(None),
+            )
+        ).all()
+    )
+
+    updated = 0
+    failed = 0
+
+    async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True, timeout=15) as client:
+        for item in items:
+            watch_url = f"https://www.youtube.com/watch?v={item.source_id}"
+            try:
+                resp = await client.get(watch_url)
+                thumb = _extract_channel_thumbnail(resp.text)
+                if thumb:
+                    item.channel_thumbnail = thumb
+                    updated += 1
+                else:
+                    failed += 1
+            except Exception:
+                failed += 1
+            # Small delay to be polite to YouTube
+            await asyncio.sleep(0.5)
+
+    db.commit()
+    return {"updated": updated, "failed": failed, "total": len(items)}

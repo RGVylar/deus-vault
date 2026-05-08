@@ -52,7 +52,17 @@
 		loading = true;
 		stats = null;
 		api.get<RewindStats>(`/contents/rewind?year=${_year}`)
-			.then(r => { stats = r; })
+			.then(r => {
+				stats = r;
+				// Silently backfill channel thumbnails if any are missing
+				const hasMissing = r.top_youtube_channels.some(ch => !ch.thumbnail);
+				if (hasMissing) {
+					api.post('/contents/backfill-channel-thumbnails')
+						.then(() => api.get<RewindStats>(`/contents/rewind?year=${_year}`))
+						.then(r2 => { stats = r2; })
+						.catch(() => {});
+				}
+			})
 			.finally(() => { loading = false; });
 	});
 
