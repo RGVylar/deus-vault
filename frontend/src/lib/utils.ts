@@ -1,3 +1,18 @@
+export function isLookupCandidate(url: string): boolean {
+	try {
+		const h = new URL(url).hostname.toLowerCase();
+		return h.includes('youtube.com') || h.includes('youtu.be') ||
+			h.includes('store.steampowered.com') || h.includes('netflix.com') ||
+			h.includes('primevideo.com') || h.includes('amazon.com') ||
+			h.includes('max.com') || h.includes('hbomax.com') ||
+			h.includes('disneyplus.com') || h.includes('strem.io') ||
+			h.includes('stremio.com') || h.includes('open.spotify.com') ||
+			h.includes('crunchyroll.com') ||
+			h.includes('openlibrary.org') || h.includes('goodreads.com') ||
+			h.includes('books.google.com');
+	} catch { return false; }
+}
+
 export function formatDuration(minutes: number): string {
 	if (minutes < 60) return `${minutes}min`;
 	const h = Math.floor(minutes / 60);

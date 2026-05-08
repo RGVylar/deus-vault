@@ -3,7 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration, TYPE_ICONS, TYPE_LABELS, buildConsumeUrl } from '$lib/utils';
+	import { formatDuration, TYPE_ICONS, TYPE_LABELS, buildConsumeUrl, isLookupCandidate } from '$lib/utils';
+	import { quickAdd } from '$lib/stores/quickadd.svelte';
 	import type { Content, VaultStats, ContentType, PaginatedContents } from '$lib/types';
 
 	const LIMIT = 20;
@@ -85,6 +86,7 @@
 	let addSourceId = $state('');
 	let addCollection = $state('');
 	let addPinned = $state(false);
+	let addAlreadyConsumed = $state(false);
 	let addError = $state('');
 	let lookupLoading = $state(false);
 	let lastLookupUrl = $state('');
@@ -113,28 +115,18 @@
 			} catch (e) {}
 		};
 		window.addEventListener('deus_vault_settings_changed', handler as EventListener);
+		return () => window.removeEventListener('deus_vault_settings_changed', handler as EventListener);
+	});
 
-		// Global paste: if pasting a supported URL while the modal is closed → open & autodetect
-		const pasteHandler = (ev: ClipboardEvent) => {
-			// Don't intercept if user is typing in an input/textarea
-			const target = ev.target as HTMLElement;
-			if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-			const text = ev.clipboardData?.getData('text/plain')?.trim() ?? '';
-			if (!text.startsWith('http')) return;
-			if (!isLookupCandidate(text)) return;
-			if (showAdd) return; // already open
-			ev.preventDefault();
-			resetForm();
-			addUrl = text;
-			showAdd = true;
-			// lookupUrl fires via $effect watching addUrl
-		};
-		window.addEventListener('paste', pasteHandler);
-
-		return () => {
-			window.removeEventListener('deus_vault_settings_changed', handler as EventListener);
-			window.removeEventListener('paste', pasteHandler);
-		};
+	// React to URLs pasted from anywhere in the app (set by layout)
+	$effect(() => {
+		const url = quickAdd.pendingUrl;
+		if (!url) return;
+		quickAdd.pendingUrl = '';
+		if (showAdd) return;
+		resetForm();
+		addUrl = url;
+		showAdd = true;
 	});
 
 	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string, sort = 'recent', col: string | null = null) {
@@ -208,22 +200,7 @@
 	});
 
 	// --- Lookup ---
-	function isLookupCandidate(url: string): boolean {
-		try {
-			const h = new URL(url).hostname.toLowerCase();
-			return h.includes('youtube.com') || h.includes('youtu.be') ||
-				h.includes('store.steampowered.com') || h.includes('netflix.com') ||
-				h.includes('primevideo.com') || h.includes('amazon.com') ||
-				h.includes('max.com') || h.includes('hbomax.com') ||
-				h.includes('disneyplus.com') || h.includes('strem.io') ||
-				h.includes('stremio.com') || h.includes('open.spotify.com') ||
-				h.includes('crunchyroll.com') ||
-				h.includes('openlibrary.org') || h.includes('goodreads.com') ||
-				h.includes('books.google.com');
-		} catch { return false; }
-	}
-
-	$effect(() => {
+$effect(() => {
 		const url = addUrl.trim();
 		if (!showAdd || !url || !isLookupCandidate(url) || lookupLoading || url === lastLookupUrl) return;
 		if (autoLookupTimer) clearTimeout(autoLookupTimer);
@@ -281,7 +258,7 @@
 	async function submitAdd() {
 		addError = '';
 		try {
-			await api.post('/contents', {
+			const created = await api.post<{ id: number }>('/contents', {
 				title: addTitle, content_type: addType, url: addUrl || null,
 				thumbnail: addThumbnail || null, duration_minutes: addDuration,
 				page_count: addPageCount && Number(addPageCount) > 0 ? Number(addPageCount) : null,
@@ -291,6 +268,9 @@
 				source_id: addSourceId || null, author: addAuthor || null, notes: addNotes || null,
 				collection: addCollection.trim() || null, pinned: addPinned,
 			});
+			if (addAlreadyConsumed && created?.id) {
+				await api.post(`/contents/${created.id}/consume`);
+			}
 			showAdd = false;
 			resetForm();
 			load();
@@ -311,7 +291,7 @@
 		addNotes = ''; addThumbnail = ''; addSourceId = ''; addType = 'youtube';
 		addPageCount = 0; addWordsPerPage = readingWordsPerPage; addBookFormat = 'book';
 		addEpisodeCount = 0; addSeasons = 0; lastLookupUrl = '';
-		addCollection = ''; addPinned = false;
+		addCollection = ''; addPinned = false; addAlreadyConsumed = false;
 	}
 
 	async function consume(id: number) { await api.post(`/contents/${id}/consume`); load(); }
@@ -932,11 +912,26 @@
 					<label for="add-notes">Notas</label>
 					<textarea id="add-notes" class="text" bind:value={addNotes}></textarea>
 				</div>
-				<div class="field">
-					<label style="display:flex; align-items:center; gap:8px; text-transform:none; font-size:13px; cursor:pointer;">
-						<input type="checkbox" bind:checked={addPinned} />
-						Marcar como prioritario 📌
-					</label>
+				<!-- Toggles: prioritario + ya consumido -->
+				<div class="toggle-row">
+					<button
+						class="toggle-btn"
+						class:toggle-on={addPinned}
+						onclick={() => addPinned = !addPinned}
+						type="button"
+					>
+						<span class="toggle-ico">📌</span>
+						<span>Prioritario</span>
+					</button>
+					<button
+						class="toggle-btn toggle-btn-consume"
+						class:toggle-on={addAlreadyConsumed}
+						onclick={() => addAlreadyConsumed = !addAlreadyConsumed}
+						type="button"
+					>
+						<span class="toggle-ico">✅</span>
+						<span>Ya consumido</span>
+					</button>
 				</div>
 				{#if addError}<p class="error-msg">{addError}</p>{/if}
 				<div class="row mt16">

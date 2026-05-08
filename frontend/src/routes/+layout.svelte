@@ -1,6 +1,8 @@
 <script lang="ts">
 	import '../app.css';
 	import { auth } from '$lib/stores/auth.svelte';
+	import { quickAdd } from '$lib/stores/quickadd.svelte';
+	import { isLookupCandidate } from '$lib/utils';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -42,7 +44,23 @@
 	onMount(() => {
 		applyPrefs();
 		window.addEventListener('deus_vault_appearance_changed', applyPrefs);
-		return () => window.removeEventListener('deus_vault_appearance_changed', applyPrefs);
+
+		// Global Ctrl+V → open add modal on vault page from anywhere in the app
+		const pasteHandler = (ev: ClipboardEvent) => {
+			const target = ev.target as HTMLElement;
+			if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+			const text = ev.clipboardData?.getData('text/plain')?.trim() ?? '';
+			if (!text.startsWith('http') || !isLookupCandidate(text)) return;
+			ev.preventDefault();
+			quickAdd.pendingUrl = text;
+			if (page.url.pathname !== '/') goto('/');
+		};
+		window.addEventListener('paste', pasteHandler);
+
+		return () => {
+			window.removeEventListener('deus_vault_appearance_changed', applyPrefs);
+			window.removeEventListener('paste', pasteHandler);
+		};
 	});
 </script>
 
