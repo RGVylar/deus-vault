@@ -14,7 +14,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add new enum values safely if they don't exist
+    # SQLite has no native enum type — values are stored as plain strings, no migration needed.
+    bind = op.get_bind()
+    if bind.dialect.name == "sqlite":
+        return
+
+    # Add new enum values safely if they don't exist (PostgreSQL only)
     op.execute(
         """
     DO $$

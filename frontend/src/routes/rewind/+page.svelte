@@ -658,12 +658,12 @@
 		color: var(--text-dim);
 	}
 
-	/* ── Shared dark-glass base for all deep stat cards ─────── */
+	/* ── Shared glass base for all deep stat cards ─────────── */
 	.deep-card-base {
-		background: rgba(0, 0, 0, 0.42);
-		border: 1px solid rgba(255,255,255,0.10);
-		backdrop-filter: blur(var(--blur)) saturate(1.2);
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
+		background: var(--glass-bg);
+		border: 1px solid var(--glass-border);
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
 	}
 
 	/* ── Channel / author cards ─────────────────────────────── */
@@ -678,10 +678,10 @@
 		gap: 14px;
 		padding: 14px 18px;
 		border-radius: 20px;
-		background: rgba(0, 0, 0, 0.42);
-		border: 1px solid rgba(255,255,255,0.10);
-		backdrop-filter: blur(var(--blur)) saturate(1.2);
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
+		background: var(--glass-bg);
+		border: 1px solid var(--glass-border);
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
 		position: relative;
 		overflow: hidden;
 		transition: background 0.15s;
@@ -695,10 +695,10 @@
 		box-shadow: 0 0 8px var(--ch-color, var(--primary));
 		border-radius: 0 2px 2px 0;
 	}
-	.channel-card:hover { background: rgba(0, 0, 0, 0.55); }
+	.channel-card:hover { background: var(--glass-bg-strong); }
 	.ch-rank {
 		font-size: 10px; font-weight: 800;
-		color: rgba(255,255,255,0.35); min-width: 22px; text-align: right;
+		color: rgba(255,255,255,0.5); min-width: 22px; text-align: right;
 	}
 	.ch-avatar {
 		width: 44px; height: 44px;
@@ -718,12 +718,17 @@
 	.ch-name {
 		font-size: 14px; font-weight: 700; color: #fff;
 		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+		text-shadow: 0 1px 6px rgba(0,0,0,0.7);
 	}
-	.ch-meta { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+	.ch-meta {
+		font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 3px;
+		text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+	}
 	.ch-time {
 		font-size: 14px; font-weight: 800;
 		color: var(--ch-color, var(--primary)); white-space: nowrap;
-		filter: brightness(1.3);
+		filter: brightness(1.4);
+		text-shadow: 0 1px 6px rgba(0,0,0,0.5);
 	}
 
 	/* ── Podium cards (top items with thumbnail) ──────────── */
@@ -737,11 +742,11 @@
 		align-items: center;
 		gap: 14px;
 		padding: 12px 16px 12px 12px;
-		background: rgba(0, 0, 0, 0.42);
-		border: 1px solid rgba(255,255,255,0.10);
+		background: var(--glass-bg);
+		border: 1px solid var(--glass-border);
 		border-radius: 20px;
-		backdrop-filter: blur(var(--blur)) saturate(1.2);
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
 		position: relative;
 		overflow: hidden;
 		transition: background 0.15s, transform 0.15s;
@@ -756,10 +761,10 @@
 			transparent 50%);
 		pointer-events: none;
 	}
-	.podium-card:hover { background: rgba(0,0,0,0.55); transform: translateY(-1px); }
+	.podium-card:hover { background: var(--glass-bg-strong); transform: translateY(-1px); }
 	.podium-no {
 		font-size: 40px; font-weight: 900;
-		color: var(--accent); opacity: 0.18;
+		color: var(--accent); opacity: 0.22;
 		line-height: 1; min-width: 38px; text-align: center;
 		flex-shrink: 0; font-variant-numeric: tabular-nums;
 	}
@@ -776,10 +781,12 @@
 	.podium-title {
 		font-size: 14px; font-weight: 700; color: #fff;
 		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+		text-shadow: 0 1px 6px rgba(0,0,0,0.7);
 	}
 	.podium-sub {
-		font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px;
+		font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 2px;
 		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+		text-shadow: 0 1px 4px rgba(0,0,0,0.6);
 	}
 	.podium-badge {
 		display: inline-block;
@@ -798,10 +805,10 @@
 		border-radius: 20px;
 		overflow: hidden;
 		padding: 0 !important;
-		background: rgba(0, 0, 0, 0.42) !important;
-		border: 1px solid rgba(255,255,255,0.10) !important;
-		backdrop-filter: blur(var(--blur)) saturate(1.2);
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
+		background: var(--glass-bg) !important;
+		border: 1px solid var(--glass-border) !important;
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
 	}
 	.plat-row {
 		display: flex;
@@ -825,7 +832,7 @@
 		flex-shrink: 0;
 	}
 	.plat-info { flex: 1; min-width: 0; }
-	.plat-name { font-size: 14px; font-weight: 700; color: #fff; }
+	.plat-name { font-size: 14px; font-weight: 700; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.7); }
 	.plat-bar-wrap {
 		height: 3px;
 		background: rgba(255,255,255,0.08);
@@ -844,9 +851,10 @@
 	.plat-time {
 		font-size: 14px; font-weight: 800;
 		color: var(--pc);
-		filter: brightness(1.2);
+		filter: brightness(1.4);
+		text-shadow: 0 1px 6px rgba(0,0,0,0.5);
 	}
-	.plat-count { font-size: 10px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+	.plat-count { font-size: 10px; color: rgba(255,255,255,0.65); margin-top: 2px; text-shadow: 0 1px 4px rgba(0,0,0,0.6); }
 
 	@media (min-width: 1024px) {
 		.podium-grid { grid-template-columns: repeat(3, 1fr); }

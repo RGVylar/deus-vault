@@ -30,10 +30,12 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     from sqlalchemy import create_engine
 
+    _url = config.get_main_option("sqlalchemy.url", "")
+    _connect_args = {"check_same_thread": False} if _url.startswith("sqlite") else {"client_encoding": "utf8"}
     connectable = create_engine(
-        config.get_main_option("sqlalchemy.url", ""),
+        _url,
         poolclass=pool.NullPool,
-        connect_args={"client_encoding": "utf8"},
+        connect_args=_connect_args,
     )
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)

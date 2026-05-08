@@ -59,4 +59,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("contents")
     op.drop_table("users")
-    op.execute("DROP TYPE IF EXISTS contenttype")
+    bind = op.get_bind()
+    if bind.dialect.name != "sqlite":
+        op.execute("DROP TYPE IF EXISTS contenttype")
