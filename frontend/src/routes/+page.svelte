@@ -95,6 +95,12 @@
 	let autoLookupTimer: ReturnType<typeof setTimeout> | null = null;
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
+	// Duplicate detection + new lookup fields
+	let duplicateItem = $state<Content | null>(null);
+	let duplicateChecked = $state(false);
+	let addNextEpisodeDate = $state<string | null>(null);
+	let addWatchProviders = $state<Array<{provider_name: string; logo_path: string}>>([]);
+
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
 		load();
@@ -252,6 +258,25 @@ $effect(() => {
 				if (data.seasons) addSeasons = Number(data.seasons);
 			}
 			lastLookupUrl = targetUrl;
+
+			// Parse new fields
+			addNextEpisodeDate = (addType === 'series' && data.next_episode_date) ? data.next_episode_date : null;
+			addWatchProviders = data.watch_providers ?? [];
+
+			// Duplicate check
+			duplicateItem = null;
+			duplicateChecked = false;
+			const checkId = addSourceId || '';
+			const checkUrl = targetUrl;
+			if (checkId || checkUrl) {
+				try {
+					const p = new URLSearchParams();
+					if (checkId) p.set('source_id', checkId);
+					else p.set('url', checkUrl);
+					duplicateItem = await api.get<Content | null>(`/contents/check-duplicate?${p.toString()}`);
+				} catch { /* ignore */ }
+				duplicateChecked = true;
+			}
 		} catch (e: unknown) {
 			addError = e instanceof Error ? e.message : 'Lookup failed';
 		} finally { lookupLoading = false; }
@@ -259,6 +284,11 @@ $effect(() => {
 
 	async function submitAdd() {
 		addError = '';
+		// Block if pending duplicate
+		if (duplicateItem && !duplicateItem.consumed && !duplicateItem.abandoned) {
+			addError = 'Este ítem ya está en tu bóveda como pendiente.';
+			return;
+		}
 		try {
 			const created = await api.post<{ id: number }>('/contents', {
 				title: addTitle, content_type: addType, url: addUrl || null,
@@ -270,6 +300,7 @@ $effect(() => {
 				source_id: addSourceId || null, author: addAuthor || null, notes: addNotes || null,
 				collection: addCollection.trim() || null, pinned: addPinned,
 				channel_thumbnail: addChannelThumbnail || null,
+				next_episode_date: addNextEpisodeDate || null,
 			});
 			if (addAlreadyConsumed && created?.id) {
 				await api.post(`/contents/${created.id}/consume`);
@@ -295,6 +326,8 @@ $effect(() => {
 		addPageCount = 0; addWordsPerPage = readingWordsPerPage; addBookFormat = 'book';
 		addEpisodeCount = 0; addSeasons = 0; lastLookupUrl = '';
 		addCollection = ''; addPinned = false; addAlreadyConsumed = false;
+		duplicateItem = null; duplicateChecked = false;
+		addNextEpisodeDate = null; addWatchProviders = [];
 	}
 
 	async function consume(id: number) { await api.post(`/contents/${id}/consume`); load(); }
@@ -636,6 +669,11 @@ $effect(() => {
 								{#if c.seasons && c.seasons > 0}<span>📺 {c.seasons}T</span>{/if}
 								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} ep</span>{/if}
 								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>{/if}
+								{#if c.next_episode_date}
+									{@const epDate = new Date(c.next_episode_date)}
+									{@const aired = epDate < new Date()}
+									<span class="next-ep" class:aired title="Próximo episodio">{aired ? '⏰' : '🟢'} {epDate.toLocaleDateString('es',{day:'numeric',month:'short'})}</span>
+								{/if}
 							{:else}
 								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}</span>{/if}
 								{#if c.content_type === 'book' && c.page_count && Number(c.page_count) > 0}
@@ -841,6 +879,29 @@ $effect(() => {
 							Buscando información del enlace...
 						</p>
 					{/if}
+					{#if duplicateChecked && duplicateItem}
+						<div class="dup-banner" class:dup-pending={!duplicateItem.consumed && !duplicateItem.abandoned} class:dup-consumed={duplicateItem.consumed || duplicateItem.abandoned}>
+							{#if !duplicateItem.consumed && !duplicateItem.abandoned}
+								⚠️ Ya está en tu bóveda como pendiente: <strong>"{duplicateItem.title}"</strong>
+							{:else}
+								ℹ️ Ya lo {duplicateItem.consumed ? 'consumiste' : 'abandonaste'}{duplicateItem.times_consumed && duplicateItem.times_consumed > 1 ? ' ' + duplicateItem.times_consumed + ' veces' : ' una vez'}. Puedes añadirlo de nuevo.
+							{/if}
+						</div>
+					{/if}
+					{#if addWatchProviders.length > 0}
+						<div class="providers-row">
+							<span class="providers-label">Disponible en:</span>
+							{#each addWatchProviders.slice(0, 6) as p}
+								<div class="provider-chip" title={p.provider_name}>
+									{#if p.logo_path}
+										<img src={p.logo_path} alt={p.provider_name} class="provider-logo" />
+									{:else}
+										<span style="font-size:10px; padding: 2px 6px;">{p.provider_name}</span>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					{/if}
 				</div>
 				<div class="field">
 					<label for="add-type">Tipo</label>
@@ -879,6 +940,11 @@ $effect(() => {
 					{#if addDuration > 0 && addEpisodeCount > 0}
 						<p class="muted" style="font-size:13px; margin-top:-4px;">
 							Duración total estimada: ~{formatDuration(addDuration * addEpisodeCount)}
+						</p>
+					{/if}
+					{#if addNextEpisodeDate}
+						<p class="muted" style="font-size:12px; margin-top:-4px;">
+							🟢 Próximo ep: {new Date(addNextEpisodeDate + 'T00:00:00').toLocaleDateString('es', {day:'numeric',month:'long',year:'numeric'})}
 						</p>
 					{/if}
 				{/if}
@@ -995,5 +1061,61 @@ $effect(() => {
 		font-size: 13px;
 		padding: 6px 10px !important;
 		min-width: 0;
+	}
+
+	/* Duplicate banner */
+	.dup-banner {
+		display: flex;
+		gap: 6px;
+		padding: 9px 12px;
+		border-radius: 10px;
+		font-size: 12px;
+		margin: 6px 0 2px;
+		border: 1px solid;
+		flex-wrap: wrap;
+		align-items: center;
+	}
+	.dup-pending {
+		background: oklch(0.25 0.08 45 / 0.4);
+		border-color: oklch(0.65 0.18 45 / 0.5);
+		color: oklch(0.85 0.12 45);
+	}
+	.dup-consumed {
+		background: var(--glass-bg-weak);
+		border-color: var(--glass-border);
+		color: var(--text-muted);
+	}
+
+	/* Watch providers */
+	.providers-row {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex-wrap: wrap;
+		margin: 6px 0 2px;
+	}
+	.providers-label {
+		font-size: 11px;
+		color: var(--text-muted);
+	}
+	.provider-chip {
+		border-radius: 6px;
+		overflow: hidden;
+		border: 1px solid var(--glass-border);
+	}
+	.provider-logo {
+		width: 32px;
+		height: 32px;
+		display: block;
+	}
+
+	/* Next episode badge on cards */
+	.next-ep {
+		font-size: 10px;
+		font-weight: 600;
+		color: var(--series);
+	}
+	.next-ep.aired {
+		color: var(--text-dim);
 	}
 </style>

@@ -794,6 +794,20 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
     poster_path = details.get("poster_path") or item.get("poster_path")
     thumbnail = f"https://image.tmdb.org/t/p/w780{poster_path}" if poster_path else ""
 
+    # Next episode date (TV only)
+    next_episode_date: str | None = None
+    if media_type == "tv":
+        next_ep = details.get("next_episode_to_air") or {}
+        next_episode_date = next_ep.get("air_date") or None
+
+    # Watch providers
+    watch_providers: list[dict] = []
+    if item_id and api_key:
+        try:
+            watch_providers = await _fetch_watch_providers(media_type, item_id, api_key)
+        except Exception:
+            pass
+
     return {
         "title": title,
         "duration_minutes": runtime,
@@ -802,7 +816,45 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
         "media_type": media_type,
         "episode_count": episode_count,
         "seasons": seasons,
+        "next_episode_date": next_episode_date,
+        "watch_providers": watch_providers,
     }
+
+
+async def _fetch_watch_providers(
+    media_type: str,
+    tmdb_id: int,
+    api_key: str,
+    country: str = "ES",
+) -> list[dict]:
+    """Return streaming availability from TMDB for a movie or TV show.
+
+    Prefers flatrate (subscription) providers, falls back to rent/buy.
+    Returns list of {provider_name, logo_path} sorted by display_priority.
+    """
+    url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}/watch/providers"
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(url, params={"api_key": api_key})
+    if resp.status_code != 200:
+        return []
+    country_data = resp.json().get("results", {}).get(country, {})
+    providers = (
+        country_data.get("flatrate")
+        or country_data.get("rent")
+        or country_data.get("buy")
+        or []
+    )
+    return [
+        {
+            "provider_name": p.get("provider_name", ""),
+            "logo_path": (
+                f"https://image.tmdb.org/t/p/w92{p['logo_path']}"
+                if p.get("logo_path")
+                else ""
+            ),
+        }
+        for p in sorted(providers, key=lambda x: x.get("display_priority", 999))
+    ]
 
 
 async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: str | None = None) -> dict:
@@ -883,6 +935,20 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
     poster_path = best_match.get("poster_path") or details.get("poster_path")
     thumbnail = f"https://image.tmdb.org/t/p/w780{poster_path}" if poster_path else ""
 
+    # Next episode date (TV only)
+    next_episode_date: str | None = None
+    if media_type == "tv":
+        next_ep = details.get("next_episode_to_air") or {}
+        next_episode_date = next_ep.get("air_date") or None
+
+    # Watch providers
+    watch_providers: list[dict] = []
+    if item_id and api_key:
+        try:
+            watch_providers = await _fetch_watch_providers(media_type, item_id, api_key)
+        except Exception:
+            pass
+
     return {
         "title": title,
         "duration_minutes": runtime,
@@ -891,6 +957,8 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
         "media_type": media_type,
         "episode_count": episode_count,
         "seasons": seasons,
+        "next_episode_date": next_episode_date,
+        "watch_providers": watch_providers,
     }
 
 
@@ -1069,6 +1137,9 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
         else:
             suggested_type = "movie"
 
+    next_episode_date = tmdb.get("next_episode_date") if tmdb else None
+    watch_providers = tmdb.get("watch_providers", []) if tmdb else []
+
     return {
         "title": title,
         "author": PROVIDER_LABELS.get(provider, ""),
@@ -1080,6 +1151,8 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
         "seasons": seasons,
         "suggested_content_type": suggested_type,
         "provider": provider,
+        "next_episode_date": next_episode_date,
+        "watch_providers": watch_providers,
     }
 
 

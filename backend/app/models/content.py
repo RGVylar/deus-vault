@@ -45,6 +45,8 @@ class Content(Base):
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     abandoned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     abandoned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    times_consumed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_episode_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

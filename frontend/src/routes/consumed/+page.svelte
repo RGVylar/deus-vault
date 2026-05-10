@@ -250,7 +250,12 @@
 						</div>
 					{/if}
 					<div class="info">
-						<div class="title">{c.title}</div>
+						<div class="title">
+						{c.title}
+						{#if c.times_consumed && c.times_consumed > 1}
+							<span class="times-badge" title="{c.times_consumed} veces consumido">×{c.times_consumed}</span>
+						{/if}
+					</div>
 						<div class="meta">
 							<span class="badge">{TYPE_LABELS[c.content_type]}</span>
 							{#if c.content_type === 'series'}
@@ -341,5 +346,18 @@
 	.date-input {
 		font-size: 12px !important;
 		padding: 4px 8px !important;
+	}
+
+	.times-badge {
+		display: inline-block;
+		font-size: 10px;
+		font-weight: 800;
+		background: var(--primary);
+		color: #fff;
+		border-radius: 6px;
+		padding: 1px 6px;
+		margin-left: 5px;
+		vertical-align: middle;
+		opacity: 0.9;
 	}
 </style>

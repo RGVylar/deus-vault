@@ -21,6 +21,7 @@ class ContentCreate(BaseModel):
     pinned: bool = False
     collection: str | None = None
     channel_thumbnail: str | None = None
+    next_episode_date: datetime | None = None
 
 
 class ContentUpdate(BaseModel):
@@ -38,6 +39,7 @@ class ContentUpdate(BaseModel):
     pinned: bool | None = None
     collection: str | None = None
     consumed_at: datetime | None = None  # allows correcting the consumed date
+    next_episode_date: datetime | None = None
 
 
 class ContentOut(BaseModel):
@@ -63,6 +65,8 @@ class ContentOut(BaseModel):
     pinned: bool
     collection: str | None
     channel_thumbnail: str | None
+    times_consumed: int
+    next_episode_date: datetime | None
 
     model_config = {"from_attributes": True}
 

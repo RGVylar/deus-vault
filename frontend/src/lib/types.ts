@@ -34,6 +34,8 @@ export interface Content {
 	pinned: boolean;
 	collection: string | null;
 	channel_thumbnail?: string | null;
+	times_consumed?: number;
+	next_episode_date?: string | null;
 }
 
 /** Effective duration for stats/display: series multiply by episode count */
@@ -67,6 +69,8 @@ export interface LookupResult {
 	source_id: string;
 	url: string;
 	duration_minutes: number;
+	next_episode_date?: string | null;
+	watch_providers?: Array<{ provider_name: string; logo_path: string }>;
 }
 
 export interface TopItem {

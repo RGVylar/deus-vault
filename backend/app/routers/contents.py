@@ -367,6 +367,24 @@ def list_collections(
     return [r for r in rows if r]
 
 
+@router.get("/check-duplicate", response_model=ContentOut | None)
+def check_duplicate(
+    source_id: str | None = Query(None),
+    url: str | None = Query(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Content | None:
+    """Return the first matching pending/consumed item for this user by source_id or url."""
+    if not source_id and not url:
+        return None
+    q = select(Content).where(Content.user_id == user.id)
+    if source_id:
+        q = q.where(Content.source_id == source_id)
+    else:
+        q = q.where(Content.url == url)
+    return db.scalars(q.limit(1)).first()
+
+
 @router.get("", response_model=PaginatedContents)
 def list_contents(
     consumed: bool | None = Query(None),
@@ -459,7 +477,12 @@ def mark_consumed(
     content = db.get(Content, content_id)
     if not content or content.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Content not found")
-    content.consumed = True
+    if content.consumed:
+        # Already consumed — increment the counter and update the timestamp
+        content.times_consumed = (content.times_consumed or 1) + 1
+    else:
+        content.consumed = True
+        content.times_consumed = 1
     content.consumed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(content)
@@ -514,6 +537,7 @@ def mark_unconsumed(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Content not found")
     content.consumed = False
     content.consumed_at = None
+    content.times_consumed = 0
     db.commit()
     db.refresh(content)
     return content
