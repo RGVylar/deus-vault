@@ -820,7 +820,9 @@
 			{/if}
 		</div>
 		<div class="share-actions">
-			<button class="btn share-btn-primary" onclick={downloadShareCard}>↓ Descargar tarjeta</button>
+			<button class="btn share-btn-primary" onclick={copyShareStats}>
+				{shareCopied ? '✓ Copiado' : '⤴ Copiar stats'}
+			</button>
 		</div>
 	</div>
 </section>
