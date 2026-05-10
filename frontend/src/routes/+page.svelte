@@ -26,6 +26,19 @@
 		return c.provider ?? AUTHOR_TO_PROVIDER[c.author ?? ''] ?? null;
 	}
 
+	function providerSearchUrl(prov: string, title: string): string {
+		const q = encodeURIComponent(title);
+		switch (prov) {
+			case 'netflix':    return `https://www.netflix.com/search?q=${q}`;
+			case 'prime':      return `https://www.amazon.es/s?k=${q}&i=instant-video`;
+			case 'max':        return `https://play.max.com/search?q=${q}`;
+			case 'disney':     return `https://www.disneyplus.com/search/${q}`;
+			case 'crunchyroll':return `https://www.crunchyroll.com/search?q=${q}`;
+			case 'appletv':    return `https://tv.apple.com/search?term=${q}`;
+			default:           return `https://www.justwatch.com/es/buscar?q=${q}`;
+		}
+	}
+
 	// Type accent colors matching CSS vars
 	const TYPE_COLOR: Record<string, string> = {
 		youtube: 'var(--youtube)',
@@ -137,6 +150,9 @@
 	let titleSearchTimer: ReturnType<typeof setTimeout> | null = null;
 	let showTitleDropdown = $state(false);
 	let titleSearchLocked = false; // plain var — NOT $state, so mutations don't re-trigger effects
+
+	// Provider picker for title-added content
+	let openPickerCard = $state<number | null>(null);
 
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
@@ -626,6 +642,8 @@ $effect(() => {
 	}
 </script>
 
+<svelte:window onclick={() => openPickerCard = null} />
+
 {#if !auth.isLoggedIn}
 	<p class="muted center">Redirigiendo…</p>
 {:else}
@@ -884,7 +902,32 @@ $effect(() => {
 						{/if}
 
 						<div class="actions">
-							{#if link}
+							{#if c.url}
+								<a href={c.url} target="_blank" rel="noopener">
+									<button class="btn">Abrir</button>
+								</a>
+							{:else if c.source_id && (c.content_type === 'movie' || c.content_type === 'series')}
+								<!-- Title-added content: show provider picker -->
+								<div class="open-picker-wrap" onclick={e => e.stopPropagation()}>
+									<button class="btn" onclick={() => openPickerCard = openPickerCard === c.id ? null : c.id}>Abrir ▾</button>
+									{#if openPickerCard === c.id}
+										<div class="open-picker">
+											{#if resolveProvider(c)}
+												{@const prov = resolveProvider(c)!}
+												<a href={providerSearchUrl(prov, c.title)} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
+													<button class="picker-opt">{PROVIDER_LABELS[prov] ?? prov}</button>
+												</a>
+											{/if}
+											<a href={buildConsumeUrl(c) ?? '#'} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
+												<button class="picker-opt">Stremio</button>
+											</a>
+											<a href={`https://www.justwatch.com/es/buscar?q=${encodeURIComponent(c.title)}`} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
+												<button class="picker-opt">JustWatch</button>
+											</a>
+										</div>
+									{/if}
+								</div>
+							{:else if link}
 								<a href={link} target="_blank" rel="noopener">
 									<button class="btn">Abrir</button>
 								</a>
@@ -1403,6 +1446,49 @@ $effect(() => {
 	.provider-disney   { background: #113ccf; color: #fff; }
 	.provider-crunchyroll { background: #f47521; color: #fff; }
 	.provider-stremio  { background: var(--glass-bg-weak); color: var(--text-muted); border: 1px solid var(--glass-border); }
+
+	/* Provider picker dropdown */
+	.open-picker-wrap {
+		position: relative;
+		display: inline-block;
+	}
+	.open-picker {
+		position: absolute;
+		bottom: calc(100% + 6px);
+		left: 0;
+		z-index: 200;
+		background: var(--glass-bg-strong, oklch(0.18 0.018 290 / 0.92));
+		border: 1px solid var(--glass-border);
+		border-radius: 12px;
+		padding: 6px;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		min-width: 140px;
+		backdrop-filter: blur(16px);
+		box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+		white-space: nowrap;
+	}
+	.open-picker a {
+		text-decoration: none;
+		display: block;
+	}
+	.picker-opt {
+		width: 100%;
+		padding: 7px 12px;
+		border-radius: 8px;
+		border: none;
+		background: transparent;
+		color: var(--text);
+		font-size: 13px;
+		font-weight: 500;
+		cursor: pointer;
+		text-align: left;
+		transition: background 0.12s;
+	}
+	.picker-opt:hover {
+		background: var(--glass-bg-strong, oklch(0.25 0.02 290 / 0.6));
+	}
 
 	/* Next episode badge on cards */
 	.next-ep {
