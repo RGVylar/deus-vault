@@ -39,7 +39,7 @@ probar() {
   URL="$2"
   echo "\n==== $PLATAFORMA ===="
   ENCODED_URL=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$URL'''))")
-  curl -s "http://127.0.0.1:8000/api/lookup/auto?url=$ENCODED_URL" | jq '{title,author,duration_minutes,episode_count,seasons,suggested_content_type,page_count,source_id}'
+  curl -s "http://127.0.0.1:8000/api/lookup/auto?url=$ENCODED_URL" | jq '{title,author,duration_minutes,episode_count,seasons,suggested_content_type,page_count,source_id,next_episode_date,watch_providers}'
 }
 
 echo "════════════════════════════════════════"
