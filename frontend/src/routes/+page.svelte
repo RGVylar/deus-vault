@@ -101,6 +101,21 @@
 	let addNextEpisodeDate = $state<string | null>(null);
 	let addWatchProviders = $state<Array<{provider_name: string; logo_path: string}>>([]);
 
+	// Title search (TMDB dropdown when no URL)
+	type TmdbSearchResult = {
+		tmdb_id: number;
+		media_type: string;
+		title: string;
+		year: string;
+		thumbnail: string;
+		source_id: string;
+		watch_providers: Array<{provider_name: string; logo_path: string}>;
+	};
+	let titleSearchResults = $state<TmdbSearchResult[]>([]);
+	let titleSearchLoading = $state(false);
+	let titleSearchTimer: ReturnType<typeof setTimeout> | null = null;
+	let showTitleDropdown = $state(false);
+
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
 		load();
@@ -282,6 +297,73 @@ $effect(() => {
 		} finally { lookupLoading = false; }
 	}
 
+	// Title-based TMDB search (only when no URL)
+	$effect(() => {
+		const title = addTitle.trim();
+		if (!showAdd || addUrl.trim() || !title || title.length < 2) {
+			titleSearchResults = [];
+			showTitleDropdown = false;
+			return;
+		}
+		if (titleSearchTimer) clearTimeout(titleSearchTimer);
+		titleSearchTimer = setTimeout(async () => {
+			titleSearchLoading = true;
+			try {
+				const params = new URLSearchParams({ q: title });
+				try {
+					const tmdbKey = localStorage.getItem('deus_vault_tmdb_api_key');
+					if (tmdbKey) params.set('tmdb_api_key', tmdbKey);
+				} catch (e) {}
+				const results = await api.get<TmdbSearchResult[]>(`/lookup/search?${params.toString()}`);
+				titleSearchResults = results ?? [];
+				showTitleDropdown = titleSearchResults.length > 0;
+			} catch { titleSearchResults = []; showTitleDropdown = false; }
+			finally { titleSearchLoading = false; }
+		}, 400);
+		return () => { if (titleSearchTimer) clearTimeout(titleSearchTimer); };
+	});
+
+	async function selectTmdbResult(result: TmdbSearchResult) {
+		showTitleDropdown = false;
+		titleSearchResults = [];
+		addTitle = result.title;
+		addThumbnail = result.thumbnail;
+		addSourceId = result.source_id;
+		addType = result.media_type === 'tv' ? 'series' : 'movie';
+		addWatchProviders = result.watch_providers ?? [];
+
+		// Fetch full details
+		try {
+			const params = new URLSearchParams({
+				tmdb_id: String(result.tmdb_id),
+				media_type: result.media_type,
+			});
+			try {
+				const tmdbKey = localStorage.getItem('deus_vault_tmdb_api_key');
+				if (tmdbKey) params.set('tmdb_api_key', tmdbKey);
+			} catch (e) {}
+			const detail = await api.get<any>(`/lookup/tmdb-detail?${params.toString()}`);
+			if (detail.duration_minutes) addDuration = detail.duration_minutes;
+			if (detail.episode_count) addEpisodeCount = detail.episode_count;
+			if (detail.seasons) addSeasons = detail.seasons;
+			if (detail.author) addAuthor = detail.author;
+			if (detail.next_episode_date) addNextEpisodeDate = detail.next_episode_date;
+			if (detail.watch_providers?.length) addWatchProviders = detail.watch_providers;
+			if (detail.thumbnail && !addThumbnail) addThumbnail = detail.thumbnail;
+		} catch { /* ignore, we already have basic info */ }
+
+		// Duplicate check
+		duplicateItem = null;
+		duplicateChecked = false;
+		if (result.source_id) {
+			try {
+				const p = new URLSearchParams({ source_id: result.source_id });
+				duplicateItem = await api.get<Content | null>(`/contents/check-duplicate?${p.toString()}`);
+			} catch { /* ignore */ }
+			duplicateChecked = true;
+		}
+	}
+
 	async function submitAdd() {
 		addError = '';
 		// Block if pending duplicate
@@ -336,6 +418,7 @@ $effect(() => {
 		addCollection = ''; addPinned = false; addAlreadyConsumed = false;
 		duplicateItem = null; duplicateChecked = false;
 		addNextEpisodeDate = null; addWatchProviders = [];
+		titleSearchResults = []; showTitleDropdown = false;
 	}
 
 	async function consume(id: number) { await api.post(`/contents/${id}/consume`); load(); }
@@ -923,9 +1006,48 @@ $effect(() => {
 						<option value="game">🎮 Juego</option>
 					</select>
 				</div>
-				<div class="field">
-					<label for="add-title">Título</label>
-					<input id="add-title" class="text" bind:value={addTitle} required />
+				<div class="field" style="position:relative;">
+					<label for="add-title">Título{!addUrl.trim() ? ' (o busca por nombre)' : ''}</label>
+					<input
+						id="add-title"
+						class="text"
+						bind:value={addTitle}
+						required
+						autocomplete="off"
+						onblur={() => setTimeout(() => showTitleDropdown = false, 150)}
+						onfocus={() => { if (titleSearchResults.length > 0) showTitleDropdown = true; }}
+					/>
+					{#if titleSearchLoading && !addUrl.trim()}
+						<span style="position:absolute; right:10px; top:34px; font-size:11px; color:var(--text-muted);">buscando…</span>
+					{/if}
+					{#if showTitleDropdown && titleSearchResults.length > 0}
+						<div class="tmdb-dropdown">
+							{#each titleSearchResults as result}
+								<!-- svelte-ignore a11y_click_events_have_key_events -->
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<div class="tmdb-row" onmousedown={() => selectTmdbResult(result)}>
+									{#if result.thumbnail}
+										<img src={result.thumbnail} alt="" class="tmdb-thumb" />
+									{:else}
+										<div class="tmdb-thumb tmdb-thumb-ph">{result.media_type === 'tv' ? '📺' : '🎬'}</div>
+									{/if}
+									<div class="tmdb-info">
+										<span class="tmdb-title">{result.title}</span>
+										<span class="tmdb-meta">{result.media_type === 'tv' ? 'Serie' : 'Película'}{result.year ? ' · ' + result.year : ''}</span>
+										{#if result.watch_providers.length > 0}
+											<div class="tmdb-providers">
+												{#each result.watch_providers.slice(0, 4) as p}
+													{#if p.logo_path}
+														<img src={p.logo_path} alt={p.provider_name} title={p.provider_name} class="tmdb-provider-logo" />
+													{/if}
+												{/each}
+											</div>
+										{/if}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{/if}
 				</div>
 				<div class="field">
 					<label for="add-author">Autor / Canal / Estudio</label>
@@ -1116,6 +1238,71 @@ $effect(() => {
 		width: 32px;
 		height: 32px;
 		display: block;
+	}
+
+	/* TMDB title search dropdown */
+	.tmdb-dropdown {
+		position: absolute;
+		top: calc(100% + 4px);
+		left: 0; right: 0;
+		background: var(--glass-bg-strong, #1a1a2e);
+		border: 1px solid var(--glass-border);
+		border-radius: 12px;
+		overflow: hidden;
+		z-index: 100;
+		box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+	}
+	.tmdb-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 8px 10px;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+	.tmdb-row:hover { background: var(--glass-bg-weak); }
+	.tmdb-row + .tmdb-row { border-top: 1px solid var(--glass-border); }
+	.tmdb-thumb {
+		width: 36px;
+		height: 54px;
+		object-fit: cover;
+		border-radius: 6px;
+		flex-shrink: 0;
+	}
+	.tmdb-thumb-ph {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--glass-bg-weak);
+		font-size: 18px;
+	}
+	.tmdb-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+	.tmdb-title {
+		font-size: 13px;
+		font-weight: 600;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.tmdb-meta {
+		font-size: 11px;
+		color: var(--text-muted);
+	}
+	.tmdb-providers {
+		display: flex;
+		gap: 4px;
+		margin-top: 2px;
+	}
+	.tmdb-provider-logo {
+		width: 20px;
+		height: 20px;
+		border-radius: 4px;
+		object-fit: cover;
 	}
 
 	/* Next episode badge on cards */

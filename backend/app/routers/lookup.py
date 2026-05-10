@@ -1,11 +1,12 @@
 import re
 import json
 import math
+import asyncio
 from html import unescape
 from urllib.parse import unquote, urlparse
 
 import httpx
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.config import settings
 
@@ -1153,6 +1154,118 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
         "provider": provider,
         "next_episode_date": next_episode_date,
         "watch_providers": watch_providers,
+    }
+
+
+@router.get("/search")
+async def search_tmdb(
+    q: str = Query(..., min_length=2),
+    tmdb_api_key: str | None = None,
+    country: str = "ES",
+) -> list[dict]:
+    """Search TMDB by title and return results with watch providers."""
+    api_key = tmdb_api_key or settings.tmdb_api_key
+    if not api_key:
+        return []
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            "https://api.themoviedb.org/3/search/multi",
+            params={"api_key": api_key, "query": q, "language": "es-ES", "page": 1},
+        )
+    if resp.status_code != 200:
+        return []
+
+    results = [r for r in resp.json().get("results", []) if r.get("media_type") in ("movie", "tv")][:6]
+
+    async def enrich(item: dict) -> dict:
+        media_type = item["media_type"]
+        item_id = item["id"]
+        title = item.get("title") or item.get("name", "")
+        date = item.get("release_date") or item.get("first_air_date", "")
+        year = date[:4] if date else ""
+        thumbnail = f"https://image.tmdb.org/t/p/w185{item['poster_path']}" if item.get("poster_path") else ""
+        providers: list[dict] = []
+        try:
+            providers = await _fetch_watch_providers(media_type, item_id, api_key, country)
+        except Exception:
+            pass
+        return {
+            "tmdb_id": item_id,
+            "media_type": media_type,
+            "title": title,
+            "year": year,
+            "thumbnail": thumbnail,
+            "source_id": f"tmdb:{media_type}:{item_id}",
+            "watch_providers": providers,
+        }
+
+    return list(await asyncio.gather(*[enrich(r) for r in results]))
+
+
+@router.get("/tmdb-detail")
+async def lookup_tmdb_detail(
+    tmdb_id: int,
+    media_type: str = Query(..., pattern="^(movie|tv)$"),
+    tmdb_api_key: str | None = None,
+    country: str = "ES",
+) -> dict:
+    """Fetch full metadata for a TMDB item (duration, seasons, episodes, next episode)."""
+    api_key = tmdb_api_key or settings.tmdb_api_key
+    if not api_key:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "TMDB API key required")
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}",
+            params={"api_key": api_key, "language": "es-ES"},
+        )
+    if resp.status_code != 200:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found on TMDB")
+
+    details = resp.json()
+    title = details.get("title") or details.get("name", "")
+    thumbnail = f"https://image.tmdb.org/t/p/w500{details['poster_path']}" if details.get("poster_path") else ""
+    author = ""
+    duration_minutes = 0
+    episode_count = None
+    seasons = None
+    next_episode_date = None
+
+    if media_type == "movie":
+        duration_minutes = int(details.get("runtime") or 0)
+        credits = details.get("credits", {})
+        studios = details.get("production_companies", [])
+        author = studios[0]["name"] if studios else ""
+    else:  # tv
+        ep_runtime = details.get("episode_run_time") or []
+        duration_minutes = int(ep_runtime[0]) if ep_runtime else 0
+        episode_count = details.get("number_of_episodes")
+        seasons = details.get("number_of_seasons")
+        next_ep = details.get("next_episode_to_air") or {}
+        next_episode_date = next_ep.get("air_date")
+        networks = details.get("networks", [])
+        author = networks[0]["name"] if networks else ""
+
+    watch_providers: list[dict] = []
+    try:
+        watch_providers = await _fetch_watch_providers(media_type, tmdb_id, api_key, country)
+    except Exception:
+        pass
+
+    return {
+        "tmdb_id": tmdb_id,
+        "media_type": media_type,
+        "title": title,
+        "thumbnail": thumbnail,
+        "author": author,
+        "duration_minutes": duration_minutes,
+        "episode_count": episode_count,
+        "seasons": seasons,
+        "next_episode_date": next_episode_date,
+        "watch_providers": watch_providers,
+        "source_id": f"tmdb:{media_type}:{tmdb_id}",
+        "suggested_content_type": "series" if media_type == "tv" else "movie",
     }
 
 
