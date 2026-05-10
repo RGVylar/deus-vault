@@ -13,14 +13,14 @@
   --text-muted: rgba(255,255,255,0.55);
   --text-dim: rgba(255,255,255,0.38);
 
-  --glass-bg: rgba(255,255,255,0.08);
-  --glass-bg-strong: rgba(255,255,255,0.14);
-  --glass-bg-weak: rgba(255,255,255,0.05);
-  --glass-border: rgba(255,255,255,0.18);
-  --glass-border-bright: rgba(255,255,255,0.32);
-  --glass-shine: rgba(255,255,255,0.35);
-  --glass-shadow: 0 8px 32px rgba(0,0,0,0.35);
-  --glass-inner: inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15);
+  --glass-bg:           oklch(0.18 0.018 290 / 0.74);
+  --glass-bg-strong:    oklch(0.22 0.020 290 / 0.82);
+  --glass-bg-weak:      oklch(0.16 0.015 290 / 0.55);
+  --glass-border:       oklch(0.50 0.020 290 / 0.30);
+  --glass-border-bright:oklch(0.70 0.030 290 / 0.42);
+  --glass-shine:        oklch(0.95 0.02 290 / 0.18);
+  --glass-shadow: 0 14px 40px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.35);
+  --glass-inner: inset 0 1px 0 oklch(0.95 0.02 290 / 0.10), inset 0 -1px 0 rgba(0,0,0,0.35);
 
   /* Content type accents */
   --youtube: oklch(0.72 0.19 18);
@@ -106,14 +106,23 @@ a { color: inherit; text-decoration: none; }
 .wallpaper .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.85;
+  filter: blur(90px);
+  opacity: 0.42;
   will-change: transform;
+  /* sin mix-blend-mode: el dark-glass bloquea el sangrado de color */
 }
 .wallpaper .b1 { width: 70%; height: 70%; top: -10%; left: -15%; background: var(--blob-1); animation: float1 18s ease-in-out infinite; }
 .wallpaper .b2 { width: 65%; height: 65%; top: 30%; right: -20%; background: var(--blob-2); animation: float2 22s ease-in-out infinite; }
-.wallpaper .b3 { width: 55%; height: 55%; bottom: -10%; left: 10%; background: var(--blob-3); animation: float3 20s ease-in-out infinite; opacity: 0.75; }
-.wallpaper .b4 { width: 45%; height: 45%; top: 40%; left: 30%; background: var(--blob-4); animation: float4 26s ease-in-out infinite; opacity: 0.55; }
+.wallpaper .b3 { width: 55%; height: 55%; bottom: -10%; left: 10%; background: var(--blob-3); animation: float3 20s ease-in-out infinite; }
+.wallpaper .b4 { width: 45%; height: 45%; top: 40%; left: 30%; background: var(--blob-4); animation: float4 26s ease-in-out infinite; }
+
+.wallpaper::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 35%, transparent 30%, rgba(0,0,0,0.34) 75%, rgba(0,0,0,0.59) 100%),
+    linear-gradient(180deg, rgba(0,0,0,0.18) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.30) 100%);
+}
 
 .wallpaper .grain {
   position: absolute; inset: 0;
@@ -162,7 +171,7 @@ a { color: inherit; text-decoration: none; }
 .glass::before {
   content: '';
   position: absolute;
-  top: 0; left: 10%; right: 10%;
+  top: 0; left: 8%; right: 8%;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--glass-shine), transparent);
   pointer-events: none;
@@ -386,6 +395,13 @@ input.text::placeholder, textarea.text::placeholder { color: var(--text-dim); }
   box-shadow: var(--glass-shadow), var(--glass-inner);
   transition: transform 0.25s ease, border-color 0.2s;
   cursor: pointer;
+}
+.c-card::after {
+  content: '';
+  position: absolute; top: 0; left: 8%; right: 8%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-shine), transparent);
+  pointer-events: none;
+  z-index: 3;
 }
 .c-card:hover {
   transform: translateY(-1px);
@@ -779,13 +795,13 @@ button { font-family: inherit; }
 .heat {
   aspect-ratio: 1;
   border-radius: 2px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.02);
+  background: oklch(0.20 0.01 290 / 0.7);
+  border: 1px solid oklch(0.30 0.01 290 / 0.4);
 }
-.heat.l1 { background: oklch(0.45 0.15 150); }
-.heat.l2 { background: oklch(0.60 0.17 150); }
-.heat.l3 { background: oklch(0.72 0.18 150); }
-.heat.l4 { background: oklch(0.84 0.18 150); box-shadow: 0 0 6px oklch(0.80 0.18 150 / 0.6); }
+.heat.l1 { background: color-mix(in srgb, var(--primary) 28%, oklch(0.18 0.01 290)); border: 0; }
+.heat.l2 { background: color-mix(in srgb, var(--primary) 50%, oklch(0.18 0.01 290)); border: 0; }
+.heat.l3 { background: color-mix(in srgb, var(--primary) 75%, oklch(0.18 0.01 290)); box-shadow: 0 0 4px color-mix(in srgb, var(--primary) 30%, transparent); border: 0; }
+.heat.l4 { background: var(--primary); box-shadow: 0 0 6px color-mix(in srgb, var(--primary) 60%, transparent); border: 0; }
 
 /* ───────── MONTH BARS ───────── */
 .month-bars {

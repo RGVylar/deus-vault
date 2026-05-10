@@ -19,6 +19,7 @@ from app.schemas.content import (
     ContentOut,
     ContentUpdate,
     DayStats,
+    MomentStats,
     MonthStats,
     PaginatedContents,
     RewindStats,
@@ -327,6 +328,36 @@ def rewind(
         for v in sorted(book_authors.values(), key=lambda x: x["minutes"], reverse=True)[:5]
     ]
 
+    # --- Time distribution ---
+    by_hour: list[int] = [0] * 24
+    by_day_list: list[int] = [0] * 7
+    for c in items:
+        if c.consumed_at:
+            by_hour[c.consumed_at.hour] += _effective_duration(c)
+            by_day_list[c.consumed_at.weekday()] += _effective_duration(c)
+
+    # Moment: best week
+    week_data: dict[str, dict] = {}
+    for c in items:
+        if c.consumed_at:
+            dow = c.consumed_at.weekday()
+            monday = (c.consumed_at - timedelta(days=dow)).date()
+            key = monday.isoformat()
+            if key not in week_data:
+                week_data[key] = {"start": monday, "minutes": 0, "count": 0}
+            week_data[key]["minutes"] += _effective_duration(c)
+            week_data[key]["count"] += 1
+
+    moment: MomentStats | None = None
+    if week_data:
+        best = max(week_data.values(), key=lambda w: w["minutes"])
+        moment = MomentStats(
+            week_start=best["start"].isoformat(),
+            week_end=(best["start"] + timedelta(days=6)).isoformat(),
+            minutes=best["minutes"],
+            count=best["count"],
+        )
+
     return RewindStats(
         year=year,
         total_consumed_minutes=total_minutes,
@@ -349,6 +380,9 @@ def rewind(
         top_items_by_type=top_items_by_type,
         streaming_breakdown=streaming_breakdown,
         top_book_authors=top_book_authors,
+        by_hour=by_hour,
+        by_day=by_day_list,
+        moment=moment,
     )
 
 

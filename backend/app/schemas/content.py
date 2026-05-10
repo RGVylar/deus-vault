@@ -114,6 +114,13 @@ class StreamingPlatform(BaseModel):
     minutes: int
 
 
+class MomentStats(BaseModel):
+    week_start: str   # "YYYY-MM-DD" (Monday)
+    week_end: str     # "YYYY-MM-DD" (Sunday)
+    minutes: int
+    count: int
+
+
 class TypeRewindStats(BaseModel):
     count: int
     minutes: int
@@ -156,3 +163,7 @@ class RewindStats(BaseModel):
     top_items_by_type: dict[str, list[TopItem]]  # top 3 per type
     streaming_breakdown: list[StreamingPlatform]  # platforms for movies+series
     top_book_authors: list[TopAuthor]           # top book authors
+    # Time distribution
+    by_hour: list[int]   # 24 values: total minutes consumed per hour-of-day
+    by_day: list[int]    # 7 values: total minutes consumed per weekday (Mon=0)
+    moment: MomentStats | None   # best week of the year

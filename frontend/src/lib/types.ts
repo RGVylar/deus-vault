@@ -113,6 +113,13 @@ export interface DayStats {
 	minutes: number;
 }
 
+export interface MomentStats {
+	week_start: string;
+	week_end: string;
+	minutes: number;
+	count: number;
+}
+
 export interface RewindStats {
 	year: number;
 	total_consumed_minutes: number;
@@ -135,4 +142,7 @@ export interface RewindStats {
 	top_items_by_type: Record<string, TopItem[]>;
 	streaming_breakdown: StreamingPlatform[];
 	top_book_authors: TopAuthor[];
+	by_hour: number[];
+	by_day: number[];
+	moment: MomentStats | null;
 }

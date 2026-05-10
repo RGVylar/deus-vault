@@ -157,6 +157,77 @@
 			? Math.max(1, ...stats.streaming_breakdown.map(p => p.minutes))
 			: 1
 	);
+
+	// Hour/day chart maxes
+	const maxHour = $derived(stats?.by_hour?.length ? Math.max(1, ...stats.by_hour) : 1);
+	const maxDay  = $derived(stats?.by_day?.length  ? Math.max(1, ...stats.by_day)  : 1);
+
+	// Projection: estimated total minutes for the year
+	const projection = $derived(() => {
+		if (!stats) return null;
+		const now = new Date();
+		const yr = stats.year;
+		const dayOfYear = Math.floor((now.getTime() - new Date(yr, 0, 1).getTime()) / 86400000) + 1;
+		const daysInYear = (yr % 4 === 0 && (yr % 100 !== 0 || yr % 400 === 0)) ? 366 : 365;
+		if (now.getFullYear() !== yr) return null; // only show for current year
+		if (now >= new Date(yr, 11, 1)) return null; // hide after Dec 1
+		if (dayOfYear < 7) return null; // need at least a week of data
+		const elapsed = dayOfYear / daysInYear;
+		const projected = Math.round(stats.total_consumed_minutes / elapsed);
+		const remaining = projected - stats.total_consumed_minutes;
+		const projectedItems = Math.round(stats.total_consumed_count / elapsed);
+		return { projected, remaining, projectedItems };
+	});
+
+	// Milestones computed from stats
+	type Milestone = { icon: string; tt: string; ss: string; color: string };
+	async function downloadShareCard() {
+		const el = document.getElementById('share-card');
+		if (!el) return;
+		// Dynamic import so the page works even if the package isn't installed
+		try {
+			// @ts-ignore — optional dependency, install with: npm install html-to-image
+			const { toPng } = await import('html-to-image');
+			const dataUrl = await toPng(el, { cacheBust: true, pixelRatio: 2 });
+			const link = document.createElement('a');
+			link.download = `deus-vault-rewind-${stats?.year ?? year}.png`;
+			link.href = dataUrl;
+			link.click();
+		} catch {
+			alert('Para descargar la tarjeta, instala html-to-image:\nnpm install html-to-image');
+		}
+	}
+
+	const milestones = $derived((): Milestone[] => {
+		if (!stats) return [];
+		const ms: Milestone[] = [];
+		if (stats.streak_max >= 7) {
+			ms.push({ icon: '🔥', tt: `Racha de ${stats.streak_max} días`, ss: 'Sin parar ni un día', color: '#ff6b35' });
+		}
+		if (stats.total_consumed_count >= 100) {
+			ms.push({ icon: '💯', tt: '100 ítems consumidos', ss: `Este año: ${stats.total_consumed_count}`, color: 'var(--primary)' });
+		} else if (stats.total_consumed_count >= 50) {
+			ms.push({ icon: '5️⃣0️⃣', tt: '50 ítems consumidos', ss: `Este año: ${stats.total_consumed_count}`, color: 'var(--primary)' });
+		}
+		if (stats.total_consumed_minutes >= 60 * 24 * 30) {
+			ms.push({ icon: '🌙', tt: '30 días de contenido', ss: `${Math.floor(stats.total_consumed_minutes / (60*24))} días acumulados`, color: '#7c6fe0' });
+		} else if (stats.total_consumed_minutes >= 60 * 24 * 7) {
+			ms.push({ icon: '📅', tt: '7 días de contenido', ss: `${Math.floor(stats.total_consumed_minutes / (60*24))} días acumulados`, color: '#7c6fe0' });
+		}
+		if (stats.completion_rate !== null && stats.completion_rate >= 90) {
+			ms.push({ icon: '✅', tt: `${stats.completion_rate}% de completado`, ss: 'Casi nada se te resiste', color: '#22c55e' });
+		}
+		if (stats.streaming_breakdown.length >= 3) {
+			ms.push({ icon: '📡', tt: `${stats.streaming_breakdown.length} plataformas`, ss: stats.streaming_breakdown.map(p => p.name).join(', '), color: '#0ea5e9' });
+		}
+		if (stats.by_type['youtube']?.count >= 50) {
+			ms.push({ icon: '▶️', tt: '50 vídeos de YouTube', ss: `Este año: ${stats.by_type['youtube'].count}`, color: '#ff0000' });
+		}
+		if (stats.by_type['book']?.count >= 10) {
+			ms.push({ icon: '📚', tt: '10 libros leídos', ss: `Este año: ${stats.by_type['book'].count}`, color: 'var(--book)' });
+		}
+		return ms;
+	});
 </script>
 
 {#if !auth.isLoggedIn}
@@ -296,6 +367,22 @@
 
 </div><!-- /desk-rewind-grid -->
 
+<!-- Moment del año -->
+{#if stats.moment}
+<div class="moment-card glass">
+	<div class="moment-icon">⚡</div>
+	<div class="moment-body">
+		<div class="moment-kicker">Tu momento del año</div>
+		<div class="moment-title">Semana del {new Date(stats.moment.week_start + 'T12:00:00').toLocaleDateString('es', {day:'numeric', month:'long'})} – {new Date(stats.moment.week_end + 'T12:00:00').toLocaleDateString('es', {day:'numeric', month:'long'})}</div>
+		<div class="moment-sub">{stats.moment.count} ítem{stats.moment.count !== 1 ? 's' : ''} consumidos</div>
+	</div>
+	<div class="moment-stat">
+		<div class="moment-val">{formatDuration(stats.moment.minutes)}</div>
+		<div class="moment-lbl">en 7 días</div>
+	</div>
+</div>
+{/if}
+
 <!-- Mobile-only estat chips -->
 <div class="estat-grid mobile-only">
 	{#if stats.streak_current > 0}
@@ -323,7 +410,7 @@
 
 <!-- Mobile heatmap -->
 <section class="rewind-section mobile-only">
-	<h2>Actividad diaria</h2>
+	<h2><span class="ico">📅</span> Actividad diaria</h2>
 	<div class="glass" style="overflow-x:auto; padding:12px;">
 		<div style="grid-template-columns: 20px repeat({calendarGrid.length}, 12px); display:grid; gap:2px; margin-bottom:2px; min-width:max-content;">
 			<div></div>
@@ -362,7 +449,7 @@
 
 <!-- Mobile month bars -->
 <section class="rewind-section mobile-only">
-	<h2>Por mes</h2>
+	<h2><span class="ico">📊</span> Por mes</h2>
 	<div class="glass" style="padding:16px;">
 		<div class="month-bars">
 			{#each stats.by_month as m}
@@ -388,7 +475,7 @@
 <!-- YouTube: top channels -->
 {#if stats.top_youtube_channels.length > 0}
 <section class="rewind-section">
-	<h2>▶️ Canales más vistos</h2>
+	<h2><span class="ico">▶️</span> Canales más vistos</h2>
 	<div class="channel-grid">
 		{#each stats.top_youtube_channels as ch, i}
 			<div class="channel-card" style="--ch-color:{channelColor(ch.name)}">
@@ -416,7 +503,7 @@
 <!-- YouTube: top videos -->
 {#if stats.top_items_by_type['youtube']?.length > 0}
 <section class="rewind-section">
-	<h2>▶️ Vídeos más largos</h2>
+	<h2><span class="ico">▶️</span> Vídeos más largos</h2>
 	<div class="podium-grid">
 		{#each stats.top_items_by_type['youtube'] as item, i}
 			<div class="podium-card" style="--accent:var(--youtube)">
@@ -440,24 +527,21 @@
 <!-- Streaming breakdown -->
 {#if stats.streaming_breakdown.length > 0}
 <section class="rewind-section">
-	<h2>🎬 Plataformas de streaming</h2>
-	<div class="platform-list glass">
+	<h2><span class="ico">🎬</span> Plataformas de streaming</h2>
+	<div class="streaming-grid">
 		{#each stats.streaming_breakdown as plat, i}
 			{@const pct = Math.round(plat.minutes / maxStreamingMins * 100)}
 			{@const pc = PLATFORM_COLORS[plat.name] ?? 'var(--movie)'}
-			<div class="plat-row" style="--pc:{pc}">
-				<div class="plat-rank">#{i + 1}</div>
-				<div class="plat-dot"></div>
-				<div class="plat-info">
-					<div class="plat-name">{plat.name}</div>
-					<div class="plat-bar-wrap">
-						<div class="plat-bar" style="width:{pct}%;"></div>
-					</div>
+			<div class="plat-card" style="--pc:{pc}">
+				<div class="plat-header">
+					<span class="plat-name">{plat.name}</span>
+					<span class="plat-rank">#{i + 1}</span>
 				</div>
-				<div class="plat-stats">
-					<div class="plat-time">{formatDuration(plat.minutes)}</div>
-					<div class="plat-count">{plat.count} título{plat.count !== 1 ? 's' : ''}</div>
+				<div class="plat-time">{formatDuration(plat.minutes)}</div>
+				<div class="plat-bar-wrap">
+					<div class="plat-bar" style="width:{pct}%;"></div>
 				</div>
+				<div class="plat-count">{plat.count} título{plat.count !== 1 ? 's' : ''}</div>
 			</div>
 		{/each}
 	</div>
@@ -467,7 +551,7 @@
 <!-- Top movies -->
 {#if stats.top_items_by_type['movie']?.length > 0}
 <section class="rewind-section">
-	<h2>🎬 Películas más largas</h2>
+	<h2><span class="ico">🎬</span> Películas más largas</h2>
 	<div class="podium-grid">
 		{#each stats.top_items_by_type['movie'] as item, i}
 			<div class="podium-card" style="--accent:var(--movie)">
@@ -491,7 +575,7 @@
 <!-- Top series -->
 {#if stats.top_items_by_type['series']?.length > 0}
 <section class="rewind-section">
-	<h2>📺 Series más largas</h2>
+	<h2><span class="ico">📺</span> Series más largas</h2>
 	<div class="podium-grid">
 		{#each stats.top_items_by_type['series'] as item, i}
 			<div class="podium-card" style="--accent:var(--series)">
@@ -515,7 +599,7 @@
 <!-- Top book authors -->
 {#if stats.top_book_authors.length > 0}
 <section class="rewind-section">
-	<h2>📖 Autores más leídos</h2>
+	<h2><span class="ico">📖</span> Autores más leídos</h2>
 	<div class="channel-grid">
 		{#each stats.top_book_authors as author, i}
 			<div class="channel-card glass" style="--ch-color:var(--book)">
@@ -535,7 +619,7 @@
 <!-- Top books -->
 {#if stats.top_items_by_type['book']?.length > 0}
 <section class="rewind-section">
-	<h2>📖 Libros más largos</h2>
+	<h2><span class="ico">📖</span> Libros más largos</h2>
 	<div class="podium-grid">
 		{#each stats.top_items_by_type['book'] as item, i}
 			<div class="podium-card" style="--accent:var(--book)">
@@ -559,7 +643,7 @@
 <!-- Top games -->
 {#if stats.top_items_by_type['game']?.length > 0}
 <section class="rewind-section">
-	<h2>🎮 Juegos más largos</h2>
+	<h2><span class="ico">🎮</span> Juegos más largos</h2>
 	<div class="podium-grid">
 		{#each stats.top_items_by_type['game'] as item, i}
 			<div class="podium-card" style="--accent:var(--game)">
@@ -580,10 +664,90 @@
 </section>
 {/if}
 
+<!-- HourDay -->
+{#if stats.by_hour?.length}
+<section class="rewind-section">
+	<h2><span class="ico">🕒</span> Cuándo consumes</h2>
+	<div class="hourday-grid">
+		<div class="glass hd-card">
+			<div class="hd-title">Por hora del día</div>
+			<div class="bars-h-wrap">
+				<div class="bars-h-cols">
+					{#each stats.by_hour as v, i}
+						<div class="bar-h-col" title="{i}:00 — {formatDuration(v)}">
+							<div class="bar-h" class:dim={v < maxHour * 0.15} style="height:{v > 0 ? Math.max(v / maxHour * 100, 4) : 0}%;"></div>
+						</div>
+					{/each}
+				</div>
+				<div class="bar-labels">
+					{#each stats.by_hour as _, i}
+						<span>{i % 6 === 0 ? `${i}h` : ''}</span>
+					{/each}
+				</div>
+			</div>
+		</div>
+		<div class="glass hd-card">
+			<div class="hd-title">Por día de la semana</div>
+			<div class="bars-h-wrap">
+				<div class="bars-h-cols">
+					{#each stats.by_day as v, i}
+						<div class="bar-h-col" title="{DAYS_ES[i]} — {formatDuration(v)}">
+							<div class="bar-h" style="height:{v > 0 ? Math.max(v / maxDay * 100, 4) : 0}%;"></div>
+						</div>
+					{/each}
+				</div>
+				<div class="bar-labels">
+					{#each DAYS_ES as d}
+						<span>{d}</span>
+					{/each}
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+{/if}
+
+<!-- Milestones -->
+{#if milestones().length > 0}
+<section class="rewind-section">
+	<h2><span class="ico">🏅</span> Logros del año</h2>
+	<div class="milestones-grid">
+		{#each milestones() as m}
+			<div class="ms-card" style="--ms-color:{m.color}">
+				<div class="ms-icon">{m.icon}</div>
+				<div class="ms-body">
+					<div class="ms-title">{m.tt}</div>
+					<div class="ms-sub">{m.ss}</div>
+				</div>
+			</div>
+		{/each}
+	</div>
+</section>
+{/if}
+
+<!-- Projection -->
+{#if projection() !== null}
+{@const proj = projection()!}
+<section class="rewind-section">
+	<h2><span class="ico">↗</span> Proyección de fin de año</h2>
+	<div class="glass projection-card">
+		<div class="proj-body">
+			<div class="proj-kicker">Si sigues a este ritmo</div>
+			<div class="proj-title">Acabarás {stats.year} con ≈ {formatDuration(proj.projected)}</div>
+			<div class="proj-sub">Quedan ≈ {formatDuration(proj.remaining)} estimados · {proj.projectedItems} ítems al ritmo actual</div>
+		</div>
+		<div class="proj-stat">
+			<div class="proj-val">{Math.round(proj.projected / 60)}h</div>
+			<div class="proj-lbl">total proyectado</div>
+		</div>
+	</div>
+</section>
+{/if}
+
 <!-- By type (auto-fill grid, shared) -->
 {#if Object.keys(stats.by_type).length > 0}
 <section class="rewind-section">
-	<h2>Por tipo</h2>
+	<h2><span class="ico">🗂️</span> Por tipo</h2>
 	<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:10px;">
 		{#each Object.entries(stats.by_type).sort((a,b) => b[1].minutes - a[1].minutes) as [type, s]}
 			<div class="type-card" style="--accent:{TYPE_COLORS[type] ?? 'var(--primary)'}; padding:16px;">
@@ -598,9 +762,67 @@
 </section>
 {/if}
 
+<!-- Share card -->
+<div class="deep-divider">
+	<div class="dd-line"></div>
+	<span class="dd-label">COMPARTIR</span>
+	<div class="dd-line"></div>
+</div>
+<section class="rewind-section">
+	<div class="share-card" id="share-card">
+		<div class="share-head">
+			<div class="share-brand">
+				<div class="share-mark">⛧</div>
+				<div>
+					<div class="share-name">Deus Vault</div>
+					<div class="share-tagline">memento mori</div>
+				</div>
+			</div>
+			<div class="share-yr">REWIND {stats.year}</div>
+		</div>
+		<div class="share-grid">
+			<div class="share-block">
+				<div class="share-lbl">Tu año</div>
+				<div class="share-val big">{formatDuration(stats.total_consumed_minutes)}</div>
+				<div class="share-sub">{stats.total_consumed_count} ítems consumidos</div>
+			</div>
+			{#if stats.top_youtube_channels.length > 0}
+			<div class="share-block">
+				<div class="share-lbl">Top canal</div>
+				<div class="share-val">{stats.top_youtube_channels[0].name}</div>
+				<div class="share-sub">{formatDuration(stats.top_youtube_channels[0].minutes)}</div>
+			</div>
+			{/if}
+			{#if stats.top_items_by_type['series']?.length > 0}
+			<div class="share-block">
+				<div class="share-lbl">Top serie</div>
+				<div class="share-val">{stats.top_items_by_type['series'][0].title}</div>
+				<div class="share-sub">{formatDuration(stats.top_items_by_type['series'][0].minutes)}</div>
+			</div>
+			{:else if stats.top_items_by_type['movie']?.length > 0}
+			<div class="share-block">
+				<div class="share-lbl">Top película</div>
+				<div class="share-val">{stats.top_items_by_type['movie'][0].title}</div>
+				<div class="share-sub">{formatDuration(stats.top_items_by_type['movie'][0].minutes)}</div>
+			</div>
+			{/if}
+			{#if stats.streak_max > 0}
+			<div class="share-block">
+				<div class="share-lbl">Racha máx.</div>
+				<div class="share-val">{stats.streak_max} días</div>
+				<div class="share-sub">sin parar</div>
+			</div>
+			{/if}
+		</div>
+		<div class="share-actions">
+			<button class="btn share-btn-primary" onclick={downloadShareCard}>↓ Descargar tarjeta</button>
+		</div>
+	</div>
+</section>
+
 <!-- Item list -->
 <section class="rewind-section">
-	<h2>Todo lo consumido</h2>
+	<h2><span class="ico">📋</span> Todo lo consumido</h2>
 	<div class="content-grid">
 		{#each stats.items as c (c.id)}
 			{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series' || c.content_type === 'game'}
@@ -641,12 +863,19 @@
 <style>
 	.rewind-section { margin-bottom: 28px; }
 	.rewind-section h2 {
-		font-size: 11px; font-weight: 700; text-transform: uppercase;
-		letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 10px;
+		font-size: 13px; font-weight: 800; text-transform: uppercase;
+		letter-spacing: 0.16em; color: var(--text-muted); margin-bottom: 10px;
+		display: flex; align-items: center; gap: 9px;
+	}
+	.rewind-section h2 .ico {
+		width: 22px; height: 22px; border-radius: 7px;
+		background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+		display: grid; place-items: center; font-size: 11px; flex-shrink: 0;
 	}
 	.rw-label {
-		font-size: 11px; font-weight: 700; text-transform: uppercase;
-		letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 14px;
+		font-size: 13px; font-weight: 800; text-transform: uppercase;
+		letter-spacing: 0.16em; color: var(--text-muted); margin-bottom: 14px;
+		display: flex; align-items: center; gap: 9px;
 	}
 
 	/* ── Deep divider ──────────────────────────────────────── */
@@ -686,12 +915,13 @@
 		display: flex;
 		align-items: center;
 		gap: 14px;
-		padding: 14px 18px;
+		height: 76px;
+		padding: 0 18px;
 		border-radius: 20px;
 		background: var(--glass-bg);
 		border: 1px solid var(--glass-border);
-		backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
 		position: relative;
 		overflow: hidden;
 		transition: background 0.15s;
@@ -751,12 +981,13 @@
 		display: flex;
 		align-items: center;
 		gap: 14px;
-		padding: 12px 16px 12px 12px;
+		height: 84px;
+		padding: 0 16px 0 12px;
 		background: var(--glass-bg);
 		border: 1px solid var(--glass-border);
 		border-radius: 20px;
-		backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
 		position: relative;
 		overflow: hidden;
 		transition: background 0.15s, transform 0.15s;
@@ -790,7 +1021,10 @@
 	.podium-body { flex: 1; min-width: 0; }
 	.podium-title {
 		font-size: 14px; font-weight: 700; color: #fff;
-		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
 		text-shadow: 0 1px 6px rgba(0,0,0,0.7);
 	}
 	.podium-sub {
@@ -810,61 +1044,52 @@
 		filter: brightness(1.2);
 	}
 
-	/* ── Streaming platforms ────────────────────────────────── */
-	.platform-list {
-		border-radius: 20px;
-		overflow: hidden;
-		padding: 0 !important;
-		background: var(--glass-bg) !important;
-		border: 1px solid var(--glass-border) !important;
-		backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
+	/* ── Streaming platforms — grid de cards ───────────────── */
+	.streaming-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+		gap: 10px;
 	}
-	.plat-row {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		padding: 15px 18px;
-		border-bottom: 1px solid rgba(255,255,255,0.07);
-		transition: background 0.12s;
+	.plat-card {
+		height: 140px; padding: 16px 16px 14px;
+		border-radius: 18px;
+		background: var(--glass-bg);
+		border: 1px solid var(--glass-border);
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		position: relative; overflow: hidden;
+		display: flex; flex-direction: column; gap: 8px;
 	}
-	.plat-row:last-child { border-bottom: none; }
-	.plat-row:hover { background: rgba(255,255,255,0.05); }
+	.plat-card::after {
+		content: ''; position: absolute; inset: 0; pointer-events: none;
+		background: radial-gradient(120% 80% at 100% 0%,
+			color-mix(in srgb, var(--pc) 22%, transparent), transparent 60%);
+	}
+	.plat-header {
+		display: flex; align-items: center; justify-content: space-between;
+	}
+	.plat-name { font-size: 13px; font-weight: 700; color: #fff; }
 	.plat-rank {
 		font-size: 10px; font-weight: 800;
-		color: rgba(255,255,255,0.3); min-width: 20px;
+		color: rgba(255,255,255,0.35);
 	}
-	.plat-dot {
-		width: 10px; height: 10px;
-		border-radius: 50%;
-		background: var(--pc);
-		box-shadow: 0 0 8px var(--pc);
-		flex-shrink: 0;
+	.plat-time {
+		font-size: 26px; font-weight: 900;
+		color: var(--pc); filter: brightness(1.15);
+		font-variant-numeric: tabular-nums; line-height: 1;
 	}
-	.plat-info { flex: 1; min-width: 0; }
-	.plat-name { font-size: 14px; font-weight: 700; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.7); }
 	.plat-bar-wrap {
-		height: 3px;
-		background: rgba(255,255,255,0.08);
-		border-radius: 2px;
-		margin-top: 7px;
-		overflow: hidden;
+		height: 5px; border-radius: 100px;
+		background: oklch(0.30 0.01 290 / 0.7);
+		border: 1px solid oklch(0.50 0.02 290 / 0.20);
+		overflow: hidden; margin-top: auto;
 	}
 	.plat-bar {
-		height: 100%;
-		background: var(--pc);
-		box-shadow: 0 0 6px var(--pc);
-		border-radius: 2px;
+		height: 100%; border-radius: 100px;
+		background: linear-gradient(90deg, var(--pc), color-mix(in srgb, var(--pc) 70%, white));
 		transition: width 0.8s cubic-bezier(.2,.8,.4,1);
 	}
-	.plat-stats { text-align: right; flex-shrink: 0; }
-	.plat-time {
-		font-size: 14px; font-weight: 800;
-		color: var(--pc);
-		filter: brightness(1.4);
-		text-shadow: 0 1px 6px rgba(0,0,0,0.5);
-	}
-	.plat-count { font-size: 10px; color: rgba(255,255,255,0.65); margin-top: 2px; text-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+	.plat-count { font-size: 10px; color: rgba(255,255,255,0.55); }
 
 	@media (min-width: 1024px) {
 		.podium-grid { grid-template-columns: repeat(3, 1fr); }
@@ -872,5 +1097,96 @@
 			display: grid;
 			grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 		}
+	}
+
+	/* ── Moment del año ──────────────────────────────────────── */
+	.moment-card {
+		display: flex; align-items: center; gap: 16px;
+		padding: 18px 20px; margin-bottom: 24px; border-radius: 18px;
+	}
+	.moment-icon {
+		font-size: 28px; width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+		background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+		display: grid; place-items: center;
+	}
+	.moment-body { flex: 1; min-width: 0; }
+	.moment-kicker { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.16em; color: var(--text-muted); }
+	.moment-title { font-size: 15px; font-weight: 700; margin: 2px 0; }
+	.moment-sub { font-size: 12px; color: var(--text-muted); }
+	.moment-stat { text-align: right; flex-shrink: 0; }
+	.moment-val { font-size: 22px; font-weight: 900; color: var(--primary); line-height: 1; }
+	.moment-lbl { font-size: 11px; color: var(--text-muted); }
+
+	/* ── HourDay ─────────────────────────────────────────────── */
+	.hourday-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+	.hd-card { padding: 16px; border-radius: 16px; }
+	.hd-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 12px; }
+	.bars-h-wrap { display: flex; flex-direction: column; height: 120px; }
+	.bars-h-cols { display: flex; align-items: flex-end; gap: 2px; flex: 1; min-height: 0; }
+	.bar-h-col { flex: 1; display: flex; align-items: flex-end; min-width: 0; height: 100%; }
+	.bar-h {
+		width: 100%; border-radius: 3px 3px 0 0;
+		background: var(--primary); opacity: 0.85; transition: height 0.4s ease;
+	}
+	.bar-h.dim { opacity: 0.3; }
+	.bar-labels { display: flex; gap: 2px; margin-top: 4px; flex-shrink: 0; }
+	.bar-labels span { flex: 1; font-size: 8px; color: var(--text-muted); text-align: center; overflow: hidden; }
+	@media (min-width: 1024px) {
+		.hourday-grid { grid-template-columns: 1fr 1fr; }
+	}
+
+	/* ── Milestones ──────────────────────────────────────────── */
+	.milestones-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+	.ms-card {
+		height: 76px; padding: 14px 16px; border-radius: 14px;
+		background: var(--glass-bg); border: 1px solid var(--glass-border);
+		backdrop-filter: blur(var(--blur));
+		display: flex; align-items: center; gap: 12px;
+		border-left: 3px solid var(--ms-color);
+	}
+	.ms-icon { font-size: 22px; flex-shrink: 0; }
+	.ms-body { min-width: 0; }
+	.ms-title { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.ms-sub { font-size: 10px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	@media (min-width: 1024px) {
+		.milestones-grid { grid-template-columns: repeat(4, 1fr); }
+	}
+
+	/* ── Projection ──────────────────────────────────────────── */
+	.projection-card {
+		display: flex; align-items: center; gap: 20px;
+		padding: 20px 24px; border-radius: 18px;
+	}
+	.proj-body { flex: 1; min-width: 0; }
+	.proj-kicker { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.16em; color: var(--text-muted); }
+	.proj-title { font-size: 16px; font-weight: 700; margin: 4px 0 2px; }
+	.proj-sub { font-size: 12px; color: var(--text-muted); }
+	.proj-stat { text-align: right; flex-shrink: 0; }
+	.proj-val { font-size: 32px; font-weight: 900; color: var(--primary); line-height: 1; }
+	.proj-lbl { font-size: 11px; color: var(--text-muted); }
+
+	/* ── Share card ──────────────────────────────────────────── */
+	.share-card {
+		padding: 24px; border-radius: 20px;
+		background: linear-gradient(135deg, oklch(0.16 0.04 290), oklch(0.12 0.05 290));
+		border: 1px solid oklch(0.40 0.06 290 / 0.5);
+		box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+	}
+	.share-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+	.share-brand { display: flex; align-items: center; gap: 10px; }
+	.share-mark { font-size: 24px; }
+	.share-name { font-size: 16px; font-weight: 800; }
+	.share-tagline { font-size: 10px; color: var(--text-muted); font-style: italic; }
+	.share-yr { font-size: 13px; font-weight: 800; letter-spacing: 0.2em; color: var(--primary); }
+	.share-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; }
+	.share-block { padding: 12px; background: oklch(0.12 0.03 290 / 0.6); border-radius: 12px; }
+	.share-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); }
+	.share-val { font-size: 15px; font-weight: 800; margin: 3px 0 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.share-val.big { font-size: 24px; color: var(--primary); }
+	.share-sub { font-size: 11px; color: var(--text-muted); }
+	.share-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+	.share-btn-primary { background: var(--primary); color: #fff; border: none; font-weight: 700; }
+	@media (min-width: 600px) {
+		.share-grid { grid-template-columns: repeat(4, 1fr); }
 	}
 </style>
