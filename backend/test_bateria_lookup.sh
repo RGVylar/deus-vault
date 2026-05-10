@@ -18,6 +18,8 @@ PRIME_SERIES_URL="https://www.primevideo.com/dp/amzn1.dv.gti.ba61bdfa-2247-4ccb-
 MAX_SERIES_URL="https://play.hbomax.com/page/urn:hbo:page:GVU2cggagzYNJjhsJATwo:type:series"
 STREMIO_SERIES_URL="https://app.strem.io/shell-v4.4/#/detail/series/tt0944947/tt0944947"
 CRUNCHYROLL_SERIES_URL="https://www.crunchyroll.com/series/GY1XW7V0Y/attack-on-titan"
+# FROM (serie en emisión) — para verificar next_episode_date
+FROM_SERIES_URL="https://app.strem.io/shell-v4.4/#/detail/series/tt9813792/tt9813792"
 
 # ── Libros ───────────────────────────────────────────────────
 OPENLIBRARY_URL="https://openlibrary.org/works/OL45883W"
@@ -60,6 +62,7 @@ probar "Prime Video (serie)" "$PRIME_SERIES_URL"
 probar "Max (serie)" "$MAX_SERIES_URL"
 probar "Stremio (serie)" "$STREMIO_SERIES_URL"
 probar "Crunchyroll (serie)" "$CRUNCHYROLL_SERIES_URL"
+probar "From (next_episode_date)" "$FROM_SERIES_URL"
 
 echo "\n════════════════════════════════════════"
 echo "  LIBROS"
