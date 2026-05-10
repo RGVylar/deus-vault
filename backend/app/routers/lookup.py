@@ -801,6 +801,10 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
         next_ep = details.get("next_episode_to_air") or {}
         next_episode_date = next_ep.get("air_date") or None
 
+    # Rating
+    vote_average = details.get("vote_average") or item.get("vote_average")
+    rating: float | None = round(float(vote_average), 1) if vote_average else None
+
     # Watch providers
     watch_providers: list[dict] = []
     if item_id and api_key:
@@ -819,6 +823,7 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
         "seasons": seasons,
         "next_episode_date": next_episode_date,
         "watch_providers": watch_providers,
+        "rating": rating,
     }
 
 
@@ -942,6 +947,10 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
         next_ep = details.get("next_episode_to_air") or {}
         next_episode_date = next_ep.get("air_date") or None
 
+    # Rating
+    vote_average = details.get("vote_average") or best_match.get("vote_average")
+    rating: float | None = round(float(vote_average), 1) if vote_average else None
+
     # Watch providers
     watch_providers: list[dict] = []
     if item_id and api_key:
@@ -960,6 +969,7 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
         "seasons": seasons,
         "next_episode_date": next_episode_date,
         "watch_providers": watch_providers,
+        "rating": rating,
     }
 
 
@@ -1140,6 +1150,7 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
 
     next_episode_date = tmdb.get("next_episode_date") if tmdb else None
     watch_providers = tmdb.get("watch_providers", []) if tmdb else []
+    rating = tmdb.get("rating") if tmdb else None
 
     return {
         "title": title,
@@ -1154,6 +1165,7 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
         "provider": provider,
         "next_episode_date": next_episode_date,
         "watch_providers": watch_providers,
+        "rating": rating,
     }
 
 
@@ -1247,6 +1259,9 @@ async def lookup_tmdb_detail(
         networks = details.get("networks", [])
         author = networks[0]["name"] if networks else ""
 
+    vote_average = details.get("vote_average")
+    rating: float | None = round(float(vote_average), 1) if vote_average else None
+
     watch_providers: list[dict] = []
     try:
         watch_providers = await _fetch_watch_providers(media_type, tmdb_id, api_key, country)
@@ -1266,6 +1281,7 @@ async def lookup_tmdb_detail(
         "watch_providers": watch_providers,
         "source_id": f"tmdb:{media_type}:{tmdb_id}",
         "suggested_content_type": "series" if media_type == "tv" else "movie",
+        "rating": rating,
     }
 
 

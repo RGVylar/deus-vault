@@ -36,6 +36,8 @@ export interface Content {
 	channel_thumbnail?: string | null;
 	times_consumed?: number;
 	next_episode_date?: string | null;
+	rating?: number | null;
+	provider?: string | null;
 }
 
 /** Effective duration for stats/display: series multiply by episode count */

@@ -5,6 +5,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -60,5 +61,7 @@ class Content(Base):
     author: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     channel_thumbnail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rating: Mapped[float | None] = mapped_column(Float(), nullable=True)
+    provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="contents")  # noqa: F821

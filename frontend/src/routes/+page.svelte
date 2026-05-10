@@ -9,6 +9,12 @@
 
 	const LIMIT = 20;
 
+	const PROVIDER_LABELS: Record<string, string> = {
+		netflix: 'Netflix', prime: 'Prime', max: 'Max',
+		disney: 'Disney+', crunchyroll: 'Crunchyroll', stremio: 'Stremio',
+		appletv: 'Apple TV+',
+	};
+
 	// Type accent colors matching CSS vars
 	const TYPE_COLOR: Record<string, string> = {
 		youtube: 'var(--youtube)',
@@ -89,6 +95,8 @@
 	let addPinned = $state(false);
 	let addAlreadyConsumed = $state(false);
 	let addError = $state('');
+	let addRating = $state<number | null>(null);
+	let addProvider = $state<string | null>(null);
 	let lookupLoading = $state(false);
 	let lastLookupUrl = $state('');
 	let refreshingId = $state<number | null>(null);
@@ -278,6 +286,8 @@ $effect(() => {
 			// Parse new fields
 			addNextEpisodeDate = (addType === 'series' && data.next_episode_date) ? data.next_episode_date : null;
 			addWatchProviders = data.watch_providers ?? [];
+			addRating = data.rating ?? null;
+			addProvider = data.provider ?? null;
 
 			// Duplicate check
 			duplicateItem = null;
@@ -357,6 +367,7 @@ $effect(() => {
 			if (detail.next_episode_date) addNextEpisodeDate = detail.next_episode_date;
 			if (detail.watch_providers?.length) addWatchProviders = detail.watch_providers;
 			if (detail.thumbnail && !addThumbnail) addThumbnail = detail.thumbnail;
+			if (detail.rating != null) addRating = detail.rating;
 		} catch { /* ignore, we already have basic info */ }
 
 		// Duplicate check
@@ -398,6 +409,8 @@ $effect(() => {
 				collection: addCollection.trim() || null, pinned: addPinned,
 				channel_thumbnail: addChannelThumbnail || null,
 				next_episode_date: addNextEpisodeDate || null,
+				rating: addRating ?? null,
+				provider: addProvider || null,
 			});
 			if (addAlreadyConsumed && created?.id) {
 				await api.post(`/contents/${created.id}/consume`);
@@ -425,6 +438,7 @@ $effect(() => {
 		addCollection = ''; addPinned = false; addAlreadyConsumed = false;
 		duplicateItem = null; duplicateChecked = false;
 		addNextEpisodeDate = null; addWatchProviders = [];
+		addRating = null; addProvider = null;
 		titleSearchResults = []; showTitleDropdown = false;
 	}
 
@@ -466,6 +480,7 @@ $effect(() => {
 			if (data.seasons != null) patch.seasons = data.seasons;
 			if (data.page_count && Number(data.page_count) > 0) patch.page_count = data.page_count;
 			if (data.next_episode_date !== undefined) patch.next_episode_date = data.next_episode_date ?? null;
+			if (data.rating != null) patch.rating = data.rating;
 			await api.patch(`/contents/${c.id}`, patch);
 			load();
 		} catch (e) { /* silent */ } finally { refreshingId = null; }
@@ -761,6 +776,12 @@ $effect(() => {
 						</div>
 						<div class="meta">
 							<span class="badge">{TYPE_LABELS[c.content_type]}</span>
+							{#if c.rating}
+								<span class="rating-badge">★ {c.rating.toFixed(1)}</span>
+							{/if}
+							{#if c.provider}
+								<span class="provider-badge provider-{c.provider}">{PROVIDER_LABELS[c.provider] ?? c.provider}</span>
+							{/if}
 							{#if c.collection}
 								<span style="font-size:10px; color:var(--text-muted);">📁 {c.collection}</span>
 							{/if}
@@ -1316,6 +1337,32 @@ $effect(() => {
 		border-radius: 4px;
 		object-fit: cover;
 	}
+
+	/* Rating badge */
+	.rating-badge {
+		font-size: 10px;
+		font-weight: 700;
+		color: oklch(0.85 0.18 85);
+		background: oklch(0.28 0.08 85 / 0.5);
+		border: 1px solid oklch(0.65 0.15 85 / 0.4);
+		border-radius: 5px;
+		padding: 1px 5px;
+	}
+
+	/* Provider badge */
+	.provider-badge {
+		font-size: 10px;
+		font-weight: 700;
+		border-radius: 5px;
+		padding: 1px 6px;
+		opacity: 0.9;
+	}
+	.provider-netflix  { background: #e50914; color: #fff; }
+	.provider-prime    { background: #00a8e0; color: #fff; }
+	.provider-max      { background: #741aff; color: #fff; }
+	.provider-disney   { background: #113ccf; color: #fff; }
+	.provider-crunchyroll { background: #f47521; color: #fff; }
+	.provider-stremio  { background: var(--glass-bg-weak); color: var(--text-muted); border: 1px solid var(--glass-border); }
 
 	/* Next episode badge on cards */
 	.next-ep {

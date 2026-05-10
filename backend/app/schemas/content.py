@@ -22,6 +22,8 @@ class ContentCreate(BaseModel):
     collection: str | None = None
     channel_thumbnail: str | None = None
     next_episode_date: datetime | None = None
+    rating: float | None = None
+    provider: str | None = None
 
 
 class ContentUpdate(BaseModel):
@@ -40,6 +42,8 @@ class ContentUpdate(BaseModel):
     collection: str | None = None
     consumed_at: datetime | None = None  # allows correcting the consumed date
     next_episode_date: datetime | None = None
+    rating: float | None = None
+    provider: str | None = None
 
 
 class ContentOut(BaseModel):
@@ -67,6 +71,8 @@ class ContentOut(BaseModel):
     channel_thumbnail: str | None
     times_consumed: int
     next_episode_date: datetime | None
+    rating: float | None
+    provider: str | None
 
     model_config = {"from_attributes": True}
 

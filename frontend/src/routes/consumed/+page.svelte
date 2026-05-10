@@ -258,6 +258,9 @@
 					</div>
 						<div class="meta">
 							<span class="badge">{TYPE_LABELS[c.content_type]}</span>
+							{#if c.rating}
+								<span class="rating-badge">★ {c.rating.toFixed(1)}</span>
+							{/if}
 							{#if c.content_type === 'series'}
 								{#if c.seasons && c.seasons > 0}<span>📺 {c.seasons}T</span>{/if}
 								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} ep</span>{/if}
@@ -359,5 +362,14 @@
 		margin-left: 5px;
 		vertical-align: middle;
 		opacity: 0.9;
+	}
+	.rating-badge {
+		font-size: 10px;
+		font-weight: 700;
+		color: oklch(0.85 0.18 85);
+		background: oklch(0.28 0.08 85 / 0.5);
+		border: 1px solid oklch(0.65 0.15 85 / 0.4);
+		border-radius: 5px;
+		padding: 1px 5px;
 	}
 </style>
