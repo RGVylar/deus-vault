@@ -1006,20 +1006,23 @@ $effect(() => {
 						<option value="game">🎮 Juego</option>
 					</select>
 				</div>
-				<div class="field" style="position:relative;">
+				<div class="field">
 					<label for="add-title">Título{!addUrl.trim() ? ' (o busca por nombre)' : ''}</label>
-					<input
-						id="add-title"
-						class="text"
-						bind:value={addTitle}
-						required
-						autocomplete="off"
-						onblur={() => setTimeout(() => showTitleDropdown = false, 150)}
-						onfocus={() => { if (titleSearchResults.length > 0) showTitleDropdown = true; }}
-					/>
-					{#if titleSearchLoading && !addUrl.trim()}
-						<span style="position:absolute; right:10px; top:34px; font-size:11px; color:var(--text-muted);">buscando…</span>
-					{/if}
+					<div style="position:relative;">
+						<input
+							id="add-title"
+							class="text"
+							bind:value={addTitle}
+							required
+							autocomplete="off"
+							onblur={() => setTimeout(() => showTitleDropdown = false, 150)}
+							onfocus={() => { if (titleSearchResults.length > 0) showTitleDropdown = true; }}
+							style="width:100%;"
+						/>
+						{#if titleSearchLoading && !addUrl.trim()}
+							<span style="position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:11px; color:var(--text-muted);">buscando…</span>
+						{/if}
+					</div>
 					{#if showTitleDropdown && titleSearchResults.length > 0}
 						<div class="tmdb-dropdown">
 							{#each titleSearchResults as result}
@@ -1242,15 +1245,12 @@ $effect(() => {
 
 	/* TMDB title search dropdown */
 	.tmdb-dropdown {
-		position: absolute;
-		top: calc(100% + 4px);
-		left: 0; right: 0;
-		background: var(--glass-bg-strong, #1a1a2e);
+		margin-top: 4px;
+		background: #0f1117;
 		border: 1px solid var(--glass-border);
 		border-radius: 12px;
 		overflow: hidden;
-		z-index: 100;
-		box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+		box-shadow: 0 4px 24px rgba(0,0,0,0.7);
 	}
 	.tmdb-row {
 		display: flex;
@@ -1260,7 +1260,7 @@ $effect(() => {
 		cursor: pointer;
 		transition: background 0.15s;
 	}
-	.tmdb-row:hover { background: var(--glass-bg-weak); }
+	.tmdb-row:hover { background: rgba(255,255,255,0.07); }
 	.tmdb-row + .tmdb-row { border-top: 1px solid var(--glass-border); }
 	.tmdb-thumb {
 		width: 36px;
