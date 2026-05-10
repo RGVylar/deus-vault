@@ -289,6 +289,14 @@ $effect(() => {
 			addError = 'Este ítem ya está en tu bóveda como pendiente.';
 			return;
 		}
+		// If already consumed, increment times_consumed on the existing item instead of creating a new one
+		if (duplicateItem && duplicateItem.consumed) {
+			await api.post(`/contents/${duplicateItem.id}/consume`);
+			showAdd = false;
+			resetForm();
+			load();
+			return;
+		}
 		try {
 			const created = await api.post<{ id: number }>('/contents', {
 				title: addTitle, content_type: addType, url: addUrl || null,
@@ -367,6 +375,7 @@ $effect(() => {
 			if (data.episode_count != null) patch.episode_count = data.episode_count;
 			if (data.seasons != null) patch.seasons = data.seasons;
 			if (data.page_count && Number(data.page_count) > 0) patch.page_count = data.page_count;
+			if (data.next_episode_date !== undefined) patch.next_episode_date = data.next_episode_date ?? null;
 			await api.patch(`/contents/${c.id}`, patch);
 			load();
 		} catch (e) { /* silent */ } finally { refreshingId = null; }
