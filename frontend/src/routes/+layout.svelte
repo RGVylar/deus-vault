@@ -73,61 +73,66 @@
 	<div class="grain"></div>
 </div>
 
-<!-- App shell: transparent on mobile, sidebar+main grid on desktop -->
-<div class="app-shell">
+{#if page.url.pathname === '/login'}
+	<!-- Login: full-screen, no app-shell / sidebar -->
+	{@render children()}
+{:else}
+	<!-- App shell: transparent on mobile, sidebar+main grid on desktop -->
+	<div class="app-shell">
 
-	<!-- Sidebar (desktop only — hidden via CSS on mobile) -->
-	{#if auth.isLoggedIn}
-	<aside class="sidebar">
-		<div class="sb-brand">
-			<div class="sb-brand-mark">⛧</div>
-			<div>
-				<div class="sb-brand-name">Deus Vault</div>
-				<div class="sb-brand-sub">memento mori</div>
+		<!-- Sidebar (desktop only — hidden via CSS on mobile) -->
+		{#if auth.isLoggedIn}
+		<aside class="sidebar">
+			<div class="sb-brand">
+				<div class="sb-brand-mark">⛧</div>
+				<div>
+					<div class="sb-brand-name">Deus Vault</div>
+					<div class="sb-brand-sub">memento mori</div>
+				</div>
 			</div>
-		</div>
 
-		<div class="sb-section">Tu bóveda</div>
-		{#each navMain as item}
-			<a href={item.href} class="sb-item" class:active={page.url.pathname === item.href}>
-				<span class="sbi-ico">{item.icon}</span>
-				<span>{item.label}</span>
+			<div class="sb-section">Tu bóveda</div>
+			{#each navMain as item}
+				<a href={item.href} class="sb-item" class:active={page.url.pathname === item.href}>
+					<span class="sbi-ico">{item.icon}</span>
+					<span>{item.label}</span>
+				</a>
+			{/each}
+
+			<div class="sb-section">Cuenta</div>
+			<a href="/settings" class="sb-item" class:active={page.url.pathname === '/settings'}>
+				<span class="sbi-ico">⚙️</span><span>Ajustes</span>
 			</a>
-		{/each}
+			<button class="sb-item" onclick={logout}>
+				<span class="sbi-ico">↪</span><span>Cerrar sesión</span>
+			</button>
 
-		<div class="sb-section">Cuenta</div>
-		<a href="/settings" class="sb-item" class:active={page.url.pathname === '/settings'}>
-			<span class="sbi-ico">⚙️</span><span>Ajustes</span>
-		</a>
-		<button class="sb-item" onclick={logout}>
-			<span class="sbi-ico">↪</span><span>Cerrar sesión</span>
-		</button>
-
-		<div class="sb-spacer"></div>
-		<div class="sb-user">
-			<div class="av">{auth.user?.name?.charAt(0).toUpperCase() ?? '?'}</div>
-			<div class="sb-user-info">
-				<div class="nm">{auth.user?.name ?? ''}</div>
-				<div class="em">{auth.user?.email ?? ''}</div>
+			<div class="sb-spacer"></div>
+			<div class="sb-user">
+				<div class="av">{auth.user?.name?.charAt(0).toUpperCase() ?? '?'}</div>
+				<div class="sb-user-info">
+					<div class="nm">{auth.user?.name ?? ''}</div>
+					<div class="em">{auth.user?.email ?? ''}</div>
+				</div>
 			</div>
-		</div>
-	</aside>
-	{/if}
+		</aside>
+		{/if}
 
-	<!-- Page content -->
-	<div class="page-scroll">
-		{@render children()}
+		<!-- Page content -->
+		<div class="page-scroll">
+			{@render children()}
+		</div>
 	</div>
-</div>
 
-<!-- Mobile tab bar (hidden on desktop via CSS) -->
-{#if auth.isLoggedIn}
-	<nav class="tab-bar">
-		{#each navBottom as item}
-			<a href={item.href} class="tab-item" class:active={page.url.pathname === item.href}>
-				<span class="ti-ico">{item.icon}</span>
-				{item.label}
-			</a>
-		{/each}
-	</nav>
+	<!-- Mobile tab bar (hidden on desktop via CSS) -->
+	{#if auth.isLoggedIn}
+		<nav class="tab-bar">
+			{#each navBottom as item}
+				<a href={item.href} class="tab-item" class:active={page.url.pathname === item.href}>
+					<span class="ti-ico">{item.icon}</span>
+					{item.label}
+				</a>
+			{/each}
+		</nav>
+	{/if}
 {/if}

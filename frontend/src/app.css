@@ -1541,6 +1541,8 @@ h2 {
 
 /* ─── LOGIN desktop: split ─── */
 .desk-login-wrap {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
@@ -1548,7 +1550,7 @@ h2 {
 @media (min-width: 1024px) {
   .desk-login-wrap {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.1fr 1fr;
     min-height: 100dvh;
   }
 }
@@ -1557,7 +1559,7 @@ h2 {
   flex-direction: column;
   justify-content: center;
   padding: 0 60px;
-  gap: 16px;
+  gap: 20px;
 }
 .desk-login-brand .logo-title { text-align: left; font-size: 88px; line-height: 0.9; }
 .desk-login-brand .tagline {
@@ -1573,6 +1575,9 @@ h2 {
   }
   .login-wrap .logo-title { display: none; }
   .login-wrap .logo-tag   { display: none; }
+  .login-card {
+    max-width: 440px;
+  }
 }
 
 /* ───────── MODAL — desktop overrides ───────── */
