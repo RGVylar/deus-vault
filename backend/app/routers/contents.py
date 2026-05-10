@@ -367,6 +367,21 @@ def list_collections(
     return [r for r in rows if r]
 
 
+@router.get("/providers", response_model=list[str])
+def list_providers(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[str]:
+    """Return distinct non-null providers for the user's pending content."""
+    rows = db.scalars(
+        select(Content.provider)
+        .where(Content.user_id == user.id, Content.provider.isnot(None), Content.consumed == False, Content.abandoned == False)  # noqa: E712
+        .distinct()
+        .order_by(Content.provider.asc())
+    ).all()
+    return [r for r in rows if r]
+
+
 @router.get("/check-duplicate", response_model=ContentOut | None)
 def check_duplicate(
     source_id: str | None = Query(None),
@@ -391,8 +406,9 @@ def list_contents(
     abandoned: bool | None = Query(None),
     content_type: ContentType | None = Query(None),
     collection: str | None = Query(None, max_length=100),
+    provider: str | None = Query(None, max_length=50),
     search: str | None = Query(None, max_length=200),
-    sort: str = Query(default="recent", pattern="^(recent|duration_asc|duration_desc|title_asc)$"),
+    sort: str = Query(default="recent", pattern="^(recent|duration_asc|duration_desc|title_asc|rating_desc|rating_asc)$"),
     limit: int = Query(default=PAGE_LIMIT, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
@@ -413,6 +429,8 @@ def list_contents(
         q = q.where(Content.content_type == content_type)
     if collection is not None:
         q = q.where(Content.collection == collection)
+    if provider is not None:
+        q = q.where(Content.provider == provider)
     if search and search.strip():
         term = f"%{search.strip().lower()}%"
         q = q.where(
@@ -429,6 +447,10 @@ def list_contents(
         q = q.order_by(Content.pinned.desc(), Content.duration_minutes.desc(), Content.created_at.desc())
     elif sort == "title_asc":
         q = q.order_by(Content.pinned.desc(), func.lower(Content.title).asc())
+    elif sort == "rating_desc":
+        q = q.order_by(Content.pinned.desc(), Content.rating.desc().nulls_last(), Content.created_at.desc())
+    elif sort == "rating_asc":
+        q = q.order_by(Content.pinned.desc(), Content.rating.asc().nulls_last(), Content.created_at.desc())
     else:  # recent
         q = q.order_by(Content.pinned.desc(), Content.created_at.desc())
 

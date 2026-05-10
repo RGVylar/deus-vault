@@ -44,7 +44,9 @@
 	let sortOrder = $state('recent');
 	let searchQuery = $state('');
 	let activeCollection = $state<string | null>(null);
+	let activeProvider = $state<string | null>(null);
 	let collections: string[] = $state([]);
+	let availableProviders: string[] = $state([]);
 	let showAdd = $state(false);
 	let loading = $state(true);
 	let loadingMore = $state(false);
@@ -160,11 +162,12 @@
 		showAdd = true;
 	});
 
-	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string, sort = 'recent', col: string | null = null) {
+	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string, sort = 'recent', col: string | null = null, prov: string | null = null) {
 		let url = `/contents?consumed=${consumed}&limit=${LIMIT}&offset=${off}&sort=${sort}`;
 		if (type !== 'all') url += `&content_type=${type}`;
 		if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
 		if (col) url += `&collection=${encodeURIComponent(col)}`;
+		if (prov) url += `&provider=${encodeURIComponent(prov)}`;
 		return url;
 	}
 
@@ -172,6 +175,12 @@
 		try {
 			collections = await api.get<string[]>('/contents/collections');
 		} catch { collections = []; }
+	}
+
+	async function loadProviders() {
+		try {
+			availableProviders = await api.get<string[]>('/contents/providers');
+		} catch { availableProviders = []; }
 	}
 
 	async function load() {
@@ -185,7 +194,7 @@
 			stats = s;
 			contents = p.items;
 			total = p.total;
-			await loadCollections();
+			await Promise.all([loadCollections(), loadProviders()]);
 		} finally { loading = false; }
 	}
 
@@ -193,23 +202,24 @@
 		loadingMore = true;
 		const newOffset = offset + LIMIT;
 		try {
-			const p = await api.get<PaginatedContents>(buildUrl(false, filter, newOffset, searchQuery, sortOrder, activeCollection));
+			const p = await api.get<PaginatedContents>(buildUrl(false, filter, newOffset, searchQuery, sortOrder, activeCollection, activeProvider));
 			contents = [...contents, ...p.items];
 			total = p.total;
 			offset = newOffset;
 		} finally { loadingMore = false; }
 	}
 
-	// React to filter, sort, or collection changes
+	// React to filter, sort, collection, or provider changes
 	let controlsMounted = false;
 	$effect(() => {
 		const _filter = filter;
 		const _sort = sortOrder;
 		const _col = activeCollection;
+		const _prov = activeProvider;
 		if (!controlsMounted) { controlsMounted = true; return; }
 		if (!auth.isLoggedIn) return;
 		offset = 0;
-		api.get<PaginatedContents>(buildUrl(false, _filter, 0, searchQuery, _sort, _col)).then(p => {
+		api.get<PaginatedContents>(buildUrl(false, _filter, 0, searchQuery, _sort, _col, _prov)).then(p => {
 			contents = p.items;
 			total = p.total;
 		});
@@ -222,7 +232,7 @@
 		searchTimer = setTimeout(() => {
 			if (!auth.isLoggedIn) return;
 			offset = 0;
-			api.get<PaginatedContents>(buildUrl(false, filter, 0, q, sortOrder, activeCollection)).then(p => {
+			api.get<PaginatedContents>(buildUrl(false, filter, 0, q, sortOrder, activeCollection, activeProvider)).then(p => {
 				contents = p.items;
 				total = p.total;
 			});
@@ -620,6 +630,8 @@ $effect(() => {
 			<option value="duration_asc">⏱ Duración ↑</option>
 			<option value="duration_desc">⏱ Duración ↓</option>
 			<option value="title_asc">🔤 Título A–Z</option>
+			<option value="rating_desc">★ Puntuación ↓</option>
+			<option value="rating_asc">★ Puntuación ↑</option>
 		</select>
 	</div>
 
@@ -709,23 +721,31 @@ $effect(() => {
 			<option value="duration_asc">⏱ Duración ↑</option>
 			<option value="duration_desc">⏱ Duración ↓</option>
 			<option value="title_asc">🔤 Título A–Z</option>
+			<option value="rating_desc">★ Puntuación ↓</option>
+			<option value="rating_asc">★ Puntuación ↑</option>
 		</select>
 	</div>
 
 	<!-- Collection filter chips -->
 	{#if collections.length > 0}
 		<div class="tabs" style="padding-top:0;">
-			<button
-				class="tab"
-				class:active={activeCollection === null}
-				onclick={() => activeCollection = null}
-			>Todas</button>
+			<button class="tab" class:active={activeCollection === null} onclick={() => activeCollection = null}>Todas</button>
 			{#each collections as col}
+				<button class="tab" class:active={activeCollection === col} onclick={() => activeCollection = activeCollection === col ? null : col}>📁 {col}</button>
+			{/each}
+		</div>
+	{/if}
+
+	<!-- Provider filter chips -->
+	{#if availableProviders.length > 0}
+		<div class="tabs" style="padding-top:0;">
+			<button class="tab" class:active={activeProvider === null} onclick={() => activeProvider = null}>Todos</button>
+			{#each availableProviders as prov}
 				<button
-					class="tab"
-					class:active={activeCollection === col}
-					onclick={() => activeCollection = activeCollection === col ? null : col}
-				>📁 {col}</button>
+					class="tab provider-tab provider-tab-{prov}"
+					class:active={activeProvider === prov}
+					onclick={() => activeProvider = activeProvider === prov ? null : prov}
+				>{PROVIDER_LABELS[prov] ?? prov}</button>
 			{/each}
 		</div>
 	{/if}
@@ -1337,6 +1357,13 @@ $effect(() => {
 		border-radius: 4px;
 		object-fit: cover;
 	}
+
+	/* Provider filter tabs */
+	.provider-tab-netflix.active  { background: #e50914 !important; color: #fff !important; border-color: #e50914 !important; }
+	.provider-tab-prime.active    { background: #00a8e0 !important; color: #fff !important; border-color: #00a8e0 !important; }
+	.provider-tab-max.active      { background: #741aff !important; color: #fff !important; border-color: #741aff !important; }
+	.provider-tab-disney.active   { background: #113ccf !important; color: #fff !important; border-color: #113ccf !important; }
+	.provider-tab-crunchyroll.active { background: #f47521 !important; color: #fff !important; border-color: #f47521 !important; }
 
 	/* Rating badge */
 	.rating-badge {
