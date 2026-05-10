@@ -181,21 +181,26 @@
 
 	// Milestones computed from stats
 	type Milestone = { icon: string; tt: string; ss: string; color: string };
-	async function downloadShareCard() {
-		const el = document.getElementById('share-card');
-		if (!el) return;
-		// Dynamic import so the page works even if the package isn't installed
-		try {
-			// @ts-ignore — optional dependency, install with: npm install html-to-image
-			const { toPng } = await import('html-to-image');
-			const dataUrl = await toPng(el, { cacheBust: true, pixelRatio: 2 });
-			const link = document.createElement('a');
-			link.download = `deus-vault-rewind-${stats?.year ?? year}.png`;
-			link.href = dataUrl;
-			link.click();
-		} catch {
-			alert('Para descargar la tarjeta, instala html-to-image:\nnpm install html-to-image');
-		}
+	let shareCopied = $state(false);
+
+	async function copyShareStats() {
+		if (!stats) return;
+		const lines = [
+			`⛧ Deus Vault — Rewind ${stats.year}`,
+			``,
+			`📺 ${stats.total_consumed_count} ítems consumidos`,
+			`⏱ ${formatDuration(stats.total_consumed_minutes)} (${stats.percentage_of_year.toFixed(2)}% del año)`,
+		];
+		if (stats.streak_max > 0) lines.push(`🔥 Racha máxima: ${stats.streak_max} días`);
+		if (stats.top_youtube_channels.length > 0)
+			lines.push(`▶️ Top canal: ${stats.top_youtube_channels[0].name}`);
+		if (stats.top_items_by_type['series']?.[0])
+			lines.push(`📺 Top serie: ${stats.top_items_by_type['series'][0].title}`);
+		if (stats.top_items_by_type['movie']?.[0])
+			lines.push(`🎬 Top película: ${stats.top_items_by_type['movie'][0].title}`);
+		await navigator.clipboard.writeText(lines.join('\n'));
+		shareCopied = true;
+		setTimeout(() => (shareCopied = false), 2000);
 	}
 
 	const milestones = $derived((): Milestone[] => {
