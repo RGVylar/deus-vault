@@ -10,10 +10,21 @@
 	const LIMIT = 20;
 
 	const PROVIDER_LABELS: Record<string, string> = {
-		netflix: 'Netflix', prime: 'Prime', max: 'Max',
+		netflix: 'Netflix', prime: 'Prime Video', max: 'Max',
 		disney: 'Disney+', crunchyroll: 'Crunchyroll', stremio: 'Stremio',
 		appletv: 'Apple TV+',
 	};
+
+	// Reverse map: author string → provider key (for existing content without provider field)
+	const AUTHOR_TO_PROVIDER: Record<string, string> = {
+		'Netflix': 'netflix', 'Prime Video': 'prime', 'Max': 'max',
+		'Disney+': 'disney', 'Crunchyroll': 'crunchyroll', 'Stremio': 'stremio',
+		'Apple TV+': 'appletv',
+	};
+
+	function resolveProvider(c: Content): string | null {
+		return c.provider ?? AUTHOR_TO_PROVIDER[c.author ?? ''] ?? null;
+	}
 
 	// Type accent colors matching CSS vars
 	const TYPE_COLOR: Record<string, string> = {
@@ -491,6 +502,7 @@ $effect(() => {
 			if (data.page_count && Number(data.page_count) > 0) patch.page_count = data.page_count;
 			if (data.next_episode_date !== undefined) patch.next_episode_date = data.next_episode_date ?? null;
 			if (data.rating != null) patch.rating = data.rating;
+			if (data.provider) patch.provider = data.provider;
 			await api.patch(`/contents/${c.id}`, patch);
 			load();
 		} catch (e) { /* silent */ } finally { refreshingId = null; }
@@ -799,8 +811,9 @@ $effect(() => {
 							{#if c.rating}
 								<span class="rating-badge">★ {c.rating.toFixed(1)}</span>
 							{/if}
-							{#if c.provider}
-								<span class="provider-badge provider-{c.provider}">{PROVIDER_LABELS[c.provider] ?? c.provider}</span>
+							{#if resolveProvider(c)}
+								{@const prov = resolveProvider(c)!}
+								<span class="provider-badge provider-{prov}">{PROVIDER_LABELS[prov] ?? prov}</span>
 							{/if}
 							{#if c.collection}
 								<span style="font-size:10px; color:var(--text-muted);">📁 {c.collection}</span>

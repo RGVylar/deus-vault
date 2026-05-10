@@ -367,19 +367,37 @@ def list_collections(
     return [r for r in rows if r]
 
 
+# Maps author label → provider key for content added before the provider field existed
+_AUTHOR_TO_PROVIDER: dict[str, str] = {
+    "Netflix": "netflix",
+    "Prime Video": "prime",
+    "Max": "max",
+    "Disney+": "disney",
+    "Crunchyroll": "crunchyroll",
+    "Stremio": "stremio",
+    "Apple TV+": "appletv",
+}
+_PROVIDER_TO_AUTHOR: dict[str, str] = {v: k for k, v in _AUTHOR_TO_PROVIDER.items()}
+
+
 @router.get("/providers", response_model=list[str])
 def list_providers(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[str]:
-    """Return distinct non-null providers for the user's pending content."""
-    rows = db.scalars(
-        select(Content.provider)
-        .where(Content.user_id == user.id, Content.provider.isnot(None), Content.consumed == False, Content.abandoned == False)  # noqa: E712
-        .distinct()
-        .order_by(Content.provider.asc())
-    ).all()
-    return [r for r in rows if r]
+    """Return distinct providers for the user's pending content (from provider field or known authors)."""
+    base = (
+        select(Content)
+        .where(Content.user_id == user.id, Content.consumed == False, Content.abandoned == False)  # noqa: E712
+    )
+    items = db.scalars(base).all()
+    found: set[str] = set()
+    for item in items:
+        if item.provider:
+            found.add(item.provider)
+        elif item.author and item.author in _AUTHOR_TO_PROVIDER:
+            found.add(_AUTHOR_TO_PROVIDER[item.author])
+    return sorted(found)
 
 
 @router.get("/check-duplicate", response_model=ContentOut | None)
@@ -430,7 +448,11 @@ def list_contents(
     if collection is not None:
         q = q.where(Content.collection == collection)
     if provider is not None:
-        q = q.where(Content.provider == provider)
+        author_label = _PROVIDER_TO_AUTHOR.get(provider)
+        if author_label:
+            q = q.where(or_(Content.provider == provider, Content.author == author_label))
+        else:
+            q = q.where(Content.provider == provider)
     if search and search.strip():
         term = f"%{search.strip().lower()}%"
         q = q.where(
