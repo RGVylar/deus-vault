@@ -115,6 +115,7 @@
 	let titleSearchLoading = $state(false);
 	let titleSearchTimer: ReturnType<typeof setTimeout> | null = null;
 	let showTitleDropdown = $state(false);
+	let titleSearchLocked = $state(false); // prevents re-search after selecting a result
 
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
@@ -305,6 +306,11 @@ $effect(() => {
 			showTitleDropdown = false;
 			return;
 		}
+		// Skip search if title was just set by selecting a result
+		if (titleSearchLocked) {
+			titleSearchLocked = false;
+			return;
+		}
 		if (titleSearchTimer) clearTimeout(titleSearchTimer);
 		titleSearchTimer = setTimeout(async () => {
 			titleSearchLoading = true;
@@ -326,6 +332,7 @@ $effect(() => {
 	async function selectTmdbResult(result: TmdbSearchResult) {
 		showTitleDropdown = false;
 		titleSearchResults = [];
+		titleSearchLocked = true; // prevent the effect from re-searching
 		addTitle = result.title;
 		addThumbnail = result.thumbnail;
 		addSourceId = result.source_id;
@@ -970,6 +977,10 @@ $effect(() => {
 							<span class="lookup-dot" aria-hidden="true"></span>
 							Buscando información del enlace...
 						</p>
+					{:else if !addUrl.trim()}
+						<p style="font-size:11px; color:var(--text-dim); margin:4px 0 0; display:flex; align-items:center; gap:4px;">
+							🔍 Sin URL, escribe el título abajo para buscar directamente
+						</p>
 					{/if}
 					{#if duplicateChecked && duplicateItem}
 						<div class="dup-banner" class:dup-pending={!duplicateItem.consumed && !duplicateItem.abandoned} class:dup-consumed={duplicateItem.consumed || duplicateItem.abandoned}>
@@ -1015,6 +1026,7 @@ $effect(() => {
 							bind:value={addTitle}
 							required
 							autocomplete="off"
+							placeholder={addUrl.trim() ? '' : 'Ej: Dune, Breaking Bad…'}
 							onblur={() => setTimeout(() => showTitleDropdown = false, 150)}
 							onfocus={() => { if (titleSearchResults.length > 0) showTitleDropdown = true; }}
 							style="width:100%;"
