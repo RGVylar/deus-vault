@@ -15,6 +15,12 @@
 		appletv: 'Apple TV+',
 	};
 
+	const TYPE_ORDER: ContentType[] = ['movie', 'series', 'youtube', 'book', 'game', 'music'];
+	const TYPE_SECTION_LABEL: Record<string, string> = {
+		youtube: 'YouTube', movie: 'Películas', series: 'Series',
+		book: 'Libros', game: 'Juegos', music: 'Música',
+	};
+
 	// Reverse map: author string → provider key (for existing content without provider field)
 	const AUTHOR_TO_PROVIDER: Record<string, string> = {
 		'Netflix': 'netflix', 'Prime Video': 'prime', 'Max': 'max',
@@ -153,6 +159,19 @@
 
 	// Provider picker for title-added content
 	let openPickerCard = $state<number | null>(null);
+
+	// Grouped-by-type view
+	let groupByType = $state(false);
+	const contentsByType = $derived.by(() => {
+		const map: Partial<Record<ContentType, Content[]>> = {};
+		for (const c of contents) {
+			if (!map[c.content_type]) map[c.content_type] = [];
+			map[c.content_type]!.push(c);
+		}
+		return TYPE_ORDER
+			.filter(t => (map[t]?.length ?? 0) > 0)
+			.map(t => ({ type: t, items: map[t]! }));
+	});
 
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
@@ -725,7 +744,14 @@ $effect(() => {
 	<div class="desk-section desk-only">
 		<h2>Pendiente</h2>
 		<span class="more">{total} ítems</span>
+		<button
+			class="btn group-toggle"
+			class:active={groupByType}
+			onclick={() => { groupByType = !groupByType; if (groupByType) filter = 'all'; }}
+			title={groupByType ? 'Vista plana' : 'Agrupar por tipo'}
+		>{groupByType ? '≡ Desagrupar' : '⊞ Agrupar'}</button>
 	</div>
+	{#if !groupByType}
 	<div class="tabs desk-tabs">
 		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>Todos</button>
 		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️ YouTube</button>
@@ -735,6 +761,7 @@ $effect(() => {
 		<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖 Libros</button>
 		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮 Juegos</button>
 	</div>
+	{/if}
 
 	<!-- Search + sort (mobile only — desktop has it in topbar) -->
 	<div class="search-row mobile-only">
@@ -789,19 +816,18 @@ $effect(() => {
 			<p>{searchQuery ? 'Sin resultados para "' + searchQuery + '"' : 'La bóveda está vacía. ¡Añade contenido!'}</p>
 		</div>
 	{:else}
-		<div class="content-grid">
-			{#each contents as c (c.id)}
-				{@const link = buildConsumeUrl(c)}
-				{@const pct = progressPercent(c)}
-				{@const hasProgress = (c.progress ?? 0) > 0}
-				{@const remaining = remainingMinutes(c)}
-				{@const landscape = isLandscape(c.content_type)}
-				<div
-					class="c-card"
-					class:landscape
-					class:portrait={!landscape}
-					style="--card-accent:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}; --accent:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}"
-				>
+		{#snippet cardTpl(c: Content)}
+			{@const link = buildConsumeUrl(c)}
+			{@const pct = progressPercent(c)}
+			{@const hasProgress = (c.progress ?? 0) > 0}
+			{@const remaining = remainingMinutes(c)}
+			{@const landscape = isLandscape(c.content_type)}
+			<div
+				class="c-card"
+				class:landscape
+				class:portrait={!landscape}
+				style="--card-accent:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}; --accent:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}"
+			>
 					{#if landscape}
 						<div class="thumb-land">
 							{#if c.thumbnail}
@@ -962,8 +988,30 @@ $effect(() => {
 						</div>
 					</div>
 				</div>
+		{/snippet}
+
+		{#if groupByType}
+			{#each contentsByType as { type, items }}
+				<div class="type-section">
+					<div class="type-section-head" style="--section-accent:{TYPE_COLOR[type] ?? 'var(--primary)'}">
+						<span class="type-section-icon">{TYPE_ICONS[type]}</span>
+						<h3>{TYPE_SECTION_LABEL[type]}</h3>
+						<span class="type-section-count">{items.length}</span>
+					</div>
+					<div class="content-grid {isLandscape(type) ? 'grid-landscape' : 'grid-portrait'}">
+						{#each items as c (c.id)}
+							{@render cardTpl(c)}
+						{/each}
+					</div>
+				</div>
 			{/each}
-		</div>
+		{:else}
+			<div class="content-grid">
+				{#each contents as c (c.id)}
+					{@render cardTpl(c)}
+				{/each}
+			</div>
+		{/if}
 
 		{#if contents.length < total}
 			<div class="center mt16">
@@ -1446,6 +1494,58 @@ $effect(() => {
 	.provider-disney   { background: #113ccf; color: #fff; }
 	.provider-crunchyroll { background: #f47521; color: #fff; }
 	.provider-stremio  { background: var(--glass-bg-weak); color: var(--text-muted); border: 1px solid var(--glass-border); }
+
+	/* Grouped-by-type sections */
+	.type-section {
+		margin-bottom: 28px;
+	}
+	.type-section-head {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 12px;
+		padding: 0 2px;
+		border-left: 2px solid var(--section-accent, var(--primary));
+		padding-left: 10px;
+	}
+	.type-section-icon {
+		font-size: 15px;
+		line-height: 1;
+	}
+	.type-section-head h3 {
+		font-size: 11px;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+		flex: 1;
+		margin: 0;
+	}
+	.type-section-count {
+		font-size: 11px;
+		color: var(--text-dim);
+		background: var(--glass-bg);
+		border: 1px solid var(--glass-border);
+		border-radius: 20px;
+		padding: 1px 8px;
+		font-weight: 600;
+	}
+	/* Portrait grid (books, music): narrower min-width to fit more side-by-side */
+	.content-grid.grid-portrait {
+		grid-template-columns: 1fr;
+	}
+	/* Toggle button */
+	.group-toggle {
+		font-size: 11px;
+		padding: 4px 10px;
+		opacity: 0.7;
+		transition: opacity 0.15s;
+		margin-left: auto;
+	}
+	.group-toggle.active,
+	.group-toggle:hover {
+		opacity: 1;
+	}
 
 	/* Provider picker dropdown */
 	.open-picker-wrap {
