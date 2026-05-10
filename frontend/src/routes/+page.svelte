@@ -162,6 +162,12 @@
 
 	// Grouped-by-type view
 	let groupByType = $state(false);
+	let collapsedTypes = $state(new Set<string>());
+	function toggleSection(type: string) {
+		const next = new Set(collapsedTypes);
+		if (next.has(type)) next.delete(type); else next.add(type);
+		collapsedTypes = next;
+	}
 	const contentsByType = $derived.by(() => {
 		const map: Partial<Record<ContentType, Content[]>> = {};
 		for (const c of contents) {
@@ -992,17 +998,21 @@ $effect(() => {
 
 		{#if groupByType}
 			{#each contentsByType as { type, items }}
+				{@const collapsed = collapsedTypes.has(type)}
 				<div class="type-section">
-					<div class="type-section-head" style="--section-accent:{TYPE_COLOR[type] ?? 'var(--primary)'}">
+					<button class="type-section-head" onclick={() => toggleSection(type)} style="--section-accent:{TYPE_COLOR[type] ?? 'var(--primary)'}">
 						<span class="type-section-icon">{TYPE_ICONS[type]}</span>
 						<h3>{TYPE_SECTION_LABEL[type]}</h3>
 						<span class="type-section-count">{items.length}</span>
-					</div>
-					<div class="content-grid {isLandscape(type) ? 'grid-landscape' : 'grid-portrait'}">
-						{#each items as c (c.id)}
-							{@render cardTpl(c)}
-						{/each}
-					</div>
+						<span class="type-section-chevron" class:collapsed>{collapsed ? '▶' : '▼'}</span>
+					</button>
+					{#if !collapsed}
+						<div class="content-grid {isLandscape(type) ? 'grid-landscape' : 'grid-portrait'}">
+							{#each items as c (c.id)}
+								{@render cardTpl(c)}
+							{/each}
+						</div>
+					{/if}
 				</div>
 			{/each}
 		{:else}
@@ -1500,13 +1510,22 @@ $effect(() => {
 		margin-bottom: 28px;
 	}
 	.type-section-head {
+		all: unset;
 		display: flex;
 		align-items: center;
 		gap: 8px;
 		margin-bottom: 12px;
-		padding: 0 2px;
+		padding: 6px 10px;
 		border-left: 2px solid var(--section-accent, var(--primary));
 		padding-left: 10px;
+		cursor: pointer;
+		width: 100%;
+		box-sizing: border-box;
+		border-radius: 0 6px 6px 0;
+		transition: background 0.15s;
+	}
+	.type-section-head:hover {
+		background: var(--glass-bg);
 	}
 	.type-section-icon {
 		font-size: 15px;
@@ -1529,6 +1548,11 @@ $effect(() => {
 		border-radius: 20px;
 		padding: 1px 8px;
 		font-weight: 600;
+	}
+	.type-section-chevron {
+		font-size: 9px;
+		color: var(--text-dim);
+		transition: transform 0.2s;
 	}
 	/* Portrait grid (books, music): narrower min-width to fit more side-by-side */
 	.content-grid.grid-portrait {
