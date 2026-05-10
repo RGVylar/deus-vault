@@ -40,6 +40,7 @@
 	let year = $state(new Date().getFullYear());
 	let stats: RewindStats | null = $state(null);
 	let loading = $state(false);
+	let loadError = $state<string | null>(null);
 
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
@@ -51,6 +52,7 @@
 		if (!auth.isLoggedIn) return;
 		loading = true;
 		stats = null;
+		loadError = null;
 		api.get<RewindStats>(`/contents/rewind?year=${_year}`)
 			.then(r => {
 				stats = r;
@@ -63,6 +65,7 @@
 						.catch(() => {});
 				}
 			})
+			.catch(e => { loadError = e?.message ?? 'Error cargando Rewind'; })
 			.finally(() => { loading = false; });
 	});
 
@@ -163,15 +166,15 @@
 	const maxDay  = $derived(stats?.by_day?.length  ? Math.max(1, ...stats.by_day)  : 1);
 
 	// Projection: estimated total minutes for the year
-	const projection = $derived(() => {
+	const projection = $derived.by(() => {
 		if (!stats) return null;
 		const now = new Date();
 		const yr = stats.year;
 		const dayOfYear = Math.floor((now.getTime() - new Date(yr, 0, 1).getTime()) / 86400000) + 1;
 		const daysInYear = (yr % 4 === 0 && (yr % 100 !== 0 || yr % 400 === 0)) ? 366 : 365;
-		if (now.getFullYear() !== yr) return null; // only show for current year
-		if (now >= new Date(yr, 11, 1)) return null; // hide after Dec 1
-		if (dayOfYear < 7) return null; // need at least a week of data
+		if (now.getFullYear() !== yr) return null;
+		if (now >= new Date(yr, 11, 1)) return null;
+		if (dayOfYear < 7) return null;
 		const elapsed = dayOfYear / daysInYear;
 		const projected = Math.round(stats.total_consumed_minutes / elapsed);
 		const remaining = projected - stats.total_consumed_minutes;
@@ -203,34 +206,27 @@
 		setTimeout(() => (shareCopied = false), 2000);
 	}
 
-	const milestones = $derived((): Milestone[] => {
+	const milestones = $derived.by((): Milestone[] => {
 		if (!stats) return [];
 		const ms: Milestone[] = [];
-		if (stats.streak_max >= 7) {
+		if (stats.streak_max >= 7)
 			ms.push({ icon: '🔥', tt: `Racha de ${stats.streak_max} días`, ss: 'Sin parar ni un día', color: '#ff6b35' });
-		}
-		if (stats.total_consumed_count >= 100) {
+		if (stats.total_consumed_count >= 100)
 			ms.push({ icon: '💯', tt: '100 ítems consumidos', ss: `Este año: ${stats.total_consumed_count}`, color: 'var(--primary)' });
-		} else if (stats.total_consumed_count >= 50) {
+		else if (stats.total_consumed_count >= 50)
 			ms.push({ icon: '5️⃣0️⃣', tt: '50 ítems consumidos', ss: `Este año: ${stats.total_consumed_count}`, color: 'var(--primary)' });
-		}
-		if (stats.total_consumed_minutes >= 60 * 24 * 30) {
+		if (stats.total_consumed_minutes >= 60 * 24 * 30)
 			ms.push({ icon: '🌙', tt: '30 días de contenido', ss: `${Math.floor(stats.total_consumed_minutes / (60*24))} días acumulados`, color: '#7c6fe0' });
-		} else if (stats.total_consumed_minutes >= 60 * 24 * 7) {
+		else if (stats.total_consumed_minutes >= 60 * 24 * 7)
 			ms.push({ icon: '📅', tt: '7 días de contenido', ss: `${Math.floor(stats.total_consumed_minutes / (60*24))} días acumulados`, color: '#7c6fe0' });
-		}
-		if (stats.completion_rate !== null && stats.completion_rate >= 90) {
+		if (stats.completion_rate !== null && stats.completion_rate >= 90)
 			ms.push({ icon: '✅', tt: `${stats.completion_rate}% de completado`, ss: 'Casi nada se te resiste', color: '#22c55e' });
-		}
-		if (stats.streaming_breakdown.length >= 3) {
+		if (stats.streaming_breakdown.length >= 3)
 			ms.push({ icon: '📡', tt: `${stats.streaming_breakdown.length} plataformas`, ss: stats.streaming_breakdown.map(p => p.name).join(', '), color: '#0ea5e9' });
-		}
-		if (stats.by_type['youtube']?.count >= 50) {
+		if ((stats.by_type['youtube']?.count ?? 0) >= 50)
 			ms.push({ icon: '▶️', tt: '50 vídeos de YouTube', ss: `Este año: ${stats.by_type['youtube'].count}`, color: '#ff0000' });
-		}
-		if (stats.by_type['book']?.count >= 10) {
+		if ((stats.by_type['book']?.count ?? 0) >= 10)
 			ms.push({ icon: '📚', tt: '10 libros leídos', ss: `Este año: ${stats.by_type['book'].count}`, color: 'var(--book)' });
-		}
 		return ms;
 	});
 </script>
@@ -256,6 +252,13 @@
 
 {#if loading}
 	<p class="muted center" style="margin-top:3rem;">Calculando tu año…</p>
+
+{:else if loadError}
+	<div class="glass empty">
+		<span class="icon">⚠️</span>
+		<p>Error cargando Rewind</p>
+		<p class="muted" style="font-size:13px; margin-top:6px;">{loadError}</p>
+	</div>
 
 {:else if !stats || stats.total_consumed_count === 0}
 	<div class="glass empty">
@@ -713,11 +716,11 @@
 {/if}
 
 <!-- Milestones -->
-{#if milestones().length > 0}
+{#if milestones.length > 0}
 <section class="rewind-section">
 	<h2><span class="ico">🏅</span> Logros del año</h2>
 	<div class="milestones-grid">
-		{#each milestones() as m}
+		{#each milestones as m}
 			<div class="ms-card" style="--ms-color:{m.color}">
 				<div class="ms-icon">{m.icon}</div>
 				<div class="ms-body">
@@ -731,18 +734,17 @@
 {/if}
 
 <!-- Projection -->
-{#if projection() !== null}
-{@const proj = projection()!}
+{#if projection !== null}
 <section class="rewind-section">
 	<h2><span class="ico">↗</span> Proyección de fin de año</h2>
 	<div class="glass projection-card">
 		<div class="proj-body">
 			<div class="proj-kicker">Si sigues a este ritmo</div>
-			<div class="proj-title">Acabarás {stats.year} con ≈ {formatDuration(proj.projected)}</div>
-			<div class="proj-sub">Quedan ≈ {formatDuration(proj.remaining)} estimados · {proj.projectedItems} ítems al ritmo actual</div>
+			<div class="proj-title">Acabarás {stats.year} con ≈ {formatDuration(projection!.projected)}</div>
+			<div class="proj-sub">Quedan ≈ {formatDuration(projection!.remaining)} estimados · {projection!.projectedItems} ítems al ritmo actual</div>
 		</div>
 		<div class="proj-stat">
-			<div class="proj-val">{Math.round(proj.projected / 60)}h</div>
+			<div class="proj-val">{Math.round(projection!.projected / 60)}h</div>
 			<div class="proj-lbl">total proyectado</div>
 		</div>
 	</div>
