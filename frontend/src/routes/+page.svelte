@@ -115,7 +115,7 @@
 	let titleSearchLoading = $state(false);
 	let titleSearchTimer: ReturnType<typeof setTimeout> | null = null;
 	let showTitleDropdown = $state(false);
-	let titleSearchLocked = $state(false); // prevents re-search after selecting a result
+	let titleSearchLocked = false; // plain var — NOT $state, so mutations don't re-trigger effects
 
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
