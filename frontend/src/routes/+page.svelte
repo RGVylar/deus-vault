@@ -1554,10 +1554,7 @@ $effect(() => {
 		color: var(--text-dim);
 		transition: transform 0.2s;
 	}
-	/* Portrait grid (books, music): narrower min-width to fit more side-by-side */
-	.content-grid.grid-portrait {
-		grid-template-columns: 1fr;
-	}
+	/* Portrait grid handled in app.css */
 	/* Toggle button */
 	.group-toggle {
 		font-size: 11px;

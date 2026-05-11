@@ -1086,16 +1086,16 @@ h2 {
   .content-grid .c-card .info { padding: 14px 16px; gap: 7px; }
   .content-grid .c-card .title { font-size: 15px; }
   .content-grid .c-card { min-height: 190px; }
-  /* Portrait type sections: narrower cards so more fit per row */
+  /* Portrait type sections: compact multi-column grid */
   .content-grid.grid-portrait {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   }
   .content-grid.grid-portrait .c-card {
-    min-height: 0;
+    min-height: 100px;
   }
   .content-grid.grid-portrait .c-card .thumb-port {
-    width: 30%;
-    min-height: 90px;
+    width: 28%;
+    min-height: 100px;
   }
 
   h1 { font-size: 32px; letter-spacing: -0.025em; }
