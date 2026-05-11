@@ -837,18 +837,17 @@ $effect(() => {
 					{#if landscape}
 						<div class="thumb-land">
 							{#if c.thumbnail}
-								<img src={c.thumbnail} alt="" />
+								<img src={c.thumbnail} alt=""
+									onerror={(e) => { const img = e.currentTarget as HTMLElement; img.style.display='none'; const ph = img.nextElementSibling as HTMLElement; if (ph) ph.style.display='flex'; }} />
+								<div class="ph" style="display:none">{TYPE_ICONS[c.content_type] || '📄'}</div>
 							{:else}
 								<div class="ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
 							{/if}
 						</div>
-					{:else}
+					{:else if c.thumbnail}
 						<div class="thumb-port">
-							{#if c.thumbnail}
-								<img src={c.thumbnail} alt="" />
-							{:else}
-								<div class="ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
-							{/if}
+							<img src={c.thumbnail} alt=""
+								onerror={(e) => { const p = (e.currentTarget as HTMLElement).parentElement; if (p) p.style.display='none'; }} />
 						</div>
 					{/if}
 					<div class="info">
