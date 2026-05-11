@@ -160,8 +160,15 @@
 	// Provider picker for title-added content
 	let openPickerCard = $state<number | null>(null);
 
-	// Grouped-by-type view
-	let groupByType = $state(false);
+	// Grouped-by-type view (persisted in localStorage)
+	let groupByType = $state(
+		typeof localStorage !== 'undefined'
+			? localStorage.getItem('deus_vault_group_by_type') === 'true'
+			: false
+	);
+	$effect(() => {
+		localStorage.setItem('deus_vault_group_by_type', String(groupByType));
+	});
 	let collapsedTypes = $state(new Set<string>());
 	function toggleSection(type: string) {
 		const next = new Set(collapsedTypes);
