@@ -49,6 +49,16 @@ PROVIDER_LABELS: dict[str, str] = {
 }
 
 
+def _clean_gb_thumb(url: str) -> str:
+    """Upgrade Google Books thumbnail to HTTPS and a readable zoom level."""
+    if not url:
+        return url
+    url = url.replace("http://", "https://")
+    url = url.replace("zoom=1", "zoom=3")
+    url = url.replace("&edge=curl", "")
+    return url
+
+
 def _extract_channel_thumbnail(html: str) -> str:
     """Extract channel avatar URL from YouTube watch page HTML.
 
@@ -289,7 +299,7 @@ async def lookup_book(url: str) -> dict:
                 gb_author = ", ".join(gb_authors)
                 gb_pages = int(info.get("pageCount") or 0)
                 image_links = info.get("imageLinks") or {}
-                gb_thumb = image_links.get("thumbnail", "")
+                gb_thumb = _clean_gb_thumb(image_links.get("thumbnail", ""))
                 gb_isbn = ""
                 for id_entry in info.get("industryIdentifiers") or []:
                     if id_entry.get("type") in ("ISBN_13", "ISBN_10"):
@@ -423,9 +433,11 @@ async def lookup_book(url: str) -> dict:
                 doc = docs[0]
                 title = doc.get("title") or title
                 author = ", ".join(doc.get("author_name", []) or []) or author
-                cover_id = doc.get("cover_i")
-                if cover_id:
-                    thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
+                # Only use OpenLibrary cover if we don't already have one (e.g. from og:image)
+                if not thumbnail:
+                    cover_id = doc.get("cover_i")
+                    if cover_id:
+                        thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
                 # Prefer numeric page counts, fall back to parsing pagination strings
                 page_count = 0
                 try:
@@ -457,7 +469,7 @@ async def lookup_book(url: str) -> dict:
                 author = ", ".join(authors) if authors else author
                 page_count = page_count or int(info.get("pageCount") or 0)
                 image_links = info.get("imageLinks") or {}
-                thumbnail = thumbnail or image_links.get("thumbnail", "")
+                thumbnail = thumbnail or _clean_gb_thumb(image_links.get("thumbnail", ""))
 
     # If we still don't have page count but have an ISBN, try Google Books specifically
     if page_count == 0 and isbn:
@@ -470,7 +482,7 @@ async def lookup_book(url: str) -> dict:
                     info = items[0].get("volumeInfo", {})
                     page_count = page_count or int(info.get("pageCount") or 0)
                     image_links = info.get("imageLinks") or {}
-                    thumbnail = thumbnail or image_links.get("thumbnail", "")
+                    thumbnail = thumbnail or _clean_gb_thumb(image_links.get("thumbnail", ""))
         except Exception:
             pass
 
@@ -486,9 +498,10 @@ async def lookup_book(url: str) -> dict:
                     doc = docs[0]
                     title = doc.get("title") or title
                     author = ", ".join(doc.get("author_name", []) or [])
-                    cover_id = doc.get("cover_i")
-                    if cover_id:
-                        thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
+                    if not thumbnail:
+                        cover_id = doc.get("cover_i")
+                        if cover_id:
+                            thumbnail = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
                     # Try numeric page fields first, then parse pagination text
                     try:
                         page_count = int(doc.get("number_of_pages_median") or doc.get("number_of_pages") or 0)
