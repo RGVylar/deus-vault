@@ -484,26 +484,47 @@
 {#if stats.top_youtube_channels.length > 0}
 <section class="rewind-section">
 	<h2><span class="ico">▶️</span> Canales más vistos</h2>
-	<div class="channel-grid">
-		{#each stats.top_youtube_channels as ch, i}
-			<div class="channel-card" style="--ch-color:{channelColor(ch.name)}">
-				<div class="ch-rank">#{i + 1}</div>
-				{#if ch.thumbnail}
-					<img class="ch-avatar ch-avatar-img" src={ch.thumbnail} alt={ch.name} />
-				{:else}
-					<div class="ch-avatar">{ch.name[0]?.toUpperCase() ?? '?'}</div>
-				{/if}
-				<div class="ch-info">
-					<div class="ch-name">{ch.name}</div>
-					<div class="ch-meta">
-						{ch.count} vídeo{ch.count !== 1 ? 's' : ''}
-						&nbsp;·&nbsp;
-						⌀ {formatDuration(Math.round(ch.minutes / ch.count))} / vídeo
+	<div class="channels-dual">
+		<div class="channels-col">
+			<div class="channels-col-head">⏱ Por tiempo</div>
+			<div class="channel-grid">
+				{#each stats.top_youtube_channels as ch, i}
+					<div class="channel-card" style="--ch-color:{channelColor(ch.name)}">
+						<div class="ch-rank">#{i + 1}</div>
+						{#if ch.thumbnail}
+							<img class="ch-avatar ch-avatar-img" src={ch.thumbnail} alt={ch.name} />
+						{:else}
+							<div class="ch-avatar">{ch.name[0]?.toUpperCase() ?? '?'}</div>
+						{/if}
+						<div class="ch-info">
+							<div class="ch-name">{ch.name}</div>
+							<div class="ch-meta">{ch.count} vídeo{ch.count !== 1 ? 's' : ''}</div>
+						</div>
+						<div class="ch-time">{formatDuration(ch.minutes)}</div>
 					</div>
-				</div>
-				<div class="ch-time">{formatDuration(ch.minutes)}</div>
+				{/each}
 			</div>
-		{/each}
+		</div>
+		<div class="channels-col">
+			<div class="channels-col-head">🔢 Por vídeos</div>
+			<div class="channel-grid">
+				{#each stats.top_youtube_channels_by_count as ch, i}
+					<div class="channel-card" style="--ch-color:{channelColor(ch.name)}">
+						<div class="ch-rank">#{i + 1}</div>
+						{#if ch.thumbnail}
+							<img class="ch-avatar ch-avatar-img" src={ch.thumbnail} alt={ch.name} />
+						{:else}
+							<div class="ch-avatar">{ch.name[0]?.toUpperCase() ?? '?'}</div>
+						{/if}
+						<div class="ch-info">
+							<div class="ch-name">{ch.name}</div>
+							<div class="ch-meta">{formatDuration(ch.minutes)} totales</div>
+						</div>
+						<div class="ch-time">{ch.count} vídeos</div>
+					</div>
+				{/each}
+			</div>
+		</div>
 	</div>
 </section>
 {/if}
@@ -914,6 +935,26 @@
 		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate)) brightness(0.72);
 	}
 
+	/* ── Dual channel columns ─────────────────────────────── */
+	.channels-dual {
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+	}
+	.channels-col {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.channels-col-head {
+		font-size: 12px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--text-muted);
+		margin-bottom: 4px;
+	}
+
 	/* ── Channel / author cards ─────────────────────────────── */
 	.channel-grid {
 		display: flex;
@@ -1105,6 +1146,15 @@
 		.channel-grid {
 			display: grid;
 			grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+		}
+		.channels-dual {
+			flex-direction: row;
+			align-items: flex-start;
+			gap: 24px;
+		}
+		.channels-col {
+			flex: 1 1 0;
+			min-width: 0;
 		}
 	}
 

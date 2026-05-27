@@ -278,6 +278,10 @@ def rewind(
         TopAuthor(**v)
         for v in sorted(yt_authors.values(), key=lambda x: x["minutes"], reverse=True)[:5]
     ]
+    top_youtube_channels_by_count = [
+        TopAuthor(**v)
+        for v in sorted(yt_authors.values(), key=lambda x: x["count"], reverse=True)[:5]
+    ]
 
     # Top 3 items per content type (by effective duration)
     top_items_by_type: dict[str, list[TopItem]] = {}
@@ -377,6 +381,7 @@ def rewind(
         most_abandoned_type=most_abandoned_type,
         completion_rate=completion_rate,
         top_youtube_channels=top_youtube_channels,
+        top_youtube_channels_by_count=top_youtube_channels_by_count,
         top_items_by_type=top_items_by_type,
         streaming_breakdown=streaming_breakdown,
         top_book_authors=top_book_authors,

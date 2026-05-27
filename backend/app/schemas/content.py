@@ -159,7 +159,8 @@ class RewindStats(BaseModel):
     most_abandoned_type: str | None
     completion_rate: float | None   # consumed / (consumed + abandoned) * 100
     # Deep stats
-    top_youtube_channels: list[TopAuthor]      # top channels by watch time
+    top_youtube_channels: list[TopAuthor]           # top channels by watch time
+    top_youtube_channels_by_count: list[TopAuthor]  # top channels by video count
     top_items_by_type: dict[str, list[TopItem]]  # top 3 per type
     streaming_breakdown: list[StreamingPlatform]  # platforms for movies+series
     top_book_authors: list[TopAuthor]           # top book authors

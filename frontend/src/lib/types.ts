@@ -139,6 +139,7 @@ export interface RewindStats {
 	most_abandoned_type: string | null;
 	completion_rate: number | null;
 	top_youtube_channels: TopAuthor[];
+	top_youtube_channels_by_count: TopAuthor[];
 	top_items_by_type: Record<string, TopItem[]>;
 	streaming_breakdown: StreamingPlatform[];
 	top_book_authors: TopAuthor[];
