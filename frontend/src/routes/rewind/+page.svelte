@@ -561,6 +561,7 @@
 		{#each stats.streaming_breakdown as plat, i}
 			{@const pct = Math.round(plat.minutes / maxStreamingMins * 100)}
 			{@const pc = PLATFORM_COLORS[plat.name] ?? 'var(--movie)'}
+			{@const avgMin = plat.count > 0 ? Math.round(plat.minutes / plat.count) : 0}
 			<div class="plat-card" style="--pc:{pc}">
 				<div class="plat-header">
 					<span class="plat-name">{plat.name}</span>
@@ -570,7 +571,12 @@
 				<div class="plat-bar-wrap">
 					<div class="plat-bar" style="width:{pct}%;"></div>
 				</div>
-				<div class="plat-count">{plat.count} título{plat.count !== 1 ? 's' : ''}</div>
+				<div class="plat-footer">
+					<span class="plat-count">{plat.count} título{plat.count !== 1 ? 's' : ''}</span>
+					{#if avgMin > 0}
+						<span class="plat-avg">~{formatDuration(avgMin)} / título</span>
+					{/if}
+				</div>
 			</div>
 		{/each}
 	</div>
@@ -778,12 +784,16 @@
 	<h2><span class="ico">🗂️</span> Por tipo</h2>
 	<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:10px;">
 		{#each Object.entries(stats.by_type).sort((a,b) => b[1].minutes - a[1].minutes) as [type, s]}
+			{@const avgMin = s.count > 0 ? Math.round(s.minutes / s.count) : 0}
 			<div class="type-card" style="--accent:{TYPE_COLORS[type] ?? 'var(--primary)'}; padding:16px;">
 				<div class="ico" style="font-size:24px;">{TYPE_ICONS[type] ?? '📄'}</div>
 				<div class="nm" style="font-size:13px;">{TYPE_LABELS[type] ?? type}</div>
 				<div class="ct">{s.count} ítem{s.count !== 1 ? 's' : ''}</div>
 				<div class="tm" style="font-size:18px;">{formatDuration(s.minutes)}</div>
 				<div class="pc">{s.percentage_of_year < 0.01 ? '<0.01' : s.percentage_of_year.toFixed(2)}% del año</div>
+				{#if avgMin > 0}
+					<div class="av">~{formatDuration(avgMin)} / ítem</div>
+				{/if}
 			</div>
 		{/each}
 	</div>
@@ -1139,7 +1149,14 @@
 		background: linear-gradient(90deg, var(--pc), color-mix(in srgb, var(--pc) 70%, white));
 		transition: width 0.8s cubic-bezier(.2,.8,.4,1);
 	}
+	.plat-footer {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 4px;
+	}
 	.plat-count { font-size: 10px; color: rgba(255,255,255,0.55); }
+	.plat-avg   { font-size: 10px; color: rgba(255,255,255,0.38); font-style: italic; }
 
 	@media (min-width: 1024px) {
 		.podium-grid { grid-template-columns: repeat(3, 1fr); }

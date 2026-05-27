@@ -852,6 +852,7 @@ button { font-family: inherit; }
 .type-card .ct  { font-size: 10px; color: var(--text-muted); }
 .type-card .tm  { font-size: 15px; font-weight: 800; margin-top: 4px; }
 .type-card .pc  { font-size: 10px; font-weight: 700; color: var(--accent, var(--primary)); }
+.type-card .av  { font-size: 10px; color: var(--text-dim); font-style: italic; margin-top: 1px; }
 
 /* ───────── ESTAT GRID (rewind) ───────── */
 .estat-grid {
