@@ -224,7 +224,7 @@ async function processMessage(msg, sender) {
 
     // ----------------------------------------------------------
     case 'ADD_CONSUMED': {
-      const { videoId, url, existingId, meta = null } = msg;
+      const { videoId, url, existingId, meta = null, notifyTitle = null } = msg;
       let contentId = existingId || null;
 
       if (!contentId) {
@@ -244,6 +244,18 @@ async function processMessage(msg, sender) {
 
       await apiPost(`/contents/${contentId}/consume`);
       await setBadge(tabId, 'consumed');
+
+      // Background tab: show a silent confirmation notification
+      if (notifyTitle) {
+        const short = notifyTitle.substring(0, 80);
+        chrome.notifications.create(`dv-done-${Date.now()}`, {
+          type:    'basic',
+          iconUrl: chrome.runtime.getURL('icons/icon48.svg'),
+          title:   'Deus Vault — marcado como visto ✅',
+          message: `"${short}"`,
+        });
+      }
+
       return { contentId };
     }
 
@@ -257,9 +269,22 @@ async function processMessage(msg, sender) {
 
     // ----------------------------------------------------------
     case 'MARK_ABANDONED': {
-      const { contentId } = msg;
+      const { contentId, progress = null, notifyTitle = null } = msg;
       await apiPost(`/contents/${contentId}/abandon`);
+      // Save progress % so the vault shows how far the user got
+      if (progress != null) {
+        await apiFetch('PATCH', `/contents/${contentId}`, { progress });
+      }
       await setBadge(tabId, 'clear');
+      if (notifyTitle) {
+        const pct = progress != null ? ` (${progress}%)` : '';
+        chrome.notifications.create(`dv-abandon-${Date.now()}`, {
+          type:    'basic',
+          iconUrl: chrome.runtime.getURL('icons/icon48.svg'),
+          title:   'Deus Vault — abandonado 🚫',
+          message: `"${notifyTitle.substring(0, 80)}"${pct}`,
+        });
+      }
       return { contentId };
     }
 

@@ -39,14 +39,9 @@
       const comp = getCompletion();
       prevVideoId    = currentVideoId;
       prevCompletion = comp;
-      // Only ask if: in vault as pending AND watched 20–85%
-      if (
-        vaultStatus?.inVault &&
-        !vaultStatus.content?.consumed &&
-        comp >= 0.20 &&
-        comp < 0.85
-      ) {
-        showAbandonToast(comp, vaultStatus.content.id);
+      // Auto-decide based on completion — works in fg and bg alike
+      if (vaultStatus?.inVault && !vaultStatus.content?.consumed && !vaultStatus.content?.abandoned) {
+        autoDecideOnLeave(comp, vaultStatus.content.id);
       }
     }
 
@@ -171,35 +166,29 @@
 
     const title      = document.title.replace(/ - YouTube$/, '').trim();
     const existingId = vaultStatus?.content?.id ?? null;
+    const isBackground = document.hidden;
 
-    if (document.hidden) {
-      // Pestaña en segundo plano → notificación del sistema (el usuario decide)
-      chrome.runtime.sendMessage({
-        type:       'NOTIFY_END',
-        videoId:    currentVideoId,
-        url:        location.href,
-        title,
-        existingId,
-      });
-    } else {
-      // Pestaña activa → auto-consumir directamente
-      autoConsume(existingId);
-    }
+    // Always auto-consume — for active tabs show a toast, for background
+    // tabs the service worker shows a silent system notification.
+    autoConsume(existingId, title, isBackground);
   }
 
-  function autoConsume(existingId) {
+  function autoConsume(existingId, title, isBackground) {
+    // Capture these synchronously before any async/navigation changes them
     const videoId = currentVideoId;
     const url     = location.href;
-    showBriefToast('⏳ Marcando como visto…');
+
+    if (!isBackground) showBriefToast('⏳ Marcando como visto…');
+
     chrome.runtime.sendMessage(
-      { type: 'ADD_CONSUMED', videoId, url, existingId },
+      { type: 'ADD_CONSUMED', videoId, url, existingId, notifyTitle: isBackground ? title : null },
       (resp) => {
         if (chrome.runtime.lastError || !resp?.ok) {
-          showBriefToast('⚠ No se pudo marcar como visto');
+          if (!isBackground) showBriefToast('⚠ No se pudo marcar como visto');
           return;
         }
         vaultStatus = { inVault: true, content: { ...vaultStatus?.content, consumed: true } };
-        showBriefToast('✅ Marcado como visto en Deus Vault');
+        if (!isBackground) showBriefToast('✅ Marcado como visto en Deus Vault');
       },
     );
   }
@@ -234,29 +223,36 @@
     toast = buildToast(message, [], 3500);
   }
 
-  function showAbandonToast(completion, contentId) {
-    removeToast();
-    const pct = Math.round(completion * 100);
+  /**
+   * Called when navigating away from a video. Decides automatically:
+   *   < 20%  → ignore (accidental open)
+   *  20–84%  → abandon + save progress %
+   *  ≥ 85%   → consume (watched most of it)
+   * Works identically in foreground and background tabs.
+   */
+  function autoDecideOnLeave(completion, contentId) {
+    const pct          = Math.round(completion * 100);
+    const isBackground = document.hidden;
+    // Capture before navigation changes them
+    const videoId = currentVideoId;
+    const url     = location.href;
+    const title   = document.title.replace(/ - YouTube$/, '').trim();
 
-    toast = buildToast(
-      `Saliste al ${pct}% — ¿qué hacemos?`,
-      [
-        {
-          label: '📋 Dejar pendiente',
-          onClick() { removeToast(); },
-        },
-        {
-          label: '🚫 Abandonar',
-          onClick() {
-            removeToast();
-            if (contentId) {
-              chrome.runtime.sendMessage({ type: 'MARK_ABANDONED', contentId });
-              vaultStatus = { ...vaultStatus, content: { ...vaultStatus?.content, abandoned: true } };
-            }
-          },
-        },
-      ],
-      10000,
+    if (completion < 0.20) return; // too short to count
+
+    if (completion >= 0.85) {
+      // Watched enough — count as consumed
+      autoConsume(contentId, title, isBackground);
+      return;
+    }
+
+    // 20–84%: abandon and save progress
+    chrome.runtime.sendMessage(
+      { type: 'MARK_ABANDONED', contentId, progress: pct, notifyTitle: isBackground ? title : null },
+      (resp) => {
+        if (chrome.runtime.lastError || !resp?.ok) return;
+        if (!isBackground) showBriefToast(`🚫 Abandonado al ${pct}%`);
+      },
     );
   }
 
