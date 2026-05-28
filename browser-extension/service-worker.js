@@ -228,8 +228,18 @@ async function processMessage(msg, sender) {
       let contentId = existingId || null;
 
       if (!contentId) {
-        const content = await lookupAndCreate(videoId, url, meta);
-        contentId = content.id;
+        // Check for existing item first to avoid duplicates (race condition
+        // between auto-add at 30s and video-end firing before status updates)
+        if (videoId) {
+          try {
+            const dup = await apiGet(`/contents/check-duplicate?source_id=${encodeURIComponent(videoId)}`);
+            if (dup?.id) contentId = dup.id;
+          } catch (_) {}
+        }
+        if (!contentId) {
+          const content = await lookupAndCreate(videoId, url, meta);
+          contentId = content.id;
+        }
       }
 
       await apiPost(`/contents/${contentId}/consume`);

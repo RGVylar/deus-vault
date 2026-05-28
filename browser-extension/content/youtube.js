@@ -173,7 +173,7 @@
     const existingId = vaultStatus?.content?.id ?? null;
 
     if (document.hidden) {
-      // Pestaña en segundo plano → notificación del sistema
+      // Pestaña en segundo plano → notificación del sistema (el usuario decide)
       chrome.runtime.sendMessage({
         type:       'NOTIFY_END',
         videoId:    currentVideoId,
@@ -182,9 +182,26 @@
         existingId,
       });
     } else {
-      // Pestaña activa → toast in-page
-      showEndToast(existingId);
+      // Pestaña activa → auto-consumir directamente
+      autoConsume(existingId);
     }
+  }
+
+  function autoConsume(existingId) {
+    const videoId = currentVideoId;
+    const url     = location.href;
+    showBriefToast('⏳ Marcando como visto…');
+    chrome.runtime.sendMessage(
+      { type: 'ADD_CONSUMED', videoId, url, existingId },
+      (resp) => {
+        if (chrome.runtime.lastError || !resp?.ok) {
+          showBriefToast('⚠ No se pudo marcar como visto');
+          return;
+        }
+        vaultStatus = { inVault: true, content: { ...vaultStatus?.content, consumed: true } };
+        showBriefToast('✅ Marcado como visto en Deus Vault');
+      },
+    );
   }
 
   // ── Message handler (from popup) ─────────────────────────────
@@ -215,52 +232,6 @@
   function showBriefToast(message) {
     removeToast();
     toast = buildToast(message, [], 3500);
-  }
-
-  function showEndToast(existingId) {
-    removeToast();
-    const videoId = currentVideoId;
-    const url     = location.href;
-
-    toast = buildToast(
-      '¿Qué hacemos con este vídeo?',
-      [
-        {
-          label:   '✅ Marcar como visto',
-          primary: true,
-          onClick() {
-            removeToast();
-            chrome.runtime.sendMessage(
-              { type: 'ADD_CONSUMED', videoId, url, existingId },
-              (resp) => {
-                if (!resp?.ok) return;
-                vaultStatus = { inVault: true, content: { ...vaultStatus?.content, consumed: true } };
-                showBriefToast('✅ Marcado como visto');
-              },
-            );
-          },
-        },
-        {
-          label: '＋ Pendiente',
-          onClick() {
-            removeToast();
-            if (vaultStatus?.inVault) {
-              showBriefToast('📋 Ya estaba en la bóveda');
-              return;
-            }
-            chrome.runtime.sendMessage(
-              { type: 'ADD_PENDING', videoId, url },
-              (resp) => {
-                if (!resp?.ok) return;
-                vaultStatus = { inVault: true, content: resp.data.content };
-                showBriefToast('⛧ Añadido como pendiente');
-              },
-            );
-          },
-        },
-      ],
-      12000,
-    );
   }
 
   function showAbandonToast(completion, contentId) {
