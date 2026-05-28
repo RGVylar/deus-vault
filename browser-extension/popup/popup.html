@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Deus Vault</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="brand">
+      <img src="../icons/icon48.svg" alt="" class="brand-icon" />
+      <span class="brand-name">Deus Vault</span>
+    </div>
+    <a id="open-vault-link" href="#" target="_blank" class="open-link" title="Abrir Vault">↗</a>
+  </header>
+
+  <!-- Loading screen -->
+  <div id="screen-loading" class="screen">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Login screen -->
+  <div id="screen-login" class="screen hidden">
+    <p class="login-hint">Conéctate a tu bóveda</p>
+    <label class="field-label">Email
+      <input id="login-email" type="email" placeholder="tu@email.com" autocomplete="email" />
+    </label>
+    <label class="field-label">Contraseña
+      <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" />
+    </label>
+    <details class="api-details">
+      <summary>URL de la API</summary>
+      <input id="login-api" type="url" placeholder="https://vault.mugrelore.com/api" />
+    </details>
+    <div id="login-error" class="error-msg hidden"></div>
+    <button id="login-btn" class="btn btn-primary">Entrar</button>
+  </div>
+
+  <!-- Main screen (logged in) -->
+  <div id="screen-main" class="screen hidden">
+
+    <!-- Current content block -->
+    <div id="content-block" class="content-block hidden">
+      <div id="content-thumb-wrap" class="thumb-wrap hidden">
+        <img id="content-thumb" src="" alt="" />
+      </div>
+      <div class="content-info">
+        <div id="content-title"  class="c-title"></div>
+        <div id="content-author" class="c-author hidden"></div>
+        <div id="content-status" class="c-status"></div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div id="action-bar" class="action-bar hidden">
+      <button id="btn-add-pending"  class="btn btn-ghost">＋ Pendiente</button>
+      <button id="btn-add-consumed" class="btn btn-primary">✅ Visto ya</button>
+    </div>
+    <div id="action-bar-pending" class="action-bar hidden">
+      <button id="btn-mark-consumed"  class="btn btn-primary">✅ Marcar visto</button>
+      <button id="btn-mark-abandoned" class="btn btn-danger">🚫 Abandonar</button>
+    </div>
+
+    <!-- Lookup for non-YT pages -->
+    <div id="lookup-block" class="lookup-block hidden">
+      <p class="lookup-hint">Esta página no es de YouTube.<br>Pega una URL para añadir contenido:</p>
+      <div class="lookup-row">
+        <input id="lookup-url" type="url" placeholder="https://…" />
+        <button id="lookup-btn" class="btn btn-ghost">Buscar</button>
+      </div>
+      <div id="lookup-error" class="error-msg hidden"></div>
+      <div id="lookup-result" class="lookup-result hidden">
+        <div id="lr-title"  class="c-title"></div>
+        <div id="lr-author" class="c-author hidden"></div>
+        <div id="lr-status" class="c-status"></div>
+        <div class="action-bar" style="margin-top:10px">
+          <button id="lr-btn-pending"  class="btn btn-ghost">＋ Pendiente</button>
+          <button id="lr-btn-consumed" class="btn btn-primary">✅ Visto ya</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Not on a supported page -->
+    <div id="no-content-block" class="no-content hidden">
+      <span class="no-content-ico">📭</span>
+      <p>Navega a YouTube o pega una URL para añadir contenido.</p>
+    </div>
+
+  </div>
+
+  <!-- Footer (shown when logged in) -->
+  <footer id="footer" class="footer hidden">
+    <span id="footer-user" class="footer-user"></span>
+    <button id="logout-btn" class="btn-text">Salir</button>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

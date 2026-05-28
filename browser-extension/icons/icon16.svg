@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <rect width="16" height="16" rx="3" fill="#100820"/>
+  <path d="M8 2 L13 4.5 L13 9 C13 12 10.5 14 8 15 C5.5 14 3 12 3 9 L3 4.5 Z"
+        fill="none" stroke="#8b5cf6" stroke-width="1.2" stroke-linejoin="round"/>
+  <text x="8" y="11" text-anchor="middle" font-family="Georgia,serif" font-size="6"
+        font-weight="bold" fill="#a78bfa">DV</text>
+</svg>

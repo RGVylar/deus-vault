@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <rect width="48" height="48" rx="10" fill="#100820"/>
+  <path d="M24 6 L38 12 L38 28 C38 37 32 43 24 46 C16 43 10 37 10 28 L10 12 Z"
+        fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linejoin="round"/>
+  <text x="24" y="32" text-anchor="middle" font-family="Georgia,serif" font-size="16"
+        font-weight="bold" fill="#a78bfa">DV</text>
+</svg>
