@@ -197,14 +197,42 @@
 						</div>
 					{/if}
 				{:else}
-					<h3>Abandonado</h3>
-					<div class="dq-row">
-						<span class="lbl">🚫 Total abandonado</span>
-						<span class="val">{stats.abandoned_count}</span>
+					{@const r = stats.consumed_count + stats.abandoned_count}
+					{@const rPct = r > 0 ? Math.round(stats.consumed_count / r * 100) : 0}
+					{@const circ = 2 * Math.PI * 36}
+					{@const dashConsumed = circ * rPct / 100}
+					{@const dashAbandoned = circ * (100 - rPct) / 100}
+					<h3>Ratio finalización</h3>
+					<div class="dq-donut-wrap">
+						<svg width="96" height="96" viewBox="0 0 96 96" style="transform:rotate(-90deg)">
+							<circle cx="48" cy="48" r="36" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="11"/>
+							<circle cx="48" cy="48" r="36" fill="none"
+								stroke="oklch(0.72 0.20 150)"
+								stroke-width="11"
+								stroke-dasharray="{dashConsumed} {circ - dashConsumed}"
+								stroke-linecap="round"/>
+							{#if stats.abandoned_count > 0}
+							<circle cx="48" cy="48" r="36" fill="none"
+								stroke="oklch(0.65 0.20 25)"
+								stroke-width="11"
+								stroke-dasharray="{dashAbandoned * 0.92} {circ - dashAbandoned * 0.92}"
+								stroke-dashoffset="{-dashConsumed - circ * 0.02}"
+								stroke-linecap="round"
+								opacity="0.7"/>
+							{/if}
+						</svg>
+						<div class="dq-donut-center">
+							<span class="dq-donut-pct" style="color:oklch(0.72 0.20 150)">{rPct}%</span>
+							<span class="dq-donut-sub">éxito</span>
+						</div>
+					</div>
+					<div class="dq-row" style="margin-top:4px">
+						<span class="lbl"><span style="color:oklch(0.72 0.20 150)">●</span> Completados</span>
+						<span class="val">{stats.consumed_count}</span>
 					</div>
 					<div class="dq-row">
-						<span class="lbl">✅ Completados</span>
-						<span class="val">{stats.consumed_count}</span>
+						<span class="lbl"><span style="color:oklch(0.65 0.20 25)">●</span> Abandonados</span>
+						<span class="val">{stats.abandoned_count}</span>
 					</div>
 					<div class="dq-row" style="border-bottom:none;">
 						<span class="lbl">📦 Pendientes</span>
@@ -332,6 +360,19 @@
 
 				</div>
 			</div>
+
+			<!-- Quote card -->
+			{#if stats.abandoned_minutes > 0}
+				<div class="glass-card ab-quote">
+					<span class="ab-quote-ico">💀</span>
+					<div class="ab-quote-text">
+						Si hubieras terminado todo lo que abandonaste, habrías consumido
+						<strong style="color:oklch(0.70 0.18 25)">{formatDuration(stats.abandoned_minutes)} más</strong>
+						de contenido
+					</div>
+					<div class="ab-quote-sub">El cementerio cobra su precio — memento mori</div>
+				</div>
+			{/if}
 		{/if}
 
 		<!-- Mobile-only pill -->
@@ -709,6 +750,43 @@
 	}
 	.ab-limbo-title { font-size: 12px; font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 	.ab-limbo-age   { font-size: 11px; font-weight: 800; flex-shrink: 0; }
+
+	/* ── Donut ratio in desk-quick ── */
+	.dq-donut-wrap {
+		position: relative;
+		width: 96px;
+		height: 96px;
+		margin: 8px auto 4px;
+	}
+	.dq-donut-center {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 1px;
+	}
+	.dq-donut-pct  { font-size: 20px; font-weight: 900; line-height: 1; }
+	.dq-donut-sub  { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+
+	/* ── Quote card ── */
+	.ab-quote {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		padding: 18px 20px;
+		margin-bottom: 4px;
+	}
+	.ab-quote::before {
+		content: '';
+		position: absolute;
+		top: 0; left: 0; right: 0; height: 2px;
+		background: linear-gradient(90deg, transparent, oklch(0.65 0.20 25 / 0.6), transparent);
+	}
+	.ab-quote-ico  { font-size: 32px; flex-shrink: 0; }
+	.ab-quote-text { flex: 1; font-size: 14px; line-height: 1.5; }
+	.ab-quote-sub  { font-size: 11px; color: var(--text-dim); margin-top: 3px; font-style: italic; }
 
 	/* ── Abandoned progress bar ── */
 	.progress-wrap {

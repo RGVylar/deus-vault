@@ -128,7 +128,7 @@ def vault_stats(
         if progress_items else None
     )
 
-    top5 = sorted(progress_items, key=lambda c: c.progress, reverse=True)[:5]
+    top5 = sorted([c for c in progress_items if c.progress > 0], key=lambda c: c.progress, reverse=True)[:5]
     abandoned_top_items = [
         AbandonedTopItem(
             id=c.id,
