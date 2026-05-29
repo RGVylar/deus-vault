@@ -27,6 +27,7 @@ from app.schemas.content import (
     TopAuthor,
     TopItem,
     TypeRewindStats,
+    TypeStats,
     VaultStats,
 )
 
@@ -107,6 +108,16 @@ def vault_stats(
         key = c.content_type.value
         by_type[key] = by_type.get(key, 0) + _remaining_minutes(c)
 
+    consumed_by_type: dict[str, TypeStats] = {}
+    for c in consumed_items:
+        key = c.content_type.value
+        mins = _effective_duration(c)
+        existing = consumed_by_type.get(key)
+        if existing:
+            consumed_by_type[key] = TypeStats(count=existing.count + 1, minutes=existing.minutes + mins)
+        else:
+            consumed_by_type[key] = TypeStats(count=1, minutes=mins)
+
     return VaultStats(
         total_pending_minutes=total_pending,
         total_consumed_minutes=total_consumed,
@@ -114,6 +125,7 @@ def vault_stats(
         consumed_count=len(consumed_items),
         abandoned_count=len(abandoned_items),
         by_type={k: v for k, v in by_type.items() if v > 0},
+        consumed_by_type=consumed_by_type,
     )
 
 

@@ -77,6 +77,11 @@ class ContentOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TypeStats(BaseModel):
+    count: int
+    minutes: int
+
+
 class VaultStats(BaseModel):
     total_pending_minutes: int
     total_consumed_minutes: int
@@ -84,6 +89,7 @@ class VaultStats(BaseModel):
     consumed_count: int
     abandoned_count: int
     by_type: dict[str, int]  # pending minutes per type
+    consumed_by_type: dict[str, TypeStats]  # consumed count + minutes per type
 
 
 class PaginatedContents(BaseModel):

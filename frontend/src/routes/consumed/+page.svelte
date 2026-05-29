@@ -4,7 +4,7 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, TYPE_ICONS, TYPE_LABELS, buildConsumeUrl } from '$lib/utils';
-	import type { Content, ContentType, VaultStats, PaginatedContents } from '$lib/types';
+	import type { Content, ContentType, VaultStats, TypeStats, PaginatedContents } from '$lib/types';
 
 	const LIMIT = 20;
 
@@ -165,6 +165,26 @@
 						<span class="lbl">🚫 Abandonados</span>
 						<span class="val">{stats.abandoned_count}</span>
 					</div>
+
+					{#if stats.consumed_by_type && Object.keys(stats.consumed_by_type).length > 0}
+						{@const byTypeSorted = Object.entries(stats.consumed_by_type)
+							.sort((a, b) => b[1].minutes - a[1].minutes)}
+						<div class="type-breakdown">
+							<div class="tb-header">Por tipo</div>
+							{#each byTypeSorted as [type, ts]}
+								{@const avgMin = ts.count > 0 ? Math.round(ts.minutes / ts.count) : 0}
+								<div class="tb-row" style="--tc:{TYPE_COLOR[type] ?? 'var(--primary)'}">
+									<span class="tb-icon">{TYPE_ICONS[type] ?? '📄'}</span>
+									<span class="tb-label">{TYPE_LABELS[type] ?? type}</span>
+									<span class="tb-count">{ts.count}</span>
+									<span class="tb-time">{formatDuration(ts.minutes)}</span>
+									{#if avgMin > 0}
+										<span class="tb-avg">~{formatDuration(avgMin)}/ítem</span>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					{/if}
 				{:else}
 					<h3>Abandonado</h3>
 					<div class="dq-row">
@@ -371,5 +391,74 @@
 		border: 1px solid oklch(0.65 0.15 85 / 0.4);
 		border-radius: 5px;
 		padding: 1px 5px;
+	}
+
+	/* ── Type breakdown in desk-quick ── */
+	.type-breakdown {
+		margin-top: 14px;
+		padding-top: 10px;
+		border-top: 1px solid var(--glass-border);
+	}
+	.tb-header {
+		font-size: 10px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--text-dim);
+		margin-bottom: 8px;
+	}
+	.tb-row {
+		display: grid;
+		grid-template-columns: 18px 1fr auto auto;
+		grid-template-rows: auto auto;
+		column-gap: 6px;
+		row-gap: 0;
+		align-items: center;
+		padding: 5px 0;
+		border-bottom: 1px solid var(--glass-border);
+	}
+	.tb-row:last-child { border-bottom: none; }
+
+	.tb-icon {
+		grid-column: 1;
+		grid-row: 1 / 3;
+		font-size: 13px;
+		line-height: 1;
+	}
+	.tb-label {
+		grid-column: 2;
+		grid-row: 1;
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--tc);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.tb-count {
+		grid-column: 3;
+		grid-row: 1;
+		font-size: 11px;
+		font-weight: 700;
+		color: var(--text-muted);
+		text-align: right;
+		white-space: nowrap;
+	}
+	.tb-time {
+		grid-column: 4;
+		grid-row: 1;
+		font-size: 11px;
+		font-weight: 700;
+		color: var(--text);
+		text-align: right;
+		white-space: nowrap;
+	}
+	.tb-avg {
+		grid-column: 2 / 5;
+		grid-row: 2;
+		font-size: 10px;
+		color: var(--text-dim);
+		font-style: italic;
+		padding-top: 1px;
 	}
 </style>

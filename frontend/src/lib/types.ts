@@ -48,6 +48,11 @@ export function effectiveDuration(c: Content): number {
 	return c.duration_minutes;
 }
 
+export interface TypeStats {
+	count: number;
+	minutes: number;
+}
+
 export interface VaultStats {
 	total_pending_minutes: number;
 	total_consumed_minutes: number;
@@ -55,6 +60,7 @@ export interface VaultStats {
 	consumed_count: number;
 	abandoned_count: number;
 	by_type: Record<string, number>;
+	consumed_by_type: Record<string, TypeStats>;
 }
 
 export interface PaginatedContents {

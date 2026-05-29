@@ -74,7 +74,7 @@
     const title        = currentVideoTitle;
     const isBackground = document.hidden;
 
-    if (comp >= 0.85) {
+    if (comp >= 0.80) {
       consumeInitiated = true;
       autoConsume(contentId, title, isBackground);
     } else {
@@ -117,6 +117,7 @@
   function onTimeUpdate() {
     const v = getVideo();
     if (!v || !v.duration || v.duration === Infinity) return;
+    if (v.duration < 10) return; // skip truly short clips / ad transitions
 
     // Keep state current so handleLeave() reads stable pre-nav values
     currentCompletion = v.currentTime / v.duration;
@@ -124,10 +125,12 @@
 
     // Auto-add as pending after enough playback
     if (autoAddDone) return;
-    if (v.duration < 30) return;                             // skip ads
     if (vaultStatus?.inVault) { autoAddDone = true; return; } // already tracked
 
-    if (v.currentTime >= 30 || currentCompletion >= 0.15) {
+    // Dynamic threshold: 20% of video duration, min 5s, max 30s.
+    // This way a 29s clip adds after ~6s, a 5min video after 30s.
+    const threshold = Math.max(5, Math.min(30, v.duration * 0.20));
+    if (v.currentTime >= threshold) {
       autoAddDone = true;
       doAutoAdd();
     }
@@ -150,9 +153,11 @@
 
   function onVideoEnded() {
     const v = getVideo();
-    if (!v || v.duration < 30) return;          // ignore ads
-    if (currentCompletion < 0.85) return;       // use stored value — DOM might reset
-    if (consumeInitiated) return;               // already handled
+    if (!v || v.duration < 10) return;    // ignore ad transitions
+    // If the video ended naturally, count it — no % check needed.
+    // The only guard: if someone seeked to the very end from < 20%
+    if (currentCompletion < 0.20) return;
+    if (consumeInitiated) return;         // already handled
     consumeInitiated = true;
 
     const existingId   = vaultStatus?.content?.id ?? null;
