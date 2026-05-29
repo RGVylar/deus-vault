@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.routers import auth, contents, lookup
-from app.telegram import notify_error
+from app.telegram import send_error_alert
 
 app = FastAPI(title="Deus Vault", version="0.1.0")
 
@@ -18,7 +18,7 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    await notify_error(exc, context=f"{request.method} {request.url.path}")
+    await send_error_alert(request.method, request.url.path, exc)
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 

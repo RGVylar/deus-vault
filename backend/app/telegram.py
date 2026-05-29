@@ -1,35 +1,57 @@
-"""Telegram error notifications for Deus Vault."""
+"""Telegram alerts for Deus Vault — errors and key events."""
+
+import traceback
+from datetime import datetime, timezone
 
 import httpx
-import traceback
-import logging
 
-logger = logging.getLogger(__name__)
+from app.config import settings
 
-
-async def send_telegram(message: str, token: str, chat_id: str) -> None:
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    try:
-        async with httpx.AsyncClient(timeout=5) as client:
-            await client.post(url, json={
-                "chat_id": chat_id,
-                "text": message,
-                "parse_mode": "HTML",
-            })
-    except Exception as e:
-        logger.warning("Failed to send Telegram notification: %s", e)
+TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
 
 
-async def notify_error(exc: Exception, context: str = "") -> None:
-    from app.config import settings
+async def _send(text: str) -> None:
+    """Fire-and-forget. Silently ignores send failures."""
     if not settings.telegram_bot_token or not settings.telegram_chat_id:
         return
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            await client.post(
+                TELEGRAM_API.format(token=settings.telegram_bot_token),
+                json={
+                    "chat_id": settings.telegram_chat_id,
+                    "text": text,
+                    "parse_mode": "Markdown",
+                },
+            )
+    except Exception:
+        pass
 
-    tb = traceback.format_exc()[-2000:]  # cap at 2000 chars
-    ctx = f"\n<b>Contexto:</b> {context}" if context else ""
-    message = (
-        f"🔴 <b>Deus Vault — error</b>{ctx}\n\n"
-        f"<b>{type(exc).__name__}:</b> {exc}\n\n"
-        f"<pre>{tb}</pre>"
+
+def _now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
+async def send_error_alert(method: str, path: str, exc: Exception) -> None:
+    """500 — unhandled server exception."""
+    tb_lines = traceback.format_exception(type(exc), exc, exc.__traceback__)
+    tb_short = "".join(tb_lines[-8:]).strip()
+    text = (
+        f"🔴 *[deus-vault]* Error 500 — `{method} {path}`\n\n"
+        f"`{type(exc).__name__}: {exc}`\n\n"
+        f"```\n{tb_short}\n```\n\n"
+        f"🕐 {_now()}"
     )
-    await send_telegram(message, settings.telegram_bot_token, settings.telegram_chat_id)
+    await _send(text)
+
+
+async def send_new_user_alert(name: str, email: str, user_count: int) -> None:
+    """New user registered."""
+    text = (
+        f"👤 *[deus-vault]* Nuevo usuario\n\n"
+        f"*Nombre:* {name}\n"
+        f"*Email:* `{email}`\n"
+        f"*Total usuarios:* {user_count}\n\n"
+        f"🕐 {_now()}"
+    )
+    await _send(text)
