@@ -429,6 +429,23 @@ def rewind(
             count=best["count"],
         )
 
+    # ── Wrapped extras ────────────────────────────────────────────
+    rated = [c for c in items if c.rating is not None]
+    avg_rating = round(sum(c.rating for c in rated) / len(rated), 1) if rated else None
+
+    prev_start = datetime(year - 1, 1, 1)
+    prev_end   = datetime(year,     1, 1)
+    prev_items = list(db.scalars(
+        select(Content).where(
+            Content.user_id == user.id,
+            Content.consumed == True,  # noqa: E712
+            Content.consumed_at >= prev_start,
+            Content.consumed_at <  prev_end,
+        )
+    ).all())
+    prev_year_minutes = sum(_effective_duration(c) for c in prev_items)
+    prev_year_count   = len(prev_items)
+
     return RewindStats(
         year=year,
         total_consumed_minutes=total_minutes,
@@ -455,6 +472,9 @@ def rewind(
         by_hour=by_hour,
         by_day=by_day_list,
         moment=moment,
+        avg_rating=avg_rating,
+        prev_year_minutes=prev_year_minutes,
+        prev_year_count=prev_year_count,
     )
 
 

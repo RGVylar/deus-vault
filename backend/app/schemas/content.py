@@ -190,3 +190,7 @@ class RewindStats(BaseModel):
     by_hour: list[int]   # 24 values: total minutes consumed per hour-of-day
     by_day: list[int]    # 7 values: total minutes consumed per weekday (Mon=0)
     moment: MomentStats | None   # best week of the year
+    # Wrapped extras
+    avg_rating: float | None       # average rating of consumed items this year
+    prev_year_minutes: int         # total consumed minutes in year-1
+    prev_year_count: int           # total consumed items in year-1

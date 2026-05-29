@@ -167,4 +167,7 @@ export interface RewindStats {
 	by_hour: number[];
 	by_day: number[];
 	moment: MomentStats | null;
+	avg_rating: number | null;
+	prev_year_minutes: number;
+	prev_year_count: number;
 }

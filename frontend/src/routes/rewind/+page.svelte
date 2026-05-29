@@ -165,6 +165,73 @@
 	const maxHour = $derived(stats?.by_hour?.length ? Math.max(1, ...stats.by_hour) : 1);
 	const maxDay  = $derived(stats?.by_day?.length  ? Math.max(1, ...stats.by_day)  : 1);
 
+	// ── Wrapped derived values ────────────────────────────────────
+
+	/** Peak hour index (0-23) */
+	const peakHour = $derived.by(() => {
+		if (!stats?.by_hour?.length) return null;
+		return stats.by_hour.indexOf(Math.max(...stats.by_hour));
+	});
+
+	/** Night = 21-3h, Morning = 6-12, Afternoon = 12-18, Evening = 18-21 */
+	const timeProfile = $derived.by(() => {
+		if (!stats?.by_hour?.length) return null;
+		const h = stats.by_hour;
+		const total = h.reduce((a, b) => a + b, 0) || 1;
+		const night   = [...h.slice(21), ...h.slice(0, 4)].reduce((a, b) => a + b, 0);
+		const morning = h.slice(6, 12).reduce((a, b) => a + b, 0);
+		const evening = h.slice(18, 21).reduce((a, b) => a + b, 0);
+		const afternoon = h.slice(12, 18).reduce((a, b) => a + b, 0);
+		const max = Math.max(night, morning, evening, afternoon);
+		if (max === night)     return { label: 'Búho nocturno 🦉',   sub: `El ${Math.round(night/total*100)}% de tu consumo es entre las 21h y las 4h`, peak: peakHour };
+		if (max === morning)   return { label: 'Madrugador 🌅',       sub: `El ${Math.round(morning/total*100)}% de tu consumo es por la mañana`, peak: peakHour };
+		if (max === evening)   return { label: 'Fan del prime time 📺', sub: `El ${Math.round(evening/total*100)}% de tu consumo es entre las 18h y las 21h`, peak: peakHour };
+		return { label: 'Tarde libre ☀️', sub: `El ${Math.round(afternoon/total*100)}% de tu consumo es por la tarde`, peak: peakHour };
+	});
+
+	/** Favourite weekend day */
+	const bestDayLabel = $derived.by(() => {
+		const days = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+		if (!stats?.by_day?.length) return null;
+		return days[stats.by_day.indexOf(Math.max(...stats.by_day))];
+	});
+
+	/** Best single day from calendar */
+	const epicDay = $derived.by(() => {
+		if (!stats?.calendar) return null;
+		let best = { date: '', minutes: 0, count: 0 };
+		for (const [date, d] of Object.entries(stats.calendar)) {
+			if (d.minutes > best.minutes) best = { date, minutes: d.minutes, count: d.count };
+		}
+		return best.minutes > 0 ? best : null;
+	});
+
+	/** Absurd equivalences */
+	const REFS = [
+		{ label: 'trilogía de El Señor de los Anillos (extendida)', minutes: 690 },
+		{ label: 'saga completa de Star Wars (9 películas)', minutes: 1340 },
+		{ label: 'todas las temporadas de Friends', minutes: 5400 },
+		{ label: 'Elden Ring de principio a fin', minutes: 1680 },
+	];
+	const equivalences = $derived.by(() => {
+		if (!stats) return [];
+		return REFS.map(r => ({
+			...r,
+			times: +(stats.total_consumed_minutes / r.minutes).toFixed(1),
+		})).filter(r => r.times >= 0.5);
+	});
+
+	/** Consumer profile label */
+	const consumerProfile = $derived.by(() => {
+		if (!stats) return null;
+		const avg = stats.total_consumed_count > 0
+			? stats.total_consumed_minutes / stats.total_consumed_count : 0;
+		const sizeLabel = avg > 180 ? 'Maratoniano' : avg > 60 ? 'Consumidor regular' : 'Pícaro';
+		const timeLabel = timeProfile?.label.split(' ')[0] ?? '';
+		const fav = stats.favorite_type ? (TYPE_LABELS[stats.favorite_type] ?? stats.favorite_type) : '';
+		return { size: sizeLabel, time: timeLabel, fav, avg: Math.round(avg) };
+	});
+
 	// Projection: estimated total minutes for the year
 	const projection = $derived.by(() => {
 		if (!stats) return null;
@@ -897,6 +964,130 @@
 	</div>
 </section>
 
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- WRAPPED CARDS                                                -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="deep-divider">
+	<div class="dd-line"></div>
+	<span class="dd-label">✨ TU AÑO</span>
+	<div class="dd-line"></div>
+</div>
+
+<div class="wrapped-grid">
+
+	<!-- Búho nocturno -->
+	{#if timeProfile}
+	<div class="wcard wcard-wide glass">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.68 0.18 240 / 0.6),transparent)"></div>
+		<div class="wcard-kicker">Tu patrón de consumo</div>
+		<div class="wcard-big">{timeProfile.label}</div>
+		<div class="wcard-sub">{timeProfile.sub}</div>
+		<div class="wday-pills">
+			{#each ['L','M','X','J','V','S','D'] as d, i}
+				<div class="wday-pill" class:active={(stats?.by_day?.[i] ?? 0) >= maxDay * 0.7}>{d}</div>
+			{/each}
+		</div>
+	</div>
+	{/if}
+
+	<!-- Comparativa anual -->
+	{#if (stats?.prev_year_minutes ?? 0) > 0 || (stats?.prev_year_count ?? 0) > 0}
+		{@const prevMin = stats?.prev_year_minutes ?? 0}
+		{@const currMin = stats?.total_consumed_minutes ?? 0}
+		{@const maxBar = Math.max(prevMin, currMin, 1)}
+		{@const delta = prevMin > 0 ? Math.round((currMin - prevMin) / prevMin * 100) : null}
+	<div class="wcard glass">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,var(--primary),transparent)"></div>
+		<div class="wcard-kicker">Comparativa anual</div>
+		<div style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+			<div class="wcmp-row">
+				<span class="wcmp-year" style="color:var(--primary); font-weight:800">{year}</span>
+				<div class="wcmp-track"><div class="wcmp-fill" style="width:{currMin/maxBar*100}%; background:var(--primary)"></div></div>
+				<span class="wcmp-val" style="color:var(--primary)">{formatDuration(currMin)}</span>
+			</div>
+			<div class="wcmp-row">
+				<span class="wcmp-year">{year - 1}</span>
+				<div class="wcmp-track"><div class="wcmp-fill" style="width:{prevMin/maxBar*100}%; background:rgba(255,255,255,0.2)"></div></div>
+				<span class="wcmp-val">{formatDuration(prevMin)}</span>
+			</div>
+		</div>
+		{#if delta !== null}
+			<div class="wcmp-delta" class:up={delta >= 0} class:down={delta < 0}>
+				{delta >= 0 ? '↑' : '↓'} {Math.abs(delta)}% vs {year - 1}
+			</div>
+		{/if}
+	</div>
+	{/if}
+
+	<!-- Día más épico -->
+	{#if epicDay}
+	<div class="wcard glass">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.65 0.20 25 / 0.7),transparent)"></div>
+		<div class="wcard-kicker">Tu día más épico</div>
+		<div class="wcard-big" style="color:oklch(0.70 0.18 25); font-size:32px;">{formatDuration(epicDay.minutes)}</div>
+		<div class="wcard-sub">{new Date(epicDay.date + 'T12:00:00').toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long' })}</div>
+		<div class="wcard-sub" style="margin-top:4px;">{epicDay.count} ítem{epicDay.count !== 1 ? 's' : ''} ese día</div>
+	</div>
+	{/if}
+
+	<!-- Equivalencias absurdas -->
+	{#if equivalences.length > 0}
+	<div class="wcard wcard-wide glass">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.72 0.18 85 / 0.5),transparent)"></div>
+		<div class="wcard-kicker">Equivalencias absurdas</div>
+		<div class="wequiv-list">
+			{#each equivalences.slice(0, 3) as eq}
+				<div class="wequiv-row">
+					<span class="wequiv-times" style="color:oklch(0.82 0.18 85)">{eq.times}×</span>
+					<span class="wequiv-label">{eq.label}</span>
+				</div>
+			{/each}
+		</div>
+	</div>
+	{/if}
+
+	<!-- Perfil consumidor -->
+	{#if consumerProfile}
+	<div class="wcard glass">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,var(--primary),transparent)"></div>
+		<div class="wcard-kicker">Tu perfil</div>
+		<div class="wcard-big" style="font-size:22px; line-height:1.3">{consumerProfile.size}</div>
+		<div class="wcard-sub" style="margin-top:6px;">
+			Media de {formatDuration(consumerProfile.avg)} por ítem ·
+			{consumerProfile.fav ? `Favorito: ${consumerProfile.fav}` : ''}
+		</div>
+		{#if bestDayLabel}
+			<div class="wcard-sub" style="margin-top:3px;">Tu mejor día: <strong>{bestDayLabel}</strong></div>
+		{/if}
+	</div>
+	{/if}
+
+	<!-- Rating medio -->
+	{#if stats?.avg_rating != null}
+	<div class="wcard glass">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.82 0.18 85 / 0.6),transparent)"></div>
+		<div class="wcard-kicker">Calidad media consumida</div>
+		<div style="display:flex; align-items:baseline; gap:6px; margin:6px 0;">
+			<span class="wcard-big" style="color:oklch(0.82 0.18 85)">{stats.avg_rating}</span>
+			<span style="font-size:16px; color:var(--text-dim)">/10</span>
+		</div>
+		<div class="wcard-sub">Media de rating en {year}</div>
+	</div>
+	{/if}
+
+	<!-- Quote final -->
+	<div class="wcard wcard-full glass wcard-quote">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,var(--primary),transparent)"></div>
+		<span style="font-size:36px;">⛧</span>
+		<div class="wquote-text">
+			En {year} consumiste <strong style="color:var(--primary)">{formatDuration(stats?.total_consumed_minutes ?? 0)}</strong> de contenido.
+			Son <strong style="color:oklch(0.82 0.18 85)">{minutesToDays(stats?.total_consumed_minutes ?? 0)}</strong> de tu vida.
+		</div>
+		<div class="wcard-sub">Memento mori — ¿valió la pena cada una?</div>
+	</div>
+
+</div>
+
 {/if}
 {/if}
 
@@ -1265,4 +1456,104 @@
 	@media (min-width: 600px) {
 		.share-grid { grid-template-columns: repeat(4, 1fr); }
 	}
+
+	/* ── Wrapped cards ── */
+	.wrapped-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 14px;
+		margin-bottom: 40px;
+	}
+	@media (min-width: 700px) {
+		.wrapped-grid { grid-template-columns: repeat(2, 1fr); }
+	}
+	@media (min-width: 1024px) {
+		.wrapped-grid { grid-template-columns: repeat(3, 1fr); }
+	}
+
+	.wcard {
+		padding: 20px 22px;
+		position: relative;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.wcard-wide  { grid-column: span 1; }
+	.wcard-full  { grid-column: 1 / -1; }
+	@media (min-width: 700px) {
+		.wcard-wide { grid-column: span 2; }
+	}
+
+	.wcard-accent {
+		position: absolute;
+		top: 0; left: 0; right: 0; height: 2px;
+		pointer-events: none;
+	}
+	.wcard-kicker {
+		font-size: 10px;
+		font-weight: 800;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--text-dim);
+		margin-bottom: 4px;
+	}
+	.wcard-big {
+		font-size: 38px;
+		font-weight: 900;
+		letter-spacing: -0.03em;
+		line-height: 1.1;
+	}
+	.wcard-sub { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+	/* Day pills */
+	.wday-pills { display: flex; gap: 5px; margin-top: 12px; }
+	.wday-pill {
+		width: 30px; height: 30px; border-radius: 50%;
+		display: flex; align-items: center; justify-content: center;
+		font-size: 10px; font-weight: 700;
+		background: rgba(255,255,255,0.05);
+		color: var(--text-dim);
+		border: 1px solid var(--glass-border);
+	}
+	.wday-pill.active {
+		background: oklch(0.68 0.18 240 / 0.25);
+		color: oklch(0.80 0.18 240);
+		border-color: oklch(0.68 0.18 240 / 0.5);
+		box-shadow: 0 0 10px oklch(0.68 0.18 240 / 0.3);
+	}
+
+	/* Year compare */
+	.wcmp-row { display: grid; grid-template-columns: 44px 1fr 60px; align-items: center; gap: 8px; }
+	.wcmp-year { font-size: 12px; font-weight: 700; color: var(--text-dim); }
+	.wcmp-track { height: 7px; background: rgba(255,255,255,0.07); border-radius: 99px; overflow: hidden; }
+	.wcmp-fill  { height: 100%; border-radius: 99px; }
+	.wcmp-val   { font-size: 12px; font-weight: 700; color: var(--text-muted); text-align: right; }
+	.wcmp-delta {
+		display: inline-block;
+		margin-top: 10px;
+		font-size: 12px;
+		font-weight: 800;
+		padding: 3px 10px;
+		border-radius: 99px;
+		align-self: flex-start;
+	}
+	.wcmp-delta.up   { background: oklch(0.72 0.20 150 / 0.15); color: oklch(0.72 0.20 150); border: 1px solid oklch(0.72 0.20 150 / 0.3); }
+	.wcmp-delta.down { background: oklch(0.65 0.20 25 / 0.15);  color: oklch(0.70 0.18 25);  border: 1px solid oklch(0.65 0.20 25 / 0.3); }
+
+	/* Equivalences */
+	.wequiv-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+	.wequiv-row  { display: flex; align-items: baseline; gap: 10px; }
+	.wequiv-times { font-size: 28px; font-weight: 900; letter-spacing: -0.03em; flex-shrink: 0; }
+	.wequiv-label { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+
+	/* Quote */
+	.wcard-quote {
+		flex-direction: row;
+		align-items: center;
+		gap: 18px;
+		text-align: left;
+	}
+	.wquote-text { font-size: 17px; font-weight: 600; line-height: 1.5; flex: 1; }
+
 </style>
