@@ -16,7 +16,7 @@ chrome.notifications.onClosed.addListener((notifId) => pendingNotifs.delete(noti
 const pendingNotifs = new Map(); // notifId → { videoId, url, existingId, senderTabId }
 
 // --- Constants ---
-const DEFAULT_API = 'https://vault.mugrelore.com/api';
+const DEFAULT_API = 'https://content.mugrelore.com/api';
 
 // ================================================================
 // Config helpers
@@ -224,7 +224,7 @@ async function processMessage(msg, sender) {
 
     // ----------------------------------------------------------
     case 'ADD_CONSUMED': {
-      const { videoId, url, existingId, meta = null, notifyTitle = null } = msg;
+      const { videoId, url, existingId, meta = null, notifyTitle = null, progress = null } = msg;
       let contentId = existingId || null;
 
       if (!contentId) {
@@ -243,6 +243,9 @@ async function processMessage(msg, sender) {
       }
 
       await apiPost(`/contents/${contentId}/consume`);
+      if (progress != null) {
+        await apiFetch('PATCH', `/contents/${contentId}`, { progress });
+      }
       await setBadge(tabId, 'consumed');
 
       // Background tab: show a silent confirmation notification

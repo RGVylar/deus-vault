@@ -1088,6 +1088,8 @@ async def lookup_steam(url: str) -> dict:
         "source_id": app_id,
         "url": f"https://store.steampowered.com/app/{app_id}",
         "duration_minutes": duration_minutes,
+        "suggested_content_type": "game",
+        "provider": "steam",
     }
 
 

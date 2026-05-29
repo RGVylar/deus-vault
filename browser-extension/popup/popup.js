@@ -4,7 +4,7 @@
 
 'use strict';
 
-const DEFAULT_API = 'https://vault.mugrelore.com/api';
+const DEFAULT_API = 'https://content.mugrelore.com/api';
 
 // ── DOM refs ────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);

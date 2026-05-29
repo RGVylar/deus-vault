@@ -68,15 +68,16 @@
     if (vaultStatus.content?.abandoned)  return;   // already abandoned
 
     const comp = currentCompletion;
-    if (comp < 0.20) return;                        // too short — ignore
+    if (comp < 0.10) return;                        // too short — ignore
 
     const contentId    = vaultStatus.content?.id ?? null;
     const title        = currentVideoTitle;
     const isBackground = document.hidden;
 
-    if (comp >= 0.80) {
+    if (comp >= 0.85) {
       consumeInitiated = true;
-      autoConsume(contentId, title, isBackground);
+      const pct = Math.round(comp * 100);
+      autoConsume(contentId, title, isBackground, pct);
     } else {
       const pct = Math.round(comp * 100);
       chrome.runtime.sendMessage(
@@ -127,9 +128,9 @@
     if (autoAddDone) return;
     if (vaultStatus?.inVault) { autoAddDone = true; return; } // already tracked
 
-    // Dynamic threshold: 20% of video duration, min 5s, max 30s.
-    // This way a 29s clip adds after ~6s, a 5min video after 30s.
-    const threshold = Math.max(5, Math.min(30, v.duration * 0.20));
+    // Dynamic threshold: 20% of video duration, min 5s, max 20s.
+    // This way a 29s clip adds after ~6s, a 5min video after 20s.
+    const threshold = Math.max(5, Math.min(20, v.duration * 0.20));
     if (v.currentTime >= threshold) {
       autoAddDone = true;
       doAutoAdd();
@@ -155,8 +156,8 @@
     const v = getVideo();
     if (!v || v.duration < 10) return;    // ignore ad transitions
     // If the video ended naturally, count it — no % check needed.
-    // The only guard: if someone seeked to the very end from < 20%
-    if (currentCompletion < 0.20) return;
+    // The only guard: if someone seeked to the very end from < 10%
+    if (currentCompletion < 0.10) return;
     if (consumeInitiated) return;         // already handled
     consumeInitiated = true;
 
@@ -167,14 +168,14 @@
 
   // ── autoConsume ───────────────────────────────────────────────
 
-  function autoConsume(existingId, title, isBackground) {
+  function autoConsume(existingId, title, isBackground, progress = null) {
     const videoId = currentVideoId;
     const url     = location.href;
 
     if (!isBackground) showBriefToast('⏳ Marcando como visto…');
 
     chrome.runtime.sendMessage(
-      { type: 'ADD_CONSUMED', videoId, url, existingId, notifyTitle: isBackground ? title : null },
+      { type: 'ADD_CONSUMED', videoId, url, existingId, progress, notifyTitle: isBackground ? title : null },
       (resp) => {
         if (chrome.runtime.lastError || !resp?.ok) {
           if (!isBackground) showBriefToast('⚠ No se pudo marcar como visto');

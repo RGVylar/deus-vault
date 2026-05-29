@@ -41,8 +41,12 @@
 		goto('/login');
 	}
 
+	let showExtBanner = $state(false);
+
 	onMount(() => {
 		applyPrefs();
+		const extInstalled = document.documentElement.hasAttribute('data-dv-ext');
+		if (!extInstalled && !localStorage.getItem('dv_ext_banner_dismissed')) showExtBanner = true;
 		window.addEventListener('deus_vault_appearance_changed', applyPrefs);
 
 		// Global Ctrl+V → open add modal on vault page from anywhere in the app
@@ -57,7 +61,7 @@
 		};
 		window.addEventListener('paste', pasteHandler);
 
-		return () => {
+			return () => {
 			window.removeEventListener('deus_vault_appearance_changed', applyPrefs);
 			window.removeEventListener('paste', pasteHandler);
 		};
@@ -120,6 +124,26 @@
 
 		<!-- Page content -->
 		<div class="page-scroll">
+			{#if auth.isLoggedIn && showExtBanner}
+				<div class="ext-banner">
+					<span class="ext-banner-ico">🧩</span>
+					<div class="ext-banner-text">
+						<strong>Extensión para Chrome disponible</strong>
+						<span>Rastrea YouTube automáticamente sin abrir la bóveda.</span>
+					</div>
+					<a
+						href="https://github.com/RGVylar/deus-vault/tree/main/browser-extension"
+						target="_blank"
+						rel="noopener"
+						class="ext-banner-btn"
+					>Instalar</a>
+					<button
+						class="ext-banner-close"
+						aria-label="Cerrar"
+						onclick={() => { showExtBanner = false; localStorage.setItem('dv_ext_banner_dismissed', '1'); }}
+					>×</button>
+				</div>
+			{/if}
 			{@render children()}
 		</div>
 	</div>
