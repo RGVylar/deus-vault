@@ -98,10 +98,16 @@
       if (!v) return false;
       // Always remove first — YouTube reuses the same <video> element across
       // SPA navigations, so without this we'd accumulate duplicate listeners.
-      v.removeEventListener('timeupdate', onTimeUpdate);
-      v.removeEventListener('ended',      onVideoEnded);
-      v.addEventListener('timeupdate', onTimeUpdate);
-      v.addEventListener('ended',      onVideoEnded);
+      v.removeEventListener('timeupdate',     onTimeUpdate);
+      v.removeEventListener('ended',          onVideoEnded);
+      v.removeEventListener('play',           onTimeUpdate);
+      v.removeEventListener('loadedmetadata', onTimeUpdate);
+      v.addEventListener('timeupdate',     onTimeUpdate);
+      v.addEventListener('ended',          onVideoEnded);
+      // Background-tab fallback: timeupdate can be throttled before first focus.
+      // play + loadedmetadata fire reliably regardless of tab visibility.
+      v.addEventListener('play',           onTimeUpdate);
+      v.addEventListener('loadedmetadata', onTimeUpdate);
       return true;
     };
 

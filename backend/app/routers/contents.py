@@ -579,6 +579,9 @@ def mark_consumed(
         content.consumed = True
         content.times_consumed = 1
     content.consumed_at = datetime.now(timezone.utc)
+    # Clear abandoned state — consuming always wins over abandoned
+    content.abandoned = False
+    content.abandoned_at = None
     db.commit()
     db.refresh(content)
     return content
