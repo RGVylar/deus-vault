@@ -41,6 +41,7 @@
 	let stats: RewindStats | null = $state(null);
 	let loading = $state(false);
 	let loadError = $state<string | null>(null);
+	let itemsVisible = $state(12);
 
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
@@ -53,6 +54,7 @@
 		loading = true;
 		stats = null;
 		loadError = null;
+		itemsVisible = 12;
 		api.get<RewindStats>(`/contents/rewind?year=${_year}`)
 			.then(r => {
 				stats = r;
@@ -927,43 +929,6 @@
 	</div>
 </section>
 
-<!-- Item list -->
-<section class="rewind-section">
-	<h2><span class="ico">📋</span> Todo lo consumido</h2>
-	<div class="content-grid">
-		{#each stats.items as c (c.id)}
-			{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series' || c.content_type === 'game'}
-			<div
-				class="c-card"
-				class:landscape
-				class:portrait={!landscape}
-				style="--card-accent:{TYPE_COLORS[c.content_type] ?? 'var(--primary)'}; --accent:{TYPE_COLORS[c.content_type] ?? 'var(--primary)'}"
-			>
-				{#if landscape}
-					<div class="thumb-land">
-						{#if c.thumbnail}<img src={c.thumbnail} alt="" />{:else}<div class="ph">{TYPE_ICONS[c.content_type] ?? '📄'}</div>{/if}
-					</div>
-				{:else}
-					<div class="thumb-port">
-						{#if c.thumbnail}<img src={c.thumbnail} alt="" />{:else}<div class="ph">{TYPE_ICONS[c.content_type] ?? '📄'}</div>{/if}
-					</div>
-				{/if}
-				<div class="info">
-					<div class="title">{c.title}</div>
-					<div class="meta">
-						<span class="badge">{TYPE_LABELS[c.content_type]}</span>
-						{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}</span>{/if}
-						{#if c.author}<span>{c.author}</span>{/if}
-						{#if c.consumed_at}
-							<span>📅 {new Date(c.consumed_at).toLocaleDateString('es', { day:'numeric', month:'short' })}</span>
-						{/if}
-					</div>
-				</div>
-			</div>
-		{/each}
-	</div>
-</section>
-
 <!-- ═══════════════════════════════════════════════════════════ -->
 <!-- WRAPPED CARDS                                                -->
 <!-- ═══════════════════════════════════════════════════════════ -->
@@ -1087,6 +1052,53 @@
 	</div>
 
 </div>
+
+<!-- Item list -->
+{@const ITEMS_PAGE = 12}
+{#if stats.items.length > 0}
+<section class="rewind-section">
+	<h2><span class="ico">📋</span> Todo lo consumido <span style="font-size:13px; color:var(--text-dim); font-weight:500;">({stats.items.length})</span></h2>
+	<div class="content-grid">
+		{#each stats.items.slice(0, itemsVisible) as c (c.id)}
+			{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series' || c.content_type === 'game'}
+			<div
+				class="c-card"
+				class:landscape
+				class:portrait={!landscape}
+				style="--card-accent:{TYPE_COLORS[c.content_type] ?? 'var(--primary)'}; --accent:{TYPE_COLORS[c.content_type] ?? 'var(--primary)'}"
+			>
+				{#if landscape}
+					<div class="thumb-land">
+						{#if c.thumbnail}<img src={c.thumbnail} alt="" />{:else}<div class="ph">{TYPE_ICONS[c.content_type] ?? '📄'}</div>{/if}
+					</div>
+				{:else}
+					<div class="thumb-port">
+						{#if c.thumbnail}<img src={c.thumbnail} alt="" />{:else}<div class="ph">{TYPE_ICONS[c.content_type] ?? '📄'}</div>{/if}
+					</div>
+				{/if}
+				<div class="info">
+					<div class="title">{c.title}</div>
+					<div class="meta">
+						<span class="badge">{TYPE_LABELS[c.content_type]}</span>
+						{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}</span>{/if}
+						{#if c.author}<span>{c.author}</span>{/if}
+						{#if c.consumed_at}
+							<span>📅 {new Date(c.consumed_at).toLocaleDateString('es', { day:'numeric', month:'short' })}</span>
+						{/if}
+					</div>
+				</div>
+			</div>
+		{/each}
+	</div>
+	{#if itemsVisible < stats.items.length}
+		<div class="center mt16">
+			<button class="btn btn-lg" onclick={() => itemsVisible += ITEMS_PAGE}>
+				Ver más ({stats.items.length - itemsVisible} restantes)
+			</button>
+		</div>
+	{/if}
+</section>
+{/if}
 
 {/if}
 {/if}
