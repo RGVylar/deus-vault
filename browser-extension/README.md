@@ -22,8 +22,7 @@ Extensión de Chrome/Firefox que rastrea automáticamente tu consumo de YouTube 
 
 1. Haz clic en el icono **DV** de la barra de herramientas
 2. Introduce tu email y contraseña de Deus Vault
-3. La URL de la API se configura automáticamente (`https://vault.mugrelore.com/api`)
-   - La URL por defecto es `https://content.mugrelore.com/api`
+3. La URL de la API se configura automáticamente (`https://content.mugrelore.com/api`)
 
 ## Uso
 
@@ -66,4 +65,4 @@ browser-extension/
 | `activeTab` | Leer la URL de la pestaña activa al abrir el popup |
 | `tabs` | Enviar mensajes al content script de la pestaña activa |
 | Host: `youtube.com` | Inyectar el script de detección |
-| Host: `vault.mugrelore.com` | Llamadas a la API |
+| Host: `content.mugrelore.com` | Llamadas a la API |
