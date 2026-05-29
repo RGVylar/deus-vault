@@ -162,7 +162,7 @@ def vault_stats(
         if abandoned_count_by_type.get(t, 0) > 0
     }
 
-    six_months_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=180)
+    six_months_ago = datetime.now(timezone.utc) - timedelta(days=180)
     abandoned_stale_count = sum(
         1 for c in abandoned_items
         if c.abandoned_at and c.abandoned_at < six_months_ago
