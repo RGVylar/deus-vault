@@ -16,6 +16,7 @@
 	let loadingMore = $state(false);
 	let total = $state(0);
 	let offset = $state(0);
+	let loadError = $state<string | null>(null);
 
 	// Editable consumed date
 	let editingDateId = $state<number | null>(null);
@@ -36,6 +37,7 @@
 
 	async function load() {
 		loading = true;
+		loadError = null;
 		offset = 0;
 		try {
 			const [s, p] = await Promise.all([
@@ -45,6 +47,8 @@
 			stats = s;
 			contents = p.items;
 			total = p.total;
+		} catch (e: any) {
+			loadError = e?.message ?? 'Error desconocido';
 		} finally { loading = false; }
 	}
 
@@ -123,6 +127,13 @@
 	<div class="desk-topbar desk-only">
 		<h1 class="desk-title">{tab === 'consumed' ? 'Consumido' : 'Abandonado'}</h1>
 	</div>
+
+	{#if loadError}
+		<div class="load-error">
+			⚠️ Error al cargar: <code>{loadError}</code>
+			<button onclick={load}>Reintentar</button>
+		</div>
+	{/if}
 
 	{#if stats}
 		<!-- Hero + logros grid -->
@@ -208,7 +219,7 @@
 			{@const ratio = stats.consumed_count + stats.abandoned_count > 0
 				? Math.round(stats.consumed_count / (stats.consumed_count + stats.abandoned_count) * 100)
 				: null}
-			{@const typeRateSorted = Object.entries(stats.abandoned_by_type_rate)
+			{@const typeRateSorted = Object.entries(stats.abandoned_by_type_rate ?? {})
 				.sort((a, b) => b[1] - a[1])}
 
 			<!-- 4 stat cards -->
@@ -248,10 +259,10 @@
 			<div class="ab-two-col">
 
 				<!-- Cementerio top 5 -->
-				{#if stats.abandoned_top_items.length > 0}
+				{#if (stats.abandoned_top_items ?? []).length > 0}
 				<div class="glass-card ab-cemetery">
 					<div class="ab-section-title">⚰️ El cementerio — más cerca de terminar</div>
-					{#each stats.abandoned_top_items as item}
+					{#each (stats.abandoned_top_items ?? []) as item}
 						<div class="ab-grave">
 							<div class="ab-grave-thumb">
 								{#if item.thumbnail}
@@ -520,6 +531,42 @@
 		border-radius: 5px;
 		padding: 1px 5px;
 	}
+
+	/* ── Load error ── */
+	.load-error {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		flex-wrap: wrap;
+		padding: 10px 14px;
+		margin-bottom: 12px;
+		background: oklch(0.65 0.20 25 / 0.12);
+		border: 1px solid oklch(0.65 0.20 25 / 0.35);
+		border-radius: var(--radius-xs);
+		font-size: 13px;
+		color: oklch(0.80 0.15 25);
+	}
+	.load-error code {
+		font-family: monospace;
+		font-size: 12px;
+		background: rgba(0,0,0,0.3);
+		padding: 2px 6px;
+		border-radius: 5px;
+		flex: 1;
+	}
+	.load-error button {
+		all: unset;
+		cursor: pointer;
+		font-size: 12px;
+		font-weight: 700;
+		padding: 4px 10px;
+		border-radius: 8px;
+		background: oklch(0.65 0.20 25 / 0.25);
+		border: 1px solid oklch(0.65 0.20 25 / 0.4);
+		color: oklch(0.85 0.15 25);
+		transition: background 0.15s;
+	}
+	.load-error button:hover { background: oklch(0.65 0.20 25 / 0.4); }
 
 	/* ── Abandoned stats panel ── */
 	:global(:root) {

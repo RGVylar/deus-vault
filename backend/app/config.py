@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     tmdb_api_key: str | None = None
     spotify_client_id: str | None = None
     spotify_client_secret: str | None = None
+    telegram_bot_token: str | None = None
+    telegram_chat_id: str | None = None
     # Reading speed (words per minute) used to estimate book reading duration.
     reading_speed_wpm: int = 200
     # Average words per printed page used for page -> words conversion.
