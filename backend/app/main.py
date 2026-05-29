@@ -27,7 +27,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/debug/test-error")
+@app.get("/api/debug/test-error")
 def test_error() -> None:
     """Temporary endpoint to verify Telegram error alerts. Remove after testing."""
     raise ValueError("🧪 Test de error desde Deus Vault — si ves esto en Telegram, funciona")
