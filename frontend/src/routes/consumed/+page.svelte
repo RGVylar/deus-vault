@@ -319,6 +319,14 @@
 								<span class="date-btn" style="cursor:default;">🚫 {new Date(c.abandoned_at).toLocaleDateString('es')}</span>
 							{/if}
 						</div>
+						{#if tab === 'abandoned' && c.progress != null && c.progress > 0}
+							<div class="progress-wrap">
+								<div class="progress-track">
+									<div class="progress-fill" style="width:{c.progress}%"></div>
+								</div>
+								<span class="progress-pct">{c.progress}%</span>
+							</div>
+						{/if}
 						<div class="actions">
 							{#if link}
 								<a href={link} target="_blank" rel="noopener">
@@ -391,6 +399,35 @@
 		border: 1px solid oklch(0.65 0.15 85 / 0.4);
 		border-radius: 5px;
 		padding: 1px 5px;
+	}
+
+	/* ── Abandoned progress bar ── */
+	.progress-wrap {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		margin-top: 2px;
+	}
+	.progress-wrap .progress-track {
+		flex: 1;
+		height: 4px;
+		background: rgba(255,255,255,0.08);
+		border-radius: 4px;
+		overflow: hidden;
+		margin-top: 0;
+	}
+	.progress-wrap .progress-fill {
+		height: 100%;
+		background: oklch(0.65 0.18 25);
+		border-radius: 4px;
+		box-shadow: 0 0 6px oklch(0.60 0.20 25 / 0.6);
+	}
+	.progress-pct {
+		font-size: 11px;
+		font-weight: 700;
+		color: oklch(0.70 0.18 25);
+		white-space: nowrap;
+		flex-shrink: 0;
 	}
 
 	/* ── Type breakdown in desk-quick ── */
