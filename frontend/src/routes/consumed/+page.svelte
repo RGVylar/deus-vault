@@ -4,7 +4,7 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, TYPE_ICONS, TYPE_LABELS, buildConsumeUrl } from '$lib/utils';
-	import type { Content, ContentType, VaultStats, TypeStats, PaginatedContents } from '$lib/types';
+	import type { Content, ContentType, VaultStats, TypeStats, AbandonedTopItem, PaginatedContents } from '$lib/types';
 
 	const LIMIT = 20;
 
@@ -203,6 +203,126 @@
 			</div>
 		</div>
 
+		<!-- ── Abandoned stats panel ── -->
+		{#if tab === 'abandoned'}
+			{@const ratio = stats.consumed_count + stats.abandoned_count > 0
+				? Math.round(stats.consumed_count / (stats.consumed_count + stats.abandoned_count) * 100)
+				: null}
+			{@const typeRateSorted = Object.entries(stats.abandoned_by_type_rate)
+				.sort((a, b) => b[1] - a[1])}
+
+			<!-- 4 stat cards -->
+			<div class="ab-stat-row">
+				<div class="ab-stat glass-card">
+					<div class="ab-stat-ico">⏱</div>
+					<div class="ab-stat-val" style="color:var(--red)">{formatDuration(stats.abandoned_minutes)}</div>
+					<div class="ab-stat-lbl">Tiempo invertido en abandonos</div>
+					<div class="ab-stat-sub">que nunca volverás a ver</div>
+				</div>
+				<div class="ab-stat glass-card">
+					<div class="ab-stat-ico">📍</div>
+					<div class="ab-stat-val" style="color:var(--red)">{stats.abandoned_avg_pct != null ? `${stats.abandoned_avg_pct}%` : '—'}</div>
+					<div class="ab-stat-lbl">Punto medio de abandono</div>
+					<div class="ab-stat-sub">{stats.abandoned_avg_pct != null && stats.abandoned_avg_pct < 30 ? 'Sueles rendirte muy pronto' : stats.abandoned_avg_pct != null && stats.abandoned_avg_pct < 60 ? 'Te quedas a mitad de camino' : 'Abandonas casi al final 😬'}</div>
+				</div>
+				<div class="ab-stat glass-card">
+					<div class="ab-stat-ico">😬</div>
+					{#if stats.abandoned_top_items.length > 0}
+						<div class="ab-stat-val" style="color:oklch(0.70 0.18 25)">{stats.abandoned_top_items[0].progress}%</div>
+						<div class="ab-stat-lbl">El que más cerca estuvo</div>
+						<div class="ab-stat-sub">{stats.abandoned_top_items[0].title}</div>
+					{:else}
+						<div class="ab-stat-val" style="color:var(--text-dim)">—</div>
+						<div class="ab-stat-lbl">El que más cerca estuvo</div>
+					{/if}
+				</div>
+				<div class="ab-stat glass-card">
+					<div class="ab-stat-ico">⚖️</div>
+					<div class="ab-stat-val" style="color:{ratio != null && ratio >= 70 ? 'var(--green)' : 'oklch(0.70 0.18 25)'}">{ratio != null ? `${ratio}%` : '—'}</div>
+					<div class="ab-stat-lbl">Tasa de finalización</div>
+					<div class="ab-stat-sub">{stats.consumed_count} completados · {stats.abandoned_count} abandonados</div>
+				</div>
+			</div>
+
+			<!-- Cemetery + type rates -->
+			<div class="ab-two-col">
+
+				<!-- Cementerio top 5 -->
+				{#if stats.abandoned_top_items.length > 0}
+				<div class="glass-card ab-cemetery">
+					<div class="ab-section-title">⚰️ El cementerio — más cerca de terminar</div>
+					{#each stats.abandoned_top_items as item}
+						<div class="ab-grave">
+							<div class="ab-grave-thumb">
+								{#if item.thumbnail}
+									<img src={item.thumbnail} alt="" />
+								{:else}
+									<span>{TYPE_ICONS[item.content_type as ContentType] ?? '📄'}</span>
+								{/if}
+							</div>
+							<div class="ab-grave-info">
+								<div class="ab-grave-title">{item.title}</div>
+								<div class="ab-grave-meta">{TYPE_LABELS[item.content_type as ContentType] ?? item.content_type}{item.duration_minutes > 0 ? ` · ${formatDuration(item.duration_minutes)}` : ''}</div>
+								<div class="ab-grave-bar-row">
+									<div class="ab-grave-track">
+										<div class="ab-grave-fill" style="width:{item.progress}%"></div>
+									</div>
+									<span class="ab-grave-pct">{item.progress}%</span>
+								</div>
+							</div>
+						</div>
+					{/each}
+				</div>
+				{/if}
+
+				<div style="display:flex; flex-direction:column; gap:14px;">
+
+					<!-- Tasa de abandono por tipo -->
+					{#if typeRateSorted.length > 0}
+					<div class="glass-card ab-type-rates">
+						<div class="ab-section-title">🎯 Tasa de abandono por tipo</div>
+						{#each typeRateSorted as [type, rate]}
+							<div class="ab-bar-row">
+								<span class="ab-bar-label" style="color:{TYPE_COLOR[type] ?? 'var(--text-muted)'}">
+									{TYPE_ICONS[type as ContentType] ?? '📄'} {TYPE_LABELS[type as ContentType] ?? type}
+								</span>
+								<div class="ab-bar-track">
+									<div class="ab-bar-fill" style="width:{rate}%; background:{TYPE_COLOR[type] ?? 'var(--primary)'}"></div>
+								</div>
+								<span class="ab-bar-val">{rate}%</span>
+							</div>
+						{/each}
+					</div>
+					{/if}
+
+					<!-- En el limbo -->
+					{#if stats.abandoned_stale_count > 0}
+					<div class="glass-card ab-limbo">
+						<div class="ab-section-title">⏳ En el limbo
+							<span class="ab-limbo-badge">{stats.abandoned_stale_count}</span>
+						</div>
+						<div class="ab-limbo-sub">Abandonados hace más de 6 meses sin que los toques</div>
+						{#each contents.filter(c => {
+							if (!c.abandoned_at) return false;
+							const d = new Date(c.abandoned_at);
+							return (Date.now() - d.getTime()) > 180 * 24 * 60 * 60 * 1000;
+						}).slice(0, 3) as c}
+							<div class="ab-limbo-row">
+								<span class="ab-limbo-title">{TYPE_ICONS[c.content_type] ?? '📄'} {c.title}</span>
+								<span class="ab-limbo-age" style="color:{
+									(Date.now() - new Date(c.abandoned_at!).getTime()) > 365 * 24 * 60 * 60 * 1000
+										? 'var(--red)' : 'oklch(0.70 0.18 55)'}">
+									{Math.round((Date.now() - new Date(c.abandoned_at!).getTime()) / (30 * 24 * 60 * 60 * 1000))} meses
+								</span>
+							</div>
+						{/each}
+					</div>
+					{/if}
+
+				</div>
+			</div>
+		{/if}
+
 		<!-- Mobile-only pill -->
 		<div class="pill-row mobile-only">
 			{#if tab === 'consumed'}
@@ -400,6 +520,148 @@
 		border-radius: 5px;
 		padding: 1px 5px;
 	}
+
+	/* ── Abandoned stats panel ── */
+	:global(:root) {
+		--red: oklch(0.65 0.20 25);
+		--green: oklch(0.72 0.20 150);
+	}
+	.glass-card {
+		background: var(--glass-bg);
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		border: 1px solid var(--glass-border);
+		border-radius: var(--radius-sm);
+		box-shadow: var(--glass-shadow), var(--glass-inner);
+		position: relative;
+		overflow: hidden;
+	}
+	.glass-card::after {
+		content: '';
+		position: absolute;
+		top: 0; left: 8%; right: 8%; height: 1px;
+		background: linear-gradient(90deg, transparent, var(--glass-shine), transparent);
+		pointer-events: none;
+	}
+
+	/* 4 stat cards */
+	.ab-stat-row {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 10px;
+		margin-bottom: 12px;
+	}
+	@media (min-width: 700px) {
+		.ab-stat-row { grid-template-columns: repeat(4, 1fr); }
+	}
+	.ab-stat {
+		padding: 16px 16px 14px;
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+	}
+	.ab-stat::before {
+		content: '';
+		position: absolute;
+		top: 0; left: 0; right: 0; height: 2px;
+		background: linear-gradient(90deg, transparent, oklch(0.65 0.20 25 / 0.8), transparent);
+	}
+	.ab-stat-ico  { font-size: 20px; margin-bottom: 2px; }
+	.ab-stat-val  { font-size: 26px; font-weight: 900; letter-spacing: -0.03em; line-height: 1; }
+	.ab-stat-lbl  { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
+	.ab-stat-sub  { font-size: 10px; color: var(--text-dim); font-style: italic; }
+
+	/* Two-column layout */
+	.ab-two-col {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 12px;
+		margin-bottom: 16px;
+	}
+	@media (min-width: 800px) {
+		.ab-two-col { grid-template-columns: 1fr 1fr; }
+	}
+
+	/* Cemetery */
+	.ab-cemetery { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+	.ab-section-title {
+		font-size: 11px;
+		font-weight: 800;
+		letter-spacing: 0.07em;
+		text-transform: uppercase;
+		color: var(--text-dim);
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin-bottom: 2px;
+	}
+	.ab-grave {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 8px 10px;
+		background: rgba(255,255,255,0.025);
+		border: 1px solid var(--glass-border);
+		border-radius: 10px;
+	}
+	.ab-grave-thumb {
+		width: 44px; height: 44px; border-radius: 8px;
+		flex-shrink: 0; overflow: hidden;
+		background: rgba(255,255,255,0.06);
+		display: flex; align-items: center; justify-content: center; font-size: 18px;
+	}
+	.ab-grave-thumb img { width: 100%; height: 100%; object-fit: cover; }
+	.ab-grave-info { flex: 1; min-width: 0; }
+	.ab-grave-title {
+		font-size: 12px; font-weight: 600;
+		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+	}
+	.ab-grave-meta { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+	.ab-grave-bar-row { display: flex; align-items: center; gap: 7px; margin-top: 5px; }
+	.ab-grave-track {
+		flex: 1; height: 4px; background: rgba(255,255,255,0.07);
+		border-radius: 99px; overflow: hidden;
+	}
+	.ab-grave-fill {
+		height: 100%; border-radius: 99px;
+		background: oklch(0.65 0.20 25);
+		box-shadow: 0 0 6px oklch(0.65 0.20 25 / 0.5);
+	}
+	.ab-grave-pct { font-size: 11px; font-weight: 800; color: oklch(0.70 0.18 25); flex-shrink: 0; }
+
+	/* Type rates */
+	.ab-type-rates { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+	.ab-bar-row { display: flex; align-items: center; gap: 8px; }
+	.ab-bar-label {
+		font-size: 11px; font-weight: 600;
+		width: 90px; flex-shrink: 0;
+		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+	}
+	.ab-bar-track { flex: 1; height: 5px; background: rgba(255,255,255,0.07); border-radius: 99px; overflow: hidden; }
+	.ab-bar-fill   { height: 100%; border-radius: 99px; }
+	.ab-bar-val    { font-size: 11px; font-weight: 700; color: var(--text-muted); width: 34px; text-align: right; flex-shrink: 0; }
+
+	/* Limbo */
+	.ab-limbo { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+	.ab-limbo-badge {
+		background: oklch(0.65 0.20 25 / 0.2);
+		color: oklch(0.70 0.18 25);
+		border: 1px solid oklch(0.65 0.20 25 / 0.35);
+		border-radius: 99px;
+		font-size: 10px;
+		font-weight: 800;
+		padding: 1px 7px;
+	}
+	.ab-limbo-sub { font-size: 11px; color: var(--text-dim); font-style: italic; margin-top: -2px; }
+	.ab-limbo-row {
+		display: flex; align-items: center; justify-content: space-between;
+		padding: 7px 10px;
+		background: rgba(255,255,255,0.025);
+		border: 1px solid var(--glass-border);
+		border-radius: 9px;
+		gap: 8px;
+	}
+	.ab-limbo-title { font-size: 12px; font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.ab-limbo-age   { font-size: 11px; font-weight: 800; flex-shrink: 0; }
 
 	/* ── Abandoned progress bar ── */
 	.progress-wrap {

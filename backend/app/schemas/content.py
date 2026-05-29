@@ -82,14 +82,30 @@ class TypeStats(BaseModel):
     minutes: int
 
 
+class AbandonedTopItem(BaseModel):
+    id: int
+    title: str
+    content_type: str
+    progress: int
+    duration_minutes: int
+    thumbnail: str | None
+    abandoned_at: datetime | None
+
+
 class VaultStats(BaseModel):
     total_pending_minutes: int
     total_consumed_minutes: int
     pending_count: int
     consumed_count: int
     abandoned_count: int
-    by_type: dict[str, int]  # pending minutes per type
-    consumed_by_type: dict[str, TypeStats]  # consumed count + minutes per type
+    by_type: dict[str, int]                       # pending minutes per type
+    consumed_by_type: dict[str, TypeStats]        # consumed count + minutes per type
+    # Abandoned detail stats
+    abandoned_minutes: int
+    abandoned_avg_pct: int | None                 # average progress % at abandonment
+    abandoned_top_items: list[AbandonedTopItem]   # top 5 by progress %
+    abandoned_by_type_rate: dict[str, float]      # type -> abandonment rate 0-100
+    abandoned_stale_count: int                    # items abandoned > 6 months ago
 
 
 class PaginatedContents(BaseModel):

@@ -27,6 +27,7 @@ from app.schemas.content import (
     TopAuthor,
     TopItem,
     TypeRewindStats,
+    AbandonedTopItem,
     TypeStats,
     VaultStats,
 )
@@ -118,6 +119,55 @@ def vault_stats(
         else:
             consumed_by_type[key] = TypeStats(count=1, minutes=mins)
 
+    # ── Abandoned detail stats ────────────────────────────────────
+    abandoned_minutes = sum(_effective_duration(c) for c in abandoned_items)
+
+    progress_items = [c for c in abandoned_items if c.progress is not None]
+    abandoned_avg_pct = (
+        round(sum(c.progress for c in progress_items) / len(progress_items))
+        if progress_items else None
+    )
+
+    top5 = sorted(progress_items, key=lambda c: c.progress, reverse=True)[:5]
+    abandoned_top_items = [
+        AbandonedTopItem(
+            id=c.id,
+            title=c.title,
+            content_type=c.content_type.value,
+            progress=c.progress,
+            duration_minutes=_effective_duration(c),
+            thumbnail=c.thumbnail,
+            abandoned_at=c.abandoned_at,
+        )
+        for c in top5
+    ]
+
+    abandoned_count_by_type: dict[str, int] = {}
+    for c in abandoned_items:
+        key = c.content_type.value
+        abandoned_count_by_type[key] = abandoned_count_by_type.get(key, 0) + 1
+
+    consumed_count_by_type: dict[str, int] = {
+        k: v.count for k, v in consumed_by_type.items()
+    }
+    all_types = set(list(abandoned_count_by_type) + list(consumed_count_by_type))
+    abandoned_by_type_rate: dict[str, float] = {
+        t: round(
+            abandoned_count_by_type.get(t, 0)
+            / max(1, abandoned_count_by_type.get(t, 0) + consumed_count_by_type.get(t, 0))
+            * 100,
+            1,
+        )
+        for t in all_types
+        if abandoned_count_by_type.get(t, 0) > 0
+    }
+
+    six_months_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=180)
+    abandoned_stale_count = sum(
+        1 for c in abandoned_items
+        if c.abandoned_at and c.abandoned_at < six_months_ago
+    )
+
     return VaultStats(
         total_pending_minutes=total_pending,
         total_consumed_minutes=total_consumed,
@@ -126,6 +176,11 @@ def vault_stats(
         abandoned_count=len(abandoned_items),
         by_type={k: v for k, v in by_type.items() if v > 0},
         consumed_by_type=consumed_by_type,
+        abandoned_minutes=abandoned_minutes,
+        abandoned_avg_pct=abandoned_avg_pct,
+        abandoned_top_items=abandoned_top_items,
+        abandoned_by_type_rate=abandoned_by_type_rate,
+        abandoned_stale_count=abandoned_stale_count,
     )
 
 

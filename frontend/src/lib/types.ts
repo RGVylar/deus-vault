@@ -53,6 +53,16 @@ export interface TypeStats {
 	minutes: number;
 }
 
+export interface AbandonedTopItem {
+	id: number;
+	title: string;
+	content_type: string;
+	progress: number;
+	duration_minutes: number;
+	thumbnail: string | null;
+	abandoned_at: string | null;
+}
+
 export interface VaultStats {
 	total_pending_minutes: number;
 	total_consumed_minutes: number;
@@ -61,6 +71,11 @@ export interface VaultStats {
 	abandoned_count: number;
 	by_type: Record<string, number>;
 	consumed_by_type: Record<string, TypeStats>;
+	abandoned_minutes: number;
+	abandoned_avg_pct: number | null;
+	abandoned_top_items: AbandonedTopItem[];
+	abandoned_by_type_rate: Record<string, number>;
+	abandoned_stale_count: number;
 }
 
 export interface PaginatedContents {
