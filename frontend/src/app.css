@@ -526,7 +526,8 @@ input.text::placeholder, textarea.text::placeholder { color: var(--text-dim); }
 .actions {
   display: flex;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: auto;
+  padding-top: 8px;
   flex-wrap: wrap;
 }
 
@@ -1037,7 +1038,6 @@ h2 {
   .content-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
-    align-items: start;
   }
 }
 
