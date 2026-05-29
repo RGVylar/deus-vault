@@ -940,25 +940,42 @@
 
 <div class="wrapped-grid">
 
-	<!-- Búho nocturno -->
-	{#if timeProfile}
-	<div class="wcard wcard-wide glass">
+	<!-- ── FILA 1: Racha hero + Equivalencias + Comparativa ── -->
+
+	<!-- Racha hero -->
+	{#if stats.streak_max > 0}
+	<div class="wcard glass wstreak">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.82 0.18 85 / 0.8),transparent)"></div>
+		<div class="wstreak-fire">🔥</div>
+		<div class="wcard-kicker">Racha más larga del año</div>
+		<div class="wstreak-days">{stats.streak_max}</div>
+		<div class="wstreak-label">días seguidos</div>
+		{#if stats.streak_current > 0}
+			<div class="wcard-sub" style="margin-top:4px;">Racha actual: {stats.streak_current} días</div>
+		{/if}
+	</div>
+	{/if}
+
+	<!-- Equivalencias absurdas -->
+	{#if equivalences.length > 0}
+	<div class="wcard glass">
 		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.68 0.18 240 / 0.6),transparent)"></div>
-		<div class="wcard-kicker">Tu patrón de consumo</div>
-		<div class="wcard-big">{timeProfile.label}</div>
-		<div class="wcard-sub">{timeProfile.sub}</div>
-		<div class="wday-pills">
-			{#each ['L','M','X','J','V','S','D'] as d, i}
-				<div class="wday-pill" class:active={(stats?.by_day?.[i] ?? 0) >= maxDay * 0.7}>{d}</div>
+		<div class="wcard-kicker">Equivalencias absurdas</div>
+		<div class="wequiv-list">
+			{#each equivalences.slice(0, 3) as eq}
+				<div class="wequiv-row">
+					<span class="wequiv-times" style="color:oklch(0.82 0.18 85)">{eq.times}×</span>
+					<span class="wequiv-label">{eq.label}</span>
+				</div>
 			{/each}
 		</div>
 	</div>
 	{/if}
 
 	<!-- Comparativa anual -->
-	{#if (stats?.prev_year_minutes ?? 0) > 0 || (stats?.prev_year_count ?? 0) > 0}
-		{@const prevMin = stats?.prev_year_minutes ?? 0}
-		{@const currMin = stats?.total_consumed_minutes ?? 0}
+	{#if (stats?.prev_year_minutes ?? 0) > 0}
+		{@const prevMin = stats.prev_year_minutes}
+		{@const currMin = stats.total_consumed_minutes}
 		{@const maxBar = Math.max(prevMin, currMin, 1)}
 		{@const delta = prevMin > 0 ? Math.round((currMin - prevMin) / prevMin * 100) : null}
 	<div class="wcard glass">
@@ -984,30 +1001,111 @@
 	</div>
 	{/if}
 
-	<!-- Día más épico -->
-	{#if epicDay}
+	<!-- ── FILA 2: Búho nocturno + Heatmap 24h + % del año ── -->
+
+	<!-- Búho nocturno -->
+	{#if timeProfile}
 	<div class="wcard glass">
-		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.65 0.20 25 / 0.7),transparent)"></div>
-		<div class="wcard-kicker">Tu día más épico</div>
-		<div class="wcard-big" style="color:oklch(0.70 0.18 25); font-size:32px;">{formatDuration(epicDay.minutes)}</div>
-		<div class="wcard-sub">{new Date(epicDay.date + 'T12:00:00').toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long' })}</div>
-		<div class="wcard-sub" style="margin-top:4px;">{epicDay.count} ítem{epicDay.count !== 1 ? 's' : ''} ese día</div>
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.68 0.18 240 / 0.6),transparent)"></div>
+		<div class="wcard-kicker">Tu patrón de consumo</div>
+		<div class="wcard-big" style="font-size:26px; line-height:1.2">{timeProfile.label}</div>
+		<div class="wcard-sub" style="margin-top:4px">{timeProfile.sub}</div>
+		<div class="wday-pills">
+			{#each ['L','M','X','J','V','S','D'] as d, i}
+				<div class="wday-pill" class:active={(stats?.by_day?.[i] ?? 0) >= maxDay * 0.7}>{d}</div>
+			{/each}
+		</div>
 	</div>
 	{/if}
 
-	<!-- Equivalencias absurdas -->
-	{#if equivalences.length > 0}
-	<div class="wcard wcard-wide glass">
-		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.72 0.18 85 / 0.5),transparent)"></div>
-		<div class="wcard-kicker">Equivalencias absurdas</div>
-		<div class="wequiv-list">
-			{#each equivalences.slice(0, 3) as eq}
-				<div class="wequiv-row">
-					<span class="wequiv-times" style="color:oklch(0.82 0.18 85)">{eq.times}×</span>
-					<span class="wequiv-label">{eq.label}</span>
+	<!-- Heatmap 24h -->
+	{#if stats.by_hour?.length === 24}
+		{@const maxH = Math.max(1, ...stats.by_hour)}
+	<div class="wcard glass">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.68 0.18 240 / 0.5),transparent)"></div>
+		<div class="wcard-kicker">Consumo por hora del día</div>
+		<div class="whour-blocks">
+			{#each stats.by_hour as v, i}
+				{@const intensity = v / maxH}
+				{@const alpha = 0.07 + intensity * 0.85}
+				<div
+					class="whour-block"
+					style="background:oklch(0.65 0.22 290 / {alpha});{intensity > 0.7 ? 'box-shadow:0 0 5px oklch(0.65 0.22 290/0.4)' : ''}"
+					title="{i}h: {formatDuration(v)}"
+				></div>
+			{/each}
+		</div>
+		<div class="whour-labels">
+			{#each [0,6,12,18,23] as h}
+				<span style="flex:{h === 0 ? 0 : h === 23 ? 0 : h === 6 ? 6 : 6}">{h}h</span>
+			{/each}
+		</div>
+		{#if peakHour !== null}
+			<div class="wcard-sub" style="margin-top:6px;">Hora pico: <strong>{peakHour}h</strong> con {formatDuration(stats.by_hour[peakHour])}</div>
+		{/if}
+	</div>
+	{/if}
+
+	<!-- % del año -->
+	<div class="wcard glass">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.72 0.20 150 / 0.6),transparent)"></div>
+		<div class="wcard-kicker">Porcentaje del año consumiendo</div>
+		<div class="wcard-big" style="background:linear-gradient(160deg,#fff,oklch(0.72 0.20 150)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 0 20px oklch(0.72 0.20 150/0.4))">
+			{stats.percentage_of_year.toFixed(1)}%
+		</div>
+		<div class="wcard-sub" style="margin-top:6px;">De todas las horas de {year}, pasaste <strong>{minutesToDays(stats.total_consumed_minutes)}</strong> consumiendo.</div>
+		<div class="wcard-sub" style="margin-top:3px; color:var(--text-dim)">El año tiene 8.760h en total</div>
+	</div>
+
+	<!-- ── FILA 3: Diversidad + Pódium meses + Perfil ── -->
+
+	<!-- Diversidad -->
+	{#if Object.keys(stats.by_type).length > 0}
+		{@const typeTotal = Object.values(stats.by_type).reduce((a, t) => a + t.minutes, 0) || 1}
+		{@const typeSorted = Object.entries(stats.by_type).sort((a,b) => b[1].minutes - a[1].minutes)}
+	<div class="wcard glass">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,var(--primary),transparent)"></div>
+		<div class="wcard-kicker">Diversidad de contenido</div>
+		<div class="wdiv-bar">
+			{#each typeSorted as [type, ts]}
+				<div class="wdiv-seg" style="flex:{ts.minutes}; background:{TYPE_COLORS[type] ?? 'var(--primary)'}"></div>
+			{/each}
+		</div>
+		<div class="wdiv-legend">
+			{#each typeSorted as [type, ts]}
+				{@const pct = Math.round(ts.minutes / typeTotal * 100)}
+				{#if pct >= 2}
+				<div class="wdiv-row">
+					<div class="wdiv-dot" style="background:{TYPE_COLORS[type] ?? 'var(--primary)'}"></div>
+					<span class="wdiv-label">{TYPE_ICONS[type] ?? '📄'} {TYPE_LABELS[type] ?? type}</span>
+					<span class="wdiv-pct" style="color:{TYPE_COLORS[type] ?? 'var(--primary)'}">{pct}% · {formatDuration(ts.minutes)}</span>
+				</div>
+				{/if}
+			{/each}
+		</div>
+	</div>
+	{/if}
+
+	<!-- Pódium top 5 meses -->
+	{#if stats.by_month.length > 0}
+		{@const top5 = [...stats.by_month].filter(m => m.minutes > 0).sort((a,b) => b.minutes - a.minutes).slice(0, 5)}
+		{@const podMax = Math.max(1, ...top5.map(m => m.minutes))}
+	<div class="wcard glass">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.82 0.18 85 / 0.5),transparent)"></div>
+		<div class="wcard-kicker">🏅 Tus mejores meses</div>
+		<div class="wpodium">
+			{#each top5 as m, i}
+				{@const h = Math.round(m.minutes / podMax * 100)}
+				<div class="wpod-col">
+					<span class="wpod-val" style="color:{i===0 ? 'oklch(0.82 0.18 85)' : 'var(--text-muted)'}">{formatDuration(m.minutes)}</span>
+					<div class="wpod-bar" style="height:{h}%; background:{i===0 ? 'linear-gradient(180deg,oklch(0.82 0.18 85),oklch(0.6 0.15 85))' : 'rgba(255,255,255,0.12)'}; {i===0 ? 'box-shadow:0 0 14px oklch(0.82 0.18 85/0.5)' : ''}"></div>
+					<span class="wpod-lbl" style="color:{i===0 ? 'oklch(0.82 0.18 85)' : 'var(--text-dim)'}">{MONTHS_ES[m.month-1]}{i===0 ? ' 🏆' : ''}</span>
 				</div>
 			{/each}
 		</div>
+		{#if stats.best_month !== null}
+			<div class="wcard-sub" style="margin-top:4px;">{MONTHS_ES[(stats.best_month ?? 1) - 1]} fue tu mes récord</div>
+		{/if}
 	</div>
 	{/if}
 
@@ -1015,32 +1113,61 @@
 	{#if consumerProfile}
 	<div class="wcard glass">
 		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,var(--primary),transparent)"></div>
-		<div class="wcard-kicker">Tu perfil</div>
-		<div class="wcard-big" style="font-size:22px; line-height:1.3">{consumerProfile.size}</div>
-		<div class="wcard-sub" style="margin-top:6px;">
-			Media de {formatDuration(consumerProfile.avg)} por ítem ·
-			{consumerProfile.fav ? `Favorito: ${consumerProfile.fav}` : ''}
-		</div>
-		{#if bestDayLabel}
-			<div class="wcard-sub" style="margin-top:3px;">Tu mejor día: <strong>{bestDayLabel}</strong></div>
-		{/if}
+		<div class="wcard-kicker">Tu perfil de consumidor</div>
+		<div class="wcard-big" style="font-size:24px; line-height:1.2">{consumerProfile.size}<br><span style="font-size:18px; color:var(--text-muted)">{timeProfile?.label.split(' ').slice(-1)[0] ?? ''}</span></div>
+		<div class="wcard-sub" style="margin-top:8px;">Media de {formatDuration(consumerProfile.avg)} por ítem</div>
+		{#if consumerProfile.fav}<div class="wcard-sub">Favorito: {consumerProfile.fav}</div>{/if}
+		{#if bestDayLabel}<div class="wcard-sub">Mejor día: <strong>{bestDayLabel}</strong></div>{/if}
 	</div>
 	{/if}
 
-	<!-- Rating medio -->
+	<!-- ── FILA 4: Rating + Día épico ── -->
+
+	<!-- Rating medio + mejor/peor -->
 	{#if stats?.avg_rating != null}
 	<div class="wcard glass">
 		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.82 0.18 85 / 0.6),transparent)"></div>
 		<div class="wcard-kicker">Calidad media consumida</div>
-		<div style="display:flex; align-items:baseline; gap:6px; margin:6px 0;">
+		<div style="display:flex; align-items:baseline; gap:6px; margin:4px 0 10px;">
 			<span class="wcard-big" style="color:oklch(0.82 0.18 85)">{stats.avg_rating}</span>
 			<span style="font-size:16px; color:var(--text-dim)">/10</span>
 		</div>
-		<div class="wcard-sub">Media de rating en {year}</div>
+		{#if stats.best_rated_item}
+			<div class="wrating-row">
+				<span class="wrating-star" style="color:oklch(0.82 0.18 85)">★ {stats.best_rated_item.rating}</span>
+				<span class="wrating-title">{stats.best_rated_item.title}</span>
+			</div>
+		{/if}
+		{#if stats.worst_rated_item}
+			<div class="wrating-row" style="margin-top:6px;">
+				<span class="wrating-star" style="color:oklch(0.65 0.20 25)">★ {stats.worst_rated_item.rating}</span>
+				<span class="wrating-title" style="color:var(--text-dim)">{stats.worst_rated_item.title}</span>
+			</div>
+		{/if}
 	</div>
 	{/if}
 
-	<!-- Quote final -->
+	<!-- Día más épico -->
+	{#if epicDay}
+	<div class="wcard glass">
+		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.65 0.20 25 / 0.7),transparent)"></div>
+		<div class="wcard-kicker">🌋 Tu día más épico</div>
+		<div class="wcard-big" style="color:oklch(0.70 0.18 25); font-size:34px;">{formatDuration(epicDay.minutes)}</div>
+		<div class="wcard-sub">{new Date(epicDay.date + 'T12:00:00').toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long' })}</div>
+		{#if stats.epic_day_items?.length > 0}
+			<div class="wepic-list">
+				{#each stats.epic_day_items as item}
+					<div class="wepic-row">
+						<span>{TYPE_ICONS[item.content_type] ?? '📄'} {item.title}</span>
+						{#if item.duration_minutes > 0}<span class="wepic-dur">{formatDuration(item.duration_minutes)}</span>{/if}
+					</div>
+				{/each}
+			</div>
+		{/if}
+	</div>
+	{/if}
+
+	<!-- ── Quote final ── -->
 	<div class="wcard wcard-full glass wcard-quote">
 		<div class="wcard-accent" style="background:linear-gradient(90deg,transparent,var(--primary),transparent)"></div>
 		<span style="font-size:36px;">⛧</span>
@@ -1468,6 +1595,70 @@
 	@media (min-width: 600px) {
 		.share-grid { grid-template-columns: repeat(4, 1fr); }
 	}
+
+	/* ── Streak hero ── */
+	.wstreak { position: relative; overflow: hidden; }
+	.wstreak-fire {
+		position: absolute; right: 16px; bottom: -10px;
+		font-size: 90px; opacity: 0.08; pointer-events: none; line-height: 1;
+	}
+	.wstreak-days {
+		font-size: 64px; font-weight: 900; letter-spacing: -0.05em; line-height: 1;
+		background: linear-gradient(160deg, #fff 20%, oklch(0.82 0.18 85));
+		-webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+		filter: drop-shadow(0 0 20px oklch(0.82 0.18 85 / 0.4));
+	}
+	.wstreak-label { font-size: 16px; font-weight: 700; color: var(--text-muted); }
+
+	/* ── Hour heatmap ── */
+	.whour-blocks {
+		display: flex; gap: 3px; margin-top: 10px;
+	}
+	.whour-block {
+		flex: 1; aspect-ratio: 1; border-radius: 3px;
+		cursor: default; transition: opacity 0.15s;
+	}
+	.whour-block:hover { opacity: 0.7; }
+	.whour-labels {
+		display: flex; justify-content: space-between;
+		margin-top: 4px; font-size: 9px; color: var(--text-dim);
+	}
+
+	/* ── Diversity bar ── */
+	.wdiv-bar {
+		display: flex; height: 12px; border-radius: 99px; overflow: hidden;
+		gap: 1px; margin: 10px 0 8px;
+	}
+	.wdiv-seg { height: 100%; min-width: 2px; }
+	.wdiv-legend { display: flex; flex-direction: column; gap: 5px; }
+	.wdiv-row { display: flex; align-items: center; gap: 7px; }
+	.wdiv-dot { width: 8px; height: 8px; border-radius: 3px; flex-shrink: 0; }
+	.wdiv-label { flex: 1; font-size: 12px; color: var(--text-muted); }
+	.wdiv-pct { font-size: 11px; font-weight: 700; }
+
+	/* ── Month podium ── */
+	.wpodium {
+		display: flex; align-items: flex-end; gap: 5px;
+		height: 100px; margin: 10px 0 4px;
+	}
+	.wpod-col {
+		flex: 1; display: flex; flex-direction: column;
+		align-items: center; justify-content: flex-end; gap: 3px;
+	}
+	.wpod-val { font-size: 9px; font-weight: 700; text-align: center; line-height: 1.2; }
+	.wpod-bar { width: 100%; border-radius: 5px 5px 0 0; min-height: 4px; }
+	.wpod-lbl { font-size: 9px; text-align: center; }
+
+	/* ── Rating ── */
+	.wrating-row { display: flex; align-items: center; gap: 8px; }
+	.wrating-star { font-size: 12px; font-weight: 800; flex-shrink: 0; }
+	.wrating-title { font-size: 12px; color: var(--text); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+	/* ── Epic day items ── */
+	.wepic-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--glass-border); }
+	.wepic-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--text-muted); }
+	.wepic-row span:first-child { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.wepic-dur { font-weight: 700; color: var(--text-dim); flex-shrink: 0; }
 
 	/* ── Wrapped cards ── */
 	.wrapped-grid {

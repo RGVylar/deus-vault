@@ -194,3 +194,6 @@ class RewindStats(BaseModel):
     avg_rating: float | None       # average rating of consumed items this year
     prev_year_minutes: int         # total consumed minutes in year-1
     prev_year_count: int           # total consumed items in year-1
+    best_rated_item: dict | None   # {title, rating, content_type}
+    worst_rated_item: dict | None  # {title, rating, content_type}
+    epic_day_items: list[dict]     # [{title, content_type, duration_minutes}] for best day

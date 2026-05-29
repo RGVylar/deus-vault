@@ -433,6 +433,25 @@ def rewind(
     rated = [c for c in items if c.rating is not None]
     avg_rating = round(sum(c.rating for c in rated) / len(rated), 1) if rated else None
 
+    best_rated = max(rated, key=lambda c: c.rating) if rated else None
+    worst_rated = min(rated, key=lambda c: c.rating) if rated else None
+    best_rated_item  = {"title": best_rated.title,  "rating": best_rated.rating,  "content_type": best_rated.content_type.value}  if best_rated  else None
+    worst_rated_item = {"title": worst_rated.title, "rating": worst_rated.rating, "content_type": worst_rated.content_type.value} if worst_rated else None
+
+    # Items consumed on the best (most minutes) day
+    epic_day_items: list[dict] = []
+    if calendar:
+        best_day_key = max(calendar.keys(), key=lambda k: calendar[k].minutes)
+        best_day_date = datetime.strptime(best_day_key, "%Y-%m-%d").date()
+        day_items = [
+            c for c in items
+            if c.consumed_at and c.consumed_at.date() == best_day_date
+        ]
+        epic_day_items = [
+            {"title": c.title, "content_type": c.content_type.value, "duration_minutes": _effective_duration(c)}
+            for c in day_items[:4]
+        ]
+
     prev_start = datetime(year - 1, 1, 1)
     prev_end   = datetime(year,     1, 1)
     prev_items = list(db.scalars(
@@ -475,6 +494,9 @@ def rewind(
         avg_rating=avg_rating,
         prev_year_minutes=prev_year_minutes,
         prev_year_count=prev_year_count,
+        best_rated_item=best_rated_item,
+        worst_rated_item=worst_rated_item,
+        epic_day_items=epic_day_items,
     )
 
 

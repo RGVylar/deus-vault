@@ -170,4 +170,7 @@ export interface RewindStats {
 	avg_rating: number | null;
 	prev_year_minutes: number;
 	prev_year_count: number;
+	best_rated_item:  { title: string; rating: number; content_type: string } | null;
+	worst_rated_item: { title: string; rating: number; content_type: string } | null;
+	epic_day_items: { title: string; content_type: string; duration_minutes: number }[];
 }
