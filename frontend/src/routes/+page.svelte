@@ -539,7 +539,9 @@ $effect(() => {
 				trailer_url: addTrailerUrl || null,
 				genres: addGenres || null,
 				streaming_providers: addWatchProviders.length
-					? JSON.stringify(addWatchProviders.map((p: any) => p.provider_name))
+					? JSON.stringify(addWatchProviders.map((p: any) =>
+						(p.type === 'rent' || p.type === 'buy') ? '$' + p.provider_name : p.provider_name
+					))
 					: null,
 			});
 			if (addAlreadyConsumed && created?.id) {
@@ -638,7 +640,9 @@ $effect(() => {
 			if (data.genres) patch.genres = data.genres;
 			if (data.watch_providers?.length) {
 				patch.streaming_providers = JSON.stringify(
-					(data.watch_providers as Array<{provider_name: string}>).map(p => p.provider_name)
+					(data.watch_providers as Array<{provider_name: string; type?: string}>).map(p =>
+						(p.type === 'rent' || p.type === 'buy') ? '$' + p.provider_name : p.provider_name
+					)
 				);
 			}
 			await api.patch(`/contents/${c.id}`, patch);
@@ -966,9 +970,11 @@ $effect(() => {
 							{/if}
 							{#if c.streaming_providers}
 								{@const provList = (() => { try { return JSON.parse(c.streaming_providers) as string[]; } catch { return []; } })()}
-								{#each provList.slice(0, 3) as provName}
+								{#each provList.slice(0, 3) as rawName}
+									{@const isPaid = rawName.startsWith('$')}
+									{@const provName = isPaid ? rawName.slice(1) : rawName}
 									{@const key = providerNameToKey(provName)}
-									<span class="provider-badge provider-{key}">{shortProviderName(provName)}</span>
+									<span class="provider-badge provider-{key}" class:provider-paid={isPaid} title={isPaid ? 'Alquiler / compra' : 'Incluido en suscripción'}>{shortProviderName(provName)}{isPaid ? ' €' : ''}</span>
 								{/each}
 							{:else if resolveProvider(c)}
 								{@const prov = resolveProvider(c)!}
@@ -1648,6 +1654,7 @@ $effect(() => {
 	.provider-paramount  { background: #0064d2; color: #fff; }
 	.provider-stremio    { background: var(--glass-bg-weak); color: var(--text-muted); border: 1px solid var(--glass-border); }
 	.provider-other      { background: rgba(255,255,255,0.1); color: var(--text-muted); border: 1px solid var(--glass-border); }
+	.provider-paid       { opacity: 0.65; }
 
 	/* Grouped-by-type sections */
 	.type-section {

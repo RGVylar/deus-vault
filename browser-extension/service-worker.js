@@ -115,7 +115,9 @@ async function lookupAndCreate(videoId, url, meta = null) {
     trailer_url:       meta.trailer_url       || null,
     genres:            meta.genres            || null,
     streaming_providers: meta.watch_providers?.length
-      ? JSON.stringify(meta.watch_providers.map(p => p.provider_name))
+      ? JSON.stringify(meta.watch_providers.map(p =>
+          (p.type === 'rent' || p.type === 'buy') ? '$' + p.provider_name : p.provider_name
+        ))
       : null,
   });
   return content;

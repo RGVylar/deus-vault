@@ -904,23 +904,28 @@ async def _fetch_watch_providers(
     if resp.status_code != 200:
         return []
     country_data = resp.json().get("results", {}).get(country, {})
-    providers = (
-        country_data.get("flatrate")
-        or country_data.get("rent")
-        or country_data.get("buy")
-        or []
-    )
-    return [
-        {
-            "provider_name": p.get("provider_name", ""),
-            "logo_path": (
-                f"https://image.tmdb.org/t/p/w92{p['logo_path']}"
-                if p.get("logo_path")
-                else ""
-            ),
-        }
-        for p in sorted(providers, key=lambda x: x.get("display_priority", 999))
-    ]
+
+    # Collect all providers with their type; deduplicate keeping best type (flatrate > rent > buy)
+    TYPE_RANK = {"flatrate": 0, "rent": 1, "buy": 2}
+    seen: dict[str, dict] = {}
+    for category in ("flatrate", "rent", "buy"):
+        for p in country_data.get(category) or []:
+            name = p.get("provider_name", "")
+            if not name:
+                continue
+            existing = seen.get(name)
+            if existing is None or TYPE_RANK[category] < TYPE_RANK[existing["type"]]:
+                seen[name] = {
+                    "provider_name": name,
+                    "type": category,  # "flatrate" | "rent" | "buy"
+                    "logo_path": (
+                        f"https://image.tmdb.org/t/p/w92{p['logo_path']}"
+                        if p.get("logo_path") else ""
+                    ),
+                    "display_priority": p.get("display_priority", 999),
+                }
+
+    return sorted(seen.values(), key=lambda x: x["display_priority"])
 
 
 async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: str | None = None) -> dict:

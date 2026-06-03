@@ -942,10 +942,13 @@ async def backfill_tmdb_metadata(
                 continue
             details = resp.json()
 
-            # Streaming providers
+            # Streaming providers (prefix $ for rent/buy)
             providers = await _fetch_watch_providers(media_type, tmdb_id, api_key)
             if providers:
-                item.streaming_providers = _json.dumps([p["provider_name"] for p in providers])
+                item.streaming_providers = _json.dumps([
+                    ("$" + p["provider_name"]) if p.get("type") in ("rent", "buy") else p["provider_name"]
+                    for p in providers
+                ])
 
             # Trailer
             trailer = await _fetch_trailer_url(media_type, tmdb_id, api_key)
