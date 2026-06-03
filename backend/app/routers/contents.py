@@ -884,3 +884,99 @@ async def backfill_channel_thumbnails(
     db.commit()
     logger.info("backfill: done — updated=%d failed=%d total=%d", updated, failed, len(items))
     return {"updated": updated, "failed": failed, "total": len(items)}
+
+
+@router.post("/backfill-tmdb-metadata")
+async def backfill_tmdb_metadata(
+    force: bool = Query(False, description="Re-fetch even items that already have streaming_providers"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Backfill streaming_providers, trailer_url, genres and release_date for all
+    movie/series items with a TMDB source_id.
+
+    Safe to call multiple times — without ?force=true, skips items that already
+    have streaming_providers set.
+    """
+    from app.routers.lookup import _fetch_watch_providers, _fetch_trailer_url
+    from app.config import settings as cfg
+
+    api_key = cfg.tmdb_api_key
+    if not api_key:
+        return {"error": "TMDB_API_KEY not configured", "updated": 0, "skipped": 0, "failed": 0}
+
+    q = select(Content).where(
+        Content.user_id == user.id,
+        Content.content_type.in_(["movie", "series"]),
+        Content.source_id.like("tmdb:%"),
+    )
+    if not force:
+        q = q.where(Content.streaming_providers.is_(None))
+    items = list(db.scalars(q).all())
+
+    if not items:
+        return {"updated": 0, "skipped": 0, "failed": 0, "total": 0}
+
+    import json as _json
+    import httpx as _httpx
+
+    updated = 0
+    failed = 0
+
+    for item in items:
+        try:
+            parts = (item.source_id or "").split(":")
+            if len(parts) != 3:
+                failed += 1
+                continue
+            media_type = "tv" if parts[1] == "tv" else "movie"
+            tmdb_id = int(parts[2])
+
+            async with _httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}",
+                    params={"api_key": api_key, "language": "es-ES"},
+                )
+            if resp.status_code != 200:
+                failed += 1
+                continue
+            details = resp.json()
+
+            # Streaming providers
+            providers = await _fetch_watch_providers(media_type, tmdb_id, api_key)
+            if providers:
+                item.streaming_providers = _json.dumps([p["provider_name"] for p in providers])
+
+            # Trailer
+            trailer = await _fetch_trailer_url(media_type, tmdb_id, api_key)
+            if trailer:
+                item.trailer_url = trailer
+
+            # Genres
+            genre_list = details.get("genres") or []
+            if genre_list:
+                item.genres = ", ".join(g["name"] for g in genre_list if g.get("name"))
+
+            # Release date (movies) / next episode (series)
+            if media_type == "movie":
+                release_date = details.get("release_date") or ""
+                if release_date:
+                    item.next_episode_date = datetime.strptime(release_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            elif media_type == "tv":
+                next_ep = details.get("next_episode_to_air") or {}
+                air_date = next_ep.get("air_date")
+                if air_date:
+                    item.next_episode_date = datetime.strptime(air_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+
+            updated += 1
+            logger.info("tmdb-backfill: [OK] %s", item.title[:60])
+
+        except Exception as exc:
+            failed += 1
+            logger.warning("tmdb-backfill: [ERR] %s: %s", item.title[:60], exc)
+
+        await asyncio.sleep(0.25)  # ~4 req/s — well within TMDB's 40/10s limit
+
+    db.commit()
+    logger.info("tmdb-backfill: done — updated=%d failed=%d total=%d", updated, failed, len(items))
+    return {"updated": updated, "failed": failed, "total": len(items)}

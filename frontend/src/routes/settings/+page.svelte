@@ -10,6 +10,21 @@
 	let tmdbApiKey = $state('');
 	let saved = $state(false);
 	let showSpotifySecret = $state(false);
+	let backfillState = $state<'idle' | 'running' | 'done' | 'error'>('idle');
+	let backfillResult = $state<{updated: number; failed: number; total: number} | null>(null);
+
+	async function runTmdbBackfill(force = false) {
+		backfillState = 'running';
+		backfillResult = null;
+		try {
+			const { api } = await import('$lib/api');
+			const result = await api.post<any>(`/contents/backfill-tmdb-metadata${force ? '?force=true' : ''}`);
+			backfillResult = result;
+			backfillState = 'done';
+		} catch (e) {
+			backfillState = 'error';
+		}
+	}
 
 	// Appearance
 	let theme     = $state<'dark' | 'light'>('dark');
@@ -229,6 +244,43 @@
 			<button class="btn btn-danger" onclick={logout} style="padding:10px 20px;">Cerrar sesión</button>
 		</div>
 	</div>
+
+	<!-- Herramientas de mantenimiento -->
+	<details class="glass setting-group" style="margin-top:0; cursor:pointer;">
+		<summary style="font-size:13px; font-weight:700; color:var(--text-dim); letter-spacing:0.05em; list-style:none; display:flex; align-items:center; gap:6px; padding:2px 0;">
+			<span>⚙️ Mantenimiento</span>
+		</summary>
+		<div style="margin-top:14px; display:flex; flex-direction:column; gap:10px;">
+			<div style="font-size:12px; color:var(--text-muted); line-height:1.5;">
+				Actualiza plataformas, trailer, géneros y fecha de estreno para todas las películas y series con ID de TMDB.
+				Solo toca los que aún no tienen datos (sin <code>?force</code>).
+			</div>
+			<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+				<button
+					class="btn"
+					onclick={() => runTmdbBackfill(false)}
+					disabled={backfillState === 'running'}
+				>
+					{backfillState === 'running' ? '⏳ Actualizando…' : '🔄 Actualizar metadatos TMDB'}
+				</button>
+				<button
+					class="btn"
+					onclick={() => runTmdbBackfill(true)}
+					disabled={backfillState === 'running'}
+					style="opacity:0.6; font-size:11px;"
+				>Forzar todo</button>
+			</div>
+			{#if backfillState === 'done' && backfillResult}
+				<div style="font-size:12px; color:var(--green);">
+					✅ Actualizados: <strong>{backfillResult.updated}</strong> ·
+					Fallados: <strong>{backfillResult.failed}</strong> ·
+					Total: <strong>{backfillResult.total}</strong>
+				</div>
+			{:else if backfillState === 'error'}
+				<div style="font-size:12px; color:var(--red);">⚠ Error al ejecutar el backfill</div>
+			{/if}
+		</div>
+	</details>
 
 	<div class="center mt16" style="padding-bottom:8px;">
 		<a href="https://ko-fi.com/Z8Z81OW7UV" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:12px;">
