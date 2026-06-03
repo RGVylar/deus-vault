@@ -1014,7 +1014,7 @@ $effect(() => {
 								<a href="https://store.steampowered.com/app/{c.source_id}" target="_blank" rel="noopener">
 									<button class="btn">Steam</button>
 								</a>
-							{:else if effectiveProviders.length > 0}
+							{:else if effectiveProviders.length > 0 || c.content_type === 'movie' || c.content_type === 'series'}
 								<!-- Has streaming platforms: dropdown -->
 								<div class="open-picker-wrap" onclick={e => e.stopPropagation()}>
 									<button class="btn" onclick={() => openPickerCard = openPickerCard === c.id ? null : c.id}>Abrir ▾</button>
