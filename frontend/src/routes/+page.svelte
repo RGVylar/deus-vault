@@ -879,6 +879,9 @@ $effect(() => {
 		{#snippet cardTpl(c: Content)}
 			{@const link = buildConsumeUrl(c)}
 		{@const storedProviders = (() => { try { return JSON.parse(c.streaming_providers ?? '[]') as string[]; } catch { return []; } })()}
+		{@const effectiveProviders = storedProviders.length > 0
+			? storedProviders
+			: (() => { const p = resolveProvider(c); return p && p !== 'stremio' ? [PROVIDER_LABELS[p] ?? p] : []; })()}
 			{@const pct = progressPercent(c)}
 			{@const hasProgress = (c.progress ?? 0) > 0}
 			{@const remaining = remainingMinutes(c)}
@@ -994,12 +997,18 @@ $effect(() => {
 						{/if}
 
 						<div class="actions">
-							{#if storedProviders.length > 0 || link}
+							{#if c.content_type === 'game' && c.source_id}
+								<!-- Games: direct Steam link -->
+								<a href="https://store.steampowered.com/app/{c.source_id}" target="_blank" rel="noopener">
+									<button class="btn">Steam</button>
+								</a>
+							{:else if effectiveProviders.length > 0}
+								<!-- Has streaming platforms: dropdown -->
 								<div class="open-picker-wrap" onclick={e => e.stopPropagation()}>
 									<button class="btn" onclick={() => openPickerCard = openPickerCard === c.id ? null : c.id}>Abrir ▾</button>
 									{#if openPickerCard === c.id}
 										<div class="open-picker">
-											{#each storedProviders as provName}
+											{#each effectiveProviders as provName}
 												{@const key = providerNameToKey(provName)}
 												<a href={key ? providerSearchUrl(key, c.title) : `https://www.justwatch.com/es/buscar?q=${encodeURIComponent(c.title)}`} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
 													<button class="picker-opt">{provName}</button>
@@ -1017,6 +1026,7 @@ $effect(() => {
 									{/if}
 								</div>
 							{:else if link}
+								<!-- No platforms known: direct TMDB/IMDb link -->
 								<a href={link} target="_blank" rel="noopener">
 									<button class="btn">Abrir</button>
 								</a>
