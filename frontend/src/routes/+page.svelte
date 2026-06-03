@@ -891,6 +891,9 @@ $effect(() => {
 		{@const effectiveProviders = storedProviders.length > 0
 			? storedProviders
 			: (() => { const p = resolveProvider(c); return p && p !== 'stremio' ? [PROVIDER_LABELS[p] ?? p] : []; })()}
+		{@const stremioUrl = c.source_id?.match(/^tt\d+$/)
+			? `stremio://detail/${c.content_type === 'series' ? 'series' : 'movie'}/${c.source_id}`
+			: (c.url && c.url.includes('stremio') ? c.url : null)}
 			{@const pct = progressPercent(c)}
 			{@const hasProgress = (c.progress ?? 0) > 0}
 			{@const remaining = remainingMinutes(c)}
@@ -1025,6 +1028,11 @@ $effect(() => {
 													<button class="picker-opt">{provName}</button>
 												</a>
 											{/each}
+											{#if stremioUrl}
+												<a href={stremioUrl} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
+													<button class="picker-opt">Stremio</button>
+												</a>
+											{/if}
 											{#if link}
 												<a href={link} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
 													<button class="picker-opt">TMDB / IMDb</button>
