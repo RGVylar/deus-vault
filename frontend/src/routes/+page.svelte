@@ -32,6 +32,18 @@
 		return c.provider ?? AUTHOR_TO_PROVIDER[c.author ?? ''] ?? null;
 	}
 
+	function providerNameToKey(name: string): string | null {
+		const n = name.toLowerCase();
+		if (n.includes('netflix')) return 'netflix';
+		if (n.includes('prime') || n.includes('amazon')) return 'prime';
+		if (n.includes('max') || n.includes('hbo')) return 'max';
+		if (n.includes('disney')) return 'disney';
+		if (n.includes('crunchyroll')) return 'crunchyroll';
+		if (n.includes('apple')) return 'appletv';
+		if (n.includes('movistar') || n.includes('skyshow') || n.includes('filmin')) return 'justwatch';
+		return null;
+	}
+
 	function providerSearchUrl(prov: string, title: string): string {
 		const q = encodeURIComponent(title);
 		switch (prov) {
@@ -140,6 +152,8 @@
 	let duplicateChecked = $state(false);
 	let addNextEpisodeDate = $state<string | null>(null);
 	let addWatchProviders = $state<Array<{provider_name: string; logo_path: string}>>([]);
+	let addTrailerUrl = $state<string | null>(null);
+	let addGenres = $state<string | null>(null);
 
 	// Title search (TMDB dropdown when no URL)
 	type TmdbSearchResult = {
@@ -357,6 +371,8 @@ $effect(() => {
 			addWatchProviders = data.watch_providers ?? [];
 			addRating = data.rating ?? null;
 			addProvider = data.provider ?? null;
+			addTrailerUrl = data.trailer_url ?? null;
+			addGenres = data.genres ?? null;
 
 			// Duplicate check
 			duplicateItem = null;
@@ -437,6 +453,8 @@ $effect(() => {
 			if (detail.watch_providers?.length) addWatchProviders = detail.watch_providers;
 			if (detail.thumbnail && !addThumbnail) addThumbnail = detail.thumbnail;
 			if (detail.rating != null) addRating = detail.rating;
+			if (detail.trailer_url) addTrailerUrl = detail.trailer_url;
+			if (detail.genres) addGenres = detail.genres;
 		} catch { /* ignore, we already have basic info */ }
 
 		// Duplicate check
@@ -480,6 +498,11 @@ $effect(() => {
 				next_episode_date: addNextEpisodeDate || null,
 				rating: addRating ?? null,
 				provider: addProvider || null,
+				trailer_url: addTrailerUrl || null,
+				genres: addGenres || null,
+				streaming_providers: addWatchProviders.length
+					? JSON.stringify(addWatchProviders.map((p: any) => p.provider_name))
+					: null,
 			});
 			if (addAlreadyConsumed && created?.id) {
 				await api.post(`/contents/${created.id}/consume`);
@@ -508,6 +531,7 @@ $effect(() => {
 		duplicateItem = null; duplicateChecked = false;
 		addNextEpisodeDate = null; addWatchProviders = [];
 		addRating = null; addProvider = null;
+		addTrailerUrl = null; addGenres = null;
 		titleSearchResults = []; showTitleDropdown = false;
 	}
 
@@ -854,6 +878,7 @@ $effect(() => {
 	{:else}
 		{#snippet cardTpl(c: Content)}
 			{@const link = buildConsumeUrl(c)}
+		{@const storedProviders = (() => { try { return JSON.parse(c.streaming_providers ?? '[]') as string[]; } catch { return []; } })()}
 			{@const pct = progressPercent(c)}
 			{@const hasProgress = (c.progress ?? 0) > 0}
 			{@const remaining = remainingMinutes(c)}
@@ -890,7 +915,13 @@ $effect(() => {
 							{#if c.rating}
 								<span class="rating-badge">★ {c.rating.toFixed(1)}</span>
 							{/if}
-							{#if resolveProvider(c)}
+							{#if c.streaming_providers}
+								{@const provList = (() => { try { return JSON.parse(c.streaming_providers) as string[]; } catch { return []; } })()}
+								{#each provList.slice(0, 2) as provName}
+									{@const key = providerNameToKey(provName)}
+									<span class="provider-badge provider-{key ?? 'other'}">{provName}</span>
+								{/each}
+							{:else if resolveProvider(c)}
 								{@const prov = resolveProvider(c)!}
 								<span class="provider-badge provider-{prov}">{PROVIDER_LABELS[prov] ?? prov}</span>
 							{/if}
@@ -963,25 +994,22 @@ $effect(() => {
 						{/if}
 
 						<div class="actions">
-							{#if c.url}
-								<a href={c.url} target="_blank" rel="noopener">
-									<button class="btn">Abrir</button>
-								</a>
-							{:else if c.source_id && (c.content_type === 'movie' || c.content_type === 'series')}
-								<!-- Title-added content: show provider picker -->
+							{#if storedProviders.length > 0 || link}
 								<div class="open-picker-wrap" onclick={e => e.stopPropagation()}>
 									<button class="btn" onclick={() => openPickerCard = openPickerCard === c.id ? null : c.id}>Abrir ▾</button>
 									{#if openPickerCard === c.id}
 										<div class="open-picker">
-											{#if resolveProvider(c)}
-												{@const prov = resolveProvider(c)!}
-												<a href={providerSearchUrl(prov, c.title)} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
-													<button class="picker-opt">{PROVIDER_LABELS[prov] ?? prov}</button>
+											{#each storedProviders as provName}
+												{@const key = providerNameToKey(provName)}
+												<a href={key ? providerSearchUrl(key, c.title) : `https://www.justwatch.com/es/buscar?q=${encodeURIComponent(c.title)}`} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
+													<button class="picker-opt">{provName}</button>
+												</a>
+											{/each}
+											{#if link}
+												<a href={link} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
+													<button class="picker-opt">TMDB / IMDb</button>
 												</a>
 											{/if}
-											<a href={buildConsumeUrl(c) ?? '#'} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
-												<button class="picker-opt">Stremio</button>
-											</a>
 											<a href={`https://www.justwatch.com/es/buscar?q=${encodeURIComponent(c.title)}`} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
 												<button class="picker-opt">JustWatch</button>
 											</a>

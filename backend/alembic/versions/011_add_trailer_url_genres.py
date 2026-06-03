@@ -16,8 +16,10 @@ depends_on = None
 def upgrade() -> None:
     op.add_column('contents', sa.Column('trailer_url', sa.Text(), nullable=True))
     op.add_column('contents', sa.Column('genres', sa.String(500), nullable=True))
+    op.add_column('contents', sa.Column('streaming_providers', sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
     op.drop_column('contents', 'trailer_url')
     op.drop_column('contents', 'genres')
+    op.drop_column('contents', 'streaming_providers')

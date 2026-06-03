@@ -112,6 +112,11 @@ async function lookupAndCreate(videoId, url, meta = null) {
     page_count:        meta.page_count        || null,
     rating:            meta.rating            || null,
     provider:          meta.provider          || null,
+    trailer_url:       meta.trailer_url       || null,
+    genres:            meta.genres            || null,
+    streaming_providers: meta.watch_providers?.length
+      ? JSON.stringify(meta.watch_providers.map(p => p.provider_name))
+      : null,
   });
   return content;
 }

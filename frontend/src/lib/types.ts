@@ -40,6 +40,7 @@ export interface Content {
 	provider?: string | null;
 	trailer_url?: string | null;
 	genres?: string | null;
+	streaming_providers?: string | null;  // JSON: ["Netflix","Max"]
 }
 
 /** Effective duration for stats/display: series multiply by episode count */

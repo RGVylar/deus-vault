@@ -26,6 +26,7 @@ class ContentCreate(BaseModel):
     provider: str | None = None
     trailer_url: str | None = None
     genres: str | None = None
+    streaming_providers: str | None = None
 
 
 class ContentUpdate(BaseModel):
@@ -48,6 +49,7 @@ class ContentUpdate(BaseModel):
     provider: str | None = None
     trailer_url: str | None = None
     genres: str | None = None
+    streaming_providers: str | None = None  # JSON: ["Netflix","Max"]
 
 
 class ContentOut(BaseModel):
@@ -79,6 +81,7 @@ class ContentOut(BaseModel):
     provider: str | None
     trailer_url: str | None
     genres: str | None
+    streaming_providers: str | None
 
     model_config = {"from_attributes": True}
 
