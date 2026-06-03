@@ -44,6 +44,15 @@
 		return null;
 	}
 
+	/** For TMDB source_ids, return the TMDB "where to watch" page — direct links to each platform. */
+	function tmdbWatchUrl(c: Content): string | null {
+		if (!c.source_id?.startsWith('tmdb:')) return null;
+		const parts = c.source_id.split(':');
+		if (parts.length !== 3) return null;
+		const mediaType = parts[1] === 'tv' ? 'tv' : 'movie';
+		return `https://www.themoviedb.org/${mediaType}/${parts[2]}/watch`;
+	}
+
 	function providerSearchUrl(prov: string, title: string): string {
 		const q = encodeURIComponent(title);
 		switch (prov) {
@@ -1007,10 +1016,12 @@ $effect(() => {
 								<div class="open-picker-wrap" onclick={e => e.stopPropagation()}>
 									<button class="btn" onclick={() => openPickerCard = openPickerCard === c.id ? null : c.id}>Abrir ▾</button>
 									{#if openPickerCard === c.id}
+										{@const watchUrl = tmdbWatchUrl(c)}
 										<div class="open-picker">
 											{#each effectiveProviders as provName}
 												{@const key = providerNameToKey(provName)}
-												<a href={key ? providerSearchUrl(key, c.title) : `https://www.justwatch.com/es/buscar?q=${encodeURIComponent(c.title)}`} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
+												<!-- TMDB watch page links directly to the platform — one extra click but exact content -->
+												<a href={watchUrl ?? (key ? providerSearchUrl(key, c.title) : `https://www.justwatch.com/es/buscar?q=${encodeURIComponent(c.title)}`)} target="_blank" rel="noopener" onclick={() => openPickerCard = null}>
 													<button class="picker-opt">{provName}</button>
 												</a>
 											{/each}
