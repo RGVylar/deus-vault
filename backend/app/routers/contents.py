@@ -11,7 +11,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_admin_user, get_current_user
 from app.models.content import Content, ContentType
 from app.models.user import User
 from app.schemas.content import (
@@ -823,7 +823,7 @@ def list_genres(
 @router.post("/backfill-channel-thumbnails")
 async def backfill_channel_thumbnails(
     force: bool = Query(False, description="Re-fetch even items that already have a thumbnail"),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ) -> dict:
     """Re-fetch YouTube channel thumbnails for items that are missing one.
@@ -889,7 +889,7 @@ async def backfill_channel_thumbnails(
 @router.post("/backfill-tmdb-metadata")
 async def backfill_tmdb_metadata(
     force: bool = Query(False, description="Re-fetch even items that already have streaming_providers"),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ) -> dict:
     """Backfill streaming_providers, trailer_url, genres and release_date for all
