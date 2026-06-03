@@ -32,6 +32,28 @@
 		return c.provider ?? AUTHOR_TO_PROVIDER[c.author ?? ''] ?? null;
 	}
 
+	function shortProviderName(name: string): string {
+		const n = name.toLowerCase();
+		if (n.includes('netflix')) return 'Netflix';
+		if (n.includes('disney')) return 'D+';
+		if (n.includes('prime') || (n.includes('amazon') && !n.includes('mgm'))) return 'Prime';
+		if (n.includes('max') && !n.includes('starz')) return 'Max';
+		if (n.includes('movistar')) return 'M+';
+		if (n.includes('apple')) return 'Apple TV+';
+		if (n.includes('crunchyroll')) return 'Crunchyroll';
+		if (n.includes('skyshow')) return 'Sky';
+		if (n.includes('rakuten')) return 'Rakuten';
+		if (n.includes('filmin')) return 'Filmin';
+		if (n.includes('mgm')) return 'MGM+';
+		if (n.includes('starz')) return 'Starz';
+		if (n.includes('mubi')) return 'Mubi';
+		if (n.includes('paramount')) return 'Paramount+';
+		if (n.includes('google play')) return 'G Play';
+		if (n.includes('tivify')) return 'Tivify';
+		// Fallback: first word, max 8 chars
+		return name.split(' ')[0].substring(0, 8);
+	}
+
 	function providerNameToKey(name: string): string {
 		const n = name.toLowerCase();
 		if (n.includes('netflix')) return 'netflix';
@@ -944,9 +966,9 @@ $effect(() => {
 							{/if}
 							{#if c.streaming_providers}
 								{@const provList = (() => { try { return JSON.parse(c.streaming_providers) as string[]; } catch { return []; } })()}
-								{#each provList.slice(0, 2) as provName}
+								{#each provList.slice(0, 3) as provName}
 									{@const key = providerNameToKey(provName)}
-									<span class="provider-badge provider-{key ?? 'other'}">{provName}</span>
+									<span class="provider-badge provider-{key}">{shortProviderName(provName)}</span>
 								{/each}
 							{:else if resolveProvider(c)}
 								{@const prov = resolveProvider(c)!}
@@ -970,10 +992,12 @@ $effect(() => {
 									<span>📚 {c.page_count} pág</span>
 								{/if}
 								{#if c.content_type === 'movie' && c.next_episode_date}
-									{@const relDate = new Date(c.next_episode_date + 'T12:00:00')}
-									{@const released = relDate < new Date()}
-									{#if !released}
-										<span class="next-ep" title="Fecha de estreno">🎬 {relDate.toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}</span>
+									{@const relDate = new Date(/^\d{4}-\d{2}-\d{2}$/.test(c.next_episode_date) ? c.next_episode_date + 'T12:00:00' : c.next_episode_date)}
+									{#if !isNaN(relDate.getTime())}
+										{@const released = relDate < new Date()}
+										<span class="next-ep" class:aired={released} title="{released ? 'Fecha de estreno' : 'Próximo estreno'}">
+											{released ? '📅' : '🎬'} {relDate.toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}
+										</span>
 									{/if}
 								{/if}
 							{/if}
