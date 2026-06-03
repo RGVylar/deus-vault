@@ -38,6 +38,8 @@ export interface Content {
 	next_episode_date?: string | null;
 	rating?: number | null;
 	provider?: string | null;
+	trailer_url?: string | null;
+	genres?: string | null;
 }
 
 /** Effective duration for stats/display: series multiply by episode count */

@@ -756,6 +756,7 @@ def random_pick(
     content_type: ContentType | None = Query(None),
     min_duration: int | None = Query(None, ge=0, description="Min remaining minutes"),
     max_duration: int | None = Query(None, ge=0, description="Max remaining minutes"),
+    genre: str | None = Query(None, description="Filter by genre (partial match)"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Content:
@@ -769,6 +770,9 @@ def random_pick(
     if content_type is not None:
         q = q.where(Content.content_type == content_type)
     items = list(db.scalars(q).all())
+    if genre is not None:
+        genre_lower = genre.lower()
+        items = [c for c in items if c.genres and genre_lower in c.genres.lower()]
 
     if min_duration is not None or max_duration is not None:
         def fits(c: Content) -> bool:
@@ -791,6 +795,29 @@ def random_pick(
             pool.append(c)
 
     return random.choice(pool)
+
+
+@router.get("/genres", response_model=list[str])
+def list_genres(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[str]:
+    """Return all distinct genres across pending content, sorted alphabetically."""
+    items = db.scalars(
+        select(Content).where(
+            Content.user_id == user.id,
+            Content.consumed == False,  # noqa: E712
+            Content.abandoned == False,  # noqa: E712
+            Content.genres.isnot(None),
+        )
+    ).all()
+    genre_set: set[str] = set()
+    for c in items:
+        for g in (c.genres or "").split(","):
+            g = g.strip()
+            if g:
+                genre_set.add(g)
+    return sorted(genre_set)
 
 
 @router.post("/backfill-channel-thumbnails")

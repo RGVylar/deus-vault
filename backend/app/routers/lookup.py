@@ -818,13 +818,22 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
     vote_average = details.get("vote_average") or item.get("vote_average")
     rating: float | None = round(float(vote_average), 1) if vote_average else None
 
-    # Watch providers
+    # Watch providers + trailer + genres
     watch_providers: list[dict] = []
+    trailer_url: str | None = None
+    genres_str: str | None = None
     if item_id and api_key:
         try:
             watch_providers = await _fetch_watch_providers(media_type, item_id, api_key)
         except Exception:
             pass
+        try:
+            trailer_url = await _fetch_trailer_url(media_type, item_id, api_key)
+        except Exception:
+            pass
+    genre_list = details.get("genres") or []
+    if genre_list:
+        genres_str = ", ".join(g["name"] for g in genre_list if g.get("name"))
 
     return {
         "title": title,
@@ -837,7 +846,41 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
         "next_episode_date": next_episode_date,
         "watch_providers": watch_providers,
         "rating": rating,
+        "trailer_url": trailer_url,
+        "genres": genres_str,
     }
+
+
+async def _fetch_trailer_url(media_type: str, tmdb_id: int, api_key: str) -> str | None:
+    """Return the first YouTube trailer URL from TMDB videos endpoint."""
+    url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}/videos"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, params={"api_key": api_key, "language": "es-ES"})
+        videos = resp.json().get("results", []) if resp.status_code == 200 else []
+        # Try Spanish trailer first, then English
+        if not videos:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp2 = await client.get(url, params={"api_key": api_key, "language": "en-US"})
+            videos = resp2.json().get("results", []) if resp2.status_code == 200 else []
+        for v in videos:
+            if v.get("site") == "YouTube" and v.get("type") == "Trailer":
+                return f"https://www.youtube.com/watch?v={v['key']}"
+        # Fallback to any YouTube video
+        for v in videos:
+            if v.get("site") == "YouTube":
+                return f"https://www.youtube.com/watch?v={v['key']}"
+    except Exception:
+        pass
+    return None
+
+
+async def _fetch_genres(media_type: str, tmdb_id: int, api_key: str, details: dict) -> str | None:
+    """Extract genre names from TMDB details dict."""
+    genres = details.get("genres") or []
+    if genres:
+        return ", ".join(g["name"] for g in genres if g.get("name"))
+    return None
 
 
 async def _fetch_watch_providers(
@@ -964,13 +1007,22 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
     vote_average = details.get("vote_average") or best_match.get("vote_average")
     rating: float | None = round(float(vote_average), 1) if vote_average else None
 
-    # Watch providers
+    # Watch providers + trailer + genres
     watch_providers: list[dict] = []
+    trailer_url: str | None = None
+    genres_str: str | None = None
     if item_id and api_key:
         try:
             watch_providers = await _fetch_watch_providers(media_type, item_id, api_key)
         except Exception:
             pass
+        try:
+            trailer_url = await _fetch_trailer_url(media_type, item_id, api_key)
+        except Exception:
+            pass
+    genre_list = details.get("genres") or []
+    if genre_list:
+        genres_str = ", ".join(g["name"] for g in genre_list if g.get("name"))
 
     return {
         "title": title,
@@ -983,6 +1035,8 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
         "next_episode_date": next_episode_date,
         "watch_providers": watch_providers,
         "rating": rating,
+        "trailer_url": trailer_url,
+        "genres": genres_str,
     }
 
 
@@ -1278,10 +1332,17 @@ async def lookup_tmdb_detail(
     rating: float | None = round(float(vote_average), 1) if vote_average else None
 
     watch_providers: list[dict] = []
+    trailer_url: str | None = None
     try:
         watch_providers = await _fetch_watch_providers(media_type, tmdb_id, api_key, country)
     except Exception:
         pass
+    try:
+        trailer_url = await _fetch_trailer_url(media_type, tmdb_id, api_key)
+    except Exception:
+        pass
+    genre_list = details.get("genres") or []
+    genres_str: str | None = ", ".join(g["name"] for g in genre_list if g.get("name")) or None
 
     return {
         "tmdb_id": tmdb_id,
@@ -1297,6 +1358,8 @@ async def lookup_tmdb_detail(
         "source_id": f"tmdb:{media_type}:{tmdb_id}",
         "suggested_content_type": "series" if media_type == "tv" else "movie",
         "rating": rating,
+        "trailer_url": trailer_url,
+        "genres": genres_str,
     }
 
 

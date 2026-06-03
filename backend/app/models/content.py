@@ -63,5 +63,7 @@ class Content(Base):
     channel_thumbnail: Mapped[str | None] = mapped_column(Text, nullable=True)
     rating: Mapped[float | None] = mapped_column(Float(), nullable=True)
     provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    trailer_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    genres: Mapped[str | None] = mapped_column(String(500), nullable=True)  # comma-separated
 
     user: Mapped["User"] = relationship(back_populates="contents")  # noqa: F821

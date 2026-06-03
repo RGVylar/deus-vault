@@ -24,6 +24,8 @@ class ContentCreate(BaseModel):
     next_episode_date: datetime | None = None
     rating: float | None = None
     provider: str | None = None
+    trailer_url: str | None = None
+    genres: str | None = None
 
 
 class ContentUpdate(BaseModel):
@@ -44,6 +46,8 @@ class ContentUpdate(BaseModel):
     next_episode_date: datetime | None = None
     rating: float | None = None
     provider: str | None = None
+    trailer_url: str | None = None
+    genres: str | None = None
 
 
 class ContentOut(BaseModel):
@@ -73,6 +77,8 @@ class ContentOut(BaseModel):
     next_episode_date: datetime | None
     rating: float | None
     provider: str | None
+    trailer_url: str | None
+    genres: str | None
 
     model_config = {"from_attributes": True}
 

@@ -22,11 +22,14 @@
 	let showCustom = $state(false);
 	let customMin = $state('');
 	let customMax = $state('');
+	let selectedGenre = $state('');
+	let availableGenres = $state<string[]>([]);
 	let error = $state('');
 	let spinning = $state(false);
 
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
+		api.get<string[]>('/contents/genres').then(g => { availableGenres = g; }).catch(() => {});
 	});
 
 	function selectPreset(i: number) {
@@ -50,6 +53,7 @@
 				if (p.min != null) params.set('min_duration', String(p.min));
 				if (p.max != null) params.set('max_duration', String(p.max));
 			}
+			if (selectedGenre) params.set('genre', selectedGenre);
 			const qs = params.toString();
 			pick = await api.get<Content>(`/contents/random${qs ? '?' + qs : ''}`);
 		} catch (e: unknown) {
@@ -154,6 +158,18 @@
 			{/if}
 		{/if}
 
+		<!-- Genre filter -->
+		{#if availableGenres.length > 0}
+			<div class="random-sep"></div>
+			<div class="random-sub">🎭 Género</div>
+			<div style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 0 8px;">
+				<button class="tab" class:active={selectedGenre === ''} onclick={() => selectedGenre = ''}>Cualquiera</button>
+				{#each availableGenres as g}
+					<button class="tab" class:active={selectedGenre === g} onclick={() => selectedGenre = g}>{g}</button>
+				{/each}
+			</div>
+		{/if}
+
 		<!-- Desktop: large roll button -->
 		<button
 			class="btn btn-primary desk-only"
@@ -216,6 +232,11 @@
 							{#if link}
 								<a href={link} target="_blank" rel="noopener">
 									<button class="btn btn-primary">🚀 ¡Vamos!</button>
+								</a>
+							{/if}
+							{#if pick.trailer_url}
+								<a href={pick.trailer_url} target="_blank" rel="noopener">
+									<button class="btn btn-trailer">▶ Trailer</button>
 								</a>
 							{/if}
 							<button class="btn btn-consume" onclick={() => consume(pick!.id)}>✓ Hecho</button>

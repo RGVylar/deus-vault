@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration, TYPE_ICONS, TYPE_LABELS, buildConsumeUrl, isLookupCandidate } from '$lib/utils';
+	import { formatDuration, TYPE_ICONS, TYPE_LABELS, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate } from '$lib/utils';
 	import { quickAdd } from '$lib/stores/quickadd.svelte';
 	import type { Content, VaultStats, ContentType, PaginatedContents } from '$lib/types';
 
@@ -526,20 +526,41 @@ $effect(() => {
 		api.get<VaultStats>('/contents/stats').then(s => { stats = s; });
 	}
 
+	function canRefresh(c: Content): boolean {
+		if (refreshingId !== null) return false;
+		// Has a real non-Stremio URL → can use /lookup/auto
+		if (c.url && !c.url.includes('strem')) return true;
+		// Has a TMDB source_id → can use /lookup/tmdb-detail
+		if (c.source_id?.startsWith('tmdb:')) return true;
+		return false;
+	}
+
 	async function refresh(c: Content) {
-		if (!c.url || refreshingId !== null) return;
+		if (!canRefresh(c)) return;
 		refreshingId = c.id;
 		try {
-			const params = new URLSearchParams({ url: c.url });
-			try {
-				const tmdbKey = localStorage.getItem('deus_vault_tmdb_api_key');
-				const spotifyId = localStorage.getItem('deus_vault_spotify_client_id');
-				const spotifySecret = localStorage.getItem('deus_vault_spotify_client_secret');
+			const tmdbKey = localStorage.getItem('deus_vault_tmdb_api_key') ?? '';
+			let data: any;
+
+			const tmdbPath = buildTmdbRefreshUrl(c);
+			if (tmdbPath) {
+				// TMDB source_id path
+				const params = new URLSearchParams();
 				if (tmdbKey) params.set('tmdb_api_key', tmdbKey);
-				if (spotifyId) params.set('spotify_client_id', spotifyId);
-				if (spotifySecret) params.set('spotify_client_secret', spotifySecret);
-			} catch (e) {}
-			const data = await api.get<any>(`/lookup/auto?${params.toString()}`);
+				data = await api.get<any>(`${tmdbPath}&${params.toString()}`);
+			} else {
+				// URL-based path
+				const params = new URLSearchParams({ url: c.url! });
+				if (tmdbKey) params.set('tmdb_api_key', tmdbKey);
+				try {
+					const spotifyId = localStorage.getItem('deus_vault_spotify_client_id');
+					const spotifySecret = localStorage.getItem('deus_vault_spotify_client_secret');
+					if (spotifyId) params.set('spotify_client_id', spotifyId);
+					if (spotifySecret) params.set('spotify_client_secret', spotifySecret);
+				} catch (_) {}
+				data = await api.get<any>(`/lookup/auto?${params.toString()}`);
+			}
+
 			const patch: Record<string, unknown> = {};
 			if (data.title) patch.title = data.title;
 			if (data.author) patch.author = data.author;
@@ -551,6 +572,8 @@ $effect(() => {
 			if (data.next_episode_date !== undefined) patch.next_episode_date = data.next_episode_date ?? null;
 			if (data.rating != null) patch.rating = data.rating;
 			if (data.provider) patch.provider = data.provider;
+			if (data.trailer_url) patch.trailer_url = data.trailer_url;
+			if (data.genres) patch.genres = data.genres;
 			await api.patch(`/contents/${c.id}`, patch);
 			load();
 		} catch (e) { /* silent */ } finally { refreshingId = null; }
@@ -970,7 +993,12 @@ $effect(() => {
 									<button class="btn">Abrir</button>
 								</a>
 							{/if}
-							{#if c.url}
+							{#if c.trailer_url}
+								<a href={c.trailer_url} target="_blank" rel="noopener" title="Ver trailer">
+									<button class="btn btn-trailer">▶ Trailer</button>
+								</a>
+							{/if}
+							{#if canRefresh(c)}
 								<button
 									class="btn"
 									onclick={() => refresh(c)}
