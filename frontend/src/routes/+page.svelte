@@ -607,6 +607,11 @@ $effect(() => {
 			if (data.provider) patch.provider = data.provider;
 			if (data.trailer_url) patch.trailer_url = data.trailer_url;
 			if (data.genres) patch.genres = data.genres;
+			if (data.watch_providers?.length) {
+				patch.streaming_providers = JSON.stringify(
+					(data.watch_providers as Array<{provider_name: string}>).map(p => p.provider_name)
+				);
+			}
 			await api.patch(`/contents/${c.id}`, patch);
 			load();
 		} catch (e) { /* silent */ } finally { refreshingId = null; }
