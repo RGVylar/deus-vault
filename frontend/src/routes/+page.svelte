@@ -32,16 +32,23 @@
 		return c.provider ?? AUTHOR_TO_PROVIDER[c.author ?? ''] ?? null;
 	}
 
-	function providerNameToKey(name: string): string | null {
+	function providerNameToKey(name: string): string {
 		const n = name.toLowerCase();
 		if (n.includes('netflix')) return 'netflix';
-		if (n.includes('prime') || n.includes('amazon')) return 'prime';
-		if (n.includes('max') || n.includes('hbo')) return 'max';
+		if (n.includes('prime') || (n.includes('amazon') && !n.includes('mgm'))) return 'prime';
+		if (n.includes('max') && !n.includes('starz')) return 'max';
 		if (n.includes('disney')) return 'disney';
 		if (n.includes('crunchyroll')) return 'crunchyroll';
 		if (n.includes('apple')) return 'appletv';
-		if (n.includes('movistar') || n.includes('skyshow') || n.includes('filmin')) return 'justwatch';
-		return null;
+		if (n.includes('movistar')) return 'movistar';
+		if (n.includes('filmin')) return 'filmin';
+		if (n.includes('skyshow')) return 'skyshowtime';
+		if (n.includes('rakuten')) return 'rakuten';
+		if (n.includes('starz')) return 'starz';
+		if (n.includes('mgm')) return 'mgm';
+		if (n.includes('mubi')) return 'mubi';
+		if (n.includes('paramount')) return 'paramount';
+		return 'other';
 	}
 
 	/** For TMDB source_ids, return the TMDB "where to watch" page — direct links to each platform. */
@@ -962,6 +969,13 @@ $effect(() => {
 								{#if c.content_type === 'book' && c.page_count && Number(c.page_count) > 0}
 									<span>📚 {c.page_count} pág</span>
 								{/if}
+								{#if c.content_type === 'movie' && c.next_episode_date}
+									{@const relDate = new Date(c.next_episode_date + 'T12:00:00')}
+									{@const released = relDate < new Date()}
+									{#if !released}
+										<span class="next-ep" title="Fecha de estreno">🎬 {relDate.toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}</span>
+									{/if}
+								{/if}
 							{/if}
 							{#if c.author}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">{c.author}</span>{/if}
 						</div>
@@ -1594,12 +1608,22 @@ $effect(() => {
 		padding: 1px 6px;
 		opacity: 0.9;
 	}
-	.provider-netflix  { background: #e50914; color: #fff; }
-	.provider-prime    { background: #00a8e0; color: #fff; }
-	.provider-max      { background: #741aff; color: #fff; }
-	.provider-disney   { background: #113ccf; color: #fff; }
-	.provider-crunchyroll { background: #f47521; color: #fff; }
-	.provider-stremio  { background: var(--glass-bg-weak); color: var(--text-muted); border: 1px solid var(--glass-border); }
+	.provider-netflix    { background: #e50914; color: #fff; }
+	.provider-prime      { background: #00a8e0; color: #fff; }
+	.provider-max        { background: #741aff; color: #fff; }
+	.provider-disney     { background: #113ccf; color: #fff; }
+	.provider-crunchyroll{ background: #f47521; color: #fff; }
+	.provider-appletv    { background: #555; color: #fff; }
+	.provider-movistar   { background: #009900; color: #fff; }
+	.provider-filmin     { background: #c0392b; color: #fff; }
+	.provider-skyshowtime{ background: #0056b3; color: #fff; }
+	.provider-rakuten    { background: #bf0000; color: #fff; }
+	.provider-starz      { background: #1a1a2e; color: #e0c080; border: 1px solid #e0c080; }
+	.provider-mgm        { background: #1c1c1c; color: #d4af37; border: 1px solid #d4af37; }
+	.provider-mubi       { background: #001f3f; color: #7fdbff; }
+	.provider-paramount  { background: #0064d2; color: #fff; }
+	.provider-stremio    { background: var(--glass-bg-weak); color: var(--text-muted); border: 1px solid var(--glass-border); }
+	.provider-other      { background: rgba(255,255,255,0.1); color: var(--text-muted); border: 1px solid var(--glass-border); }
 
 	/* Grouped-by-type sections */
 	.type-section {

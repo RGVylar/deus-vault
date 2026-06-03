@@ -808,11 +808,15 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
     poster_path = details.get("poster_path") or item.get("poster_path")
     thumbnail = f"https://image.tmdb.org/t/p/w780{poster_path}" if poster_path else ""
 
-    # Next episode date (TV only)
+    # Next episode date (TV) or release date (upcoming movies)
     next_episode_date: str | None = None
     if media_type == "tv":
         next_ep = details.get("next_episode_to_air") or {}
         next_episode_date = next_ep.get("air_date") or None
+    elif media_type == "movie":
+        release_date = details.get("release_date") or item.get("release_date") or ""
+        if release_date:
+            next_episode_date = release_date  # used to show release date on unreleased movies
 
     # Rating
     vote_average = details.get("vote_average") or item.get("vote_average")
@@ -997,11 +1001,15 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
     poster_path = best_match.get("poster_path") or details.get("poster_path")
     thumbnail = f"https://image.tmdb.org/t/p/w780{poster_path}" if poster_path else ""
 
-    # Next episode date (TV only)
+    # Next episode date (TV) or release date (upcoming movies)
     next_episode_date: str | None = None
     if media_type == "tv":
         next_ep = details.get("next_episode_to_air") or {}
         next_episode_date = next_ep.get("air_date") or None
+    elif media_type == "movie":
+        release_date = details.get("release_date") or item.get("release_date") or ""
+        if release_date:
+            next_episode_date = release_date  # used to show release date on unreleased movies
 
     # Rating
     vote_average = details.get("vote_average") or best_match.get("vote_average")
@@ -1315,9 +1323,11 @@ async def lookup_tmdb_detail(
 
     if media_type == "movie":
         duration_minutes = int(details.get("runtime") or 0)
-        credits = details.get("credits", {})
         studios = details.get("production_companies", [])
         author = studios[0]["name"] if studios else ""
+        release_date = details.get("release_date") or ""
+        if release_date:
+            next_episode_date = release_date
     else:  # tv
         ep_runtime = details.get("episode_run_time") or []
         duration_minutes = int(ep_runtime[0]) if ep_runtime else 0
