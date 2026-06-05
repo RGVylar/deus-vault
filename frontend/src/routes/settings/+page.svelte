@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte';
+	import { api } from '$lib/api';
 	import { onMount } from 'svelte';
 
 	let readingWpm = $state(200);
@@ -17,12 +18,12 @@
 		backfillState = 'running';
 		backfillResult = null;
 		try {
-			const { api } = await import('$lib/api');
 			const result = await api.post<any>(`/contents/backfill-tmdb-metadata${force ? '?force=true' : ''}`);
 			backfillResult = result;
 			backfillState = 'done';
-		} catch (e) {
+		} catch (e: any) {
 			backfillState = 'error';
+			console.error('Backfill error:', e?.message ?? e);
 		}
 	}
 
