@@ -961,7 +961,9 @@ async def backfill_tmdb_metadata(
                 item.genres = ", ".join(g["name"] for g in genre_list if g.get("name"))
 
             # IMDb ID (for Stremio direct links)
-            imdb = details.get("imdb_id") or None
+            # Movies: included in details; Series: needs separate /external_ids call
+            from app.routers.lookup import _fetch_imdb_id as _get_imdb
+            imdb = await _get_imdb(media_type, tmdb_id, api_key, details)
             if imdb:
                 item.imdb_id = imdb
 

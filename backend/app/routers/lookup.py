@@ -852,8 +852,25 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
         "rating": rating,
         "trailer_url": trailer_url,
         "genres": genres_str,
-        "imdb_id": details.get("imdb_id") or None,
+        "imdb_id": await _fetch_imdb_id(media_type, item_id, api_key, details),
     }
+
+
+async def _fetch_imdb_id(media_type: str, tmdb_id: int, api_key: str, details: dict) -> str | None:
+    """Get IMDb ID — movies include it in details; TV shows need a separate call."""
+    if media_type == "movie":
+        return details.get("imdb_id") or None
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            resp = await client.get(
+                f"https://api.themoviedb.org/3/tv/{tmdb_id}/external_ids",
+                params={"api_key": api_key},
+            )
+        if resp.status_code == 200:
+            return resp.json().get("imdb_id") or None
+    except Exception:
+        pass
+    return None
 
 
 async def _fetch_trailer_url(media_type: str, tmdb_id: int, api_key: str) -> str | None:
@@ -1051,7 +1068,7 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
         "rating": rating,
         "trailer_url": trailer_url,
         "genres": genres_str,
-        "imdb_id": details.get("imdb_id") or None,
+        "imdb_id": await _fetch_imdb_id(media_type, item_id, api_key, details),
     }
 
 
@@ -1377,7 +1394,7 @@ async def lookup_tmdb_detail(
         "rating": rating,
         "trailer_url": trailer_url,
         "genres": genres_str,
-        "imdb_id": details.get("imdb_id") or None,
+        "imdb_id": await _fetch_imdb_id(media_type, tmdb_id, api_key, details),
     }
 
 
