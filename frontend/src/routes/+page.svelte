@@ -638,6 +638,7 @@ $effect(() => {
 			if (data.provider) patch.provider = data.provider;
 			if (data.trailer_url) patch.trailer_url = data.trailer_url;
 			if (data.genres) patch.genres = data.genres;
+			if (data.imdb_id) patch.imdb_id = data.imdb_id;
 			if (data.watch_providers?.length) {
 				patch.streaming_providers = JSON.stringify(
 					(data.watch_providers as Array<{provider_name: string; type?: string}>).map(p =>
@@ -930,8 +931,10 @@ $effect(() => {
 			? storedProviders
 			: (() => { const p = resolveProvider(c); return p && p !== 'stremio' ? [PROVIDER_LABELS[p] ?? p] : []; })()}
 		{@const stremioUrl = (() => {
-			if (c.source_id?.match(/^tt\d+$/))
-				return `stremio://detail/${c.content_type === 'series' ? 'series' : 'movie'}/${c.source_id}`;
+			const type = c.content_type === 'series' ? 'series' : 'movie';
+			// Best: IMDb ID → direct link in Stremio app
+			const imdb = c.imdb_id || (c.source_id?.match(/^tt\d+$/) ? c.source_id : null);
+			if (imdb) return `stremio://detail/${type}/${imdb}`;
 			if (c.url && c.url.includes('stremio')) return c.url;
 			if (c.content_type === 'movie' || c.content_type === 'series')
 				return `https://web.strem.io/#/search?search=${encodeURIComponent(c.title)}`;

@@ -960,6 +960,11 @@ async def backfill_tmdb_metadata(
             if genre_list:
                 item.genres = ", ".join(g["name"] for g in genre_list if g.get("name"))
 
+            # IMDb ID (for Stremio direct links)
+            imdb = details.get("imdb_id") or None
+            if imdb:
+                item.imdb_id = imdb
+
             # Release date (movies) / next episode (series)
             if media_type == "movie":
                 release_date = details.get("release_date") or ""

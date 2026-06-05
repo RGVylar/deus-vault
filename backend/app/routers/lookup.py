@@ -852,6 +852,7 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
         "rating": rating,
         "trailer_url": trailer_url,
         "genres": genres_str,
+        "imdb_id": details.get("imdb_id") or None,
     }
 
 
@@ -1050,6 +1051,7 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
         "rating": rating,
         "trailer_url": trailer_url,
         "genres": genres_str,
+        "imdb_id": details.get("imdb_id") or None,
     }
 
 
@@ -1375,6 +1377,7 @@ async def lookup_tmdb_detail(
         "rating": rating,
         "trailer_url": trailer_url,
         "genres": genres_str,
+        "imdb_id": details.get("imdb_id") or None,
     }
 
 

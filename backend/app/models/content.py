@@ -66,5 +66,6 @@ class Content(Base):
     trailer_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     genres: Mapped[str | None] = mapped_column(String(500), nullable=True)  # comma-separated
     streaming_providers: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON: ["Netflix","Max"]
+    imdb_id: Mapped[str | None] = mapped_column(String(20), nullable=True)  # tt1234567
 
     user: Mapped["User"] = relationship(back_populates="contents")  # noqa: F821
