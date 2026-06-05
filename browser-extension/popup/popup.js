@@ -141,7 +141,38 @@ async function init() {
   show(screens.main);
   screens.loading.classList.add('hidden');
 
-  await loadCurrentTabContent(auth);
+  try {
+    await loadCurrentTabContent(auth);
+  } catch (err) {
+    if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('unauthorized') || err?.message?.toLowerCase().includes('invalid')) {
+      showSessionExpired();
+    }
+  }
+}
+
+function showSessionExpired() {
+  hide(contentBlock);
+  hide(actionBar);
+  hide(actionBarPending);
+  hide(lookupBlock);
+  hide(noContentBlock);
+  show(screens.main);
+  const msg = document.createElement('div');
+  msg.style.cssText = 'padding:16px; text-align:center; color:var(--text-muted); font-size:13px; line-height:1.6;';
+  msg.innerHTML = '🔒 <strong>Sesión expirada</strong><br>El token ha caducado.<br>Inicia sesión de nuevo.';
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-primary';
+  btn.textContent = 'Iniciar sesión';
+  btn.style.cssText = 'margin-top:10px; width:100%;';
+  btn.addEventListener('click', () => {
+    chrome.storage.local.remove(['token', 'user']);
+    hide(footer);
+    showScreen('login');
+  });
+  msg.appendChild(document.createElement('br'));
+  msg.appendChild(btn);
+  screens.main.innerHTML = '';
+  screens.main.appendChild(msg);
 }
 
 async function loadCurrentTabContent(auth) {
@@ -234,16 +265,20 @@ function renderVideoBlock(state) {
       show(actionBar);
     }
   } else {
-    // Still loading status
+    // Still loading status — retry once, then show error if still nothing
     contentStatus.textContent = '⏳ Comprobando…';
     hide(contentThumbWrap);
     hide(actionBar);
     hide(actionBarPending);
-    // Retry after a moment (content script might still be fetching)
     setTimeout(async () => {
       ytState = await getYtState();
-      if (ytState) renderVideoBlock(ytState);
-    }, 1200);
+      if (ytState?.vaultStatus) {
+        renderVideoBlock(ytState);
+      } else if (ytState) {
+        // Second retry failed — show session expired regardless
+        showSessionExpired();
+      }
+    }, 1500);
   }
 }
 

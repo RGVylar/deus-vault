@@ -929,9 +929,14 @@ $effect(() => {
 		{@const effectiveProviders = storedProviders.length > 0
 			? storedProviders
 			: (() => { const p = resolveProvider(c); return p && p !== 'stremio' ? [PROVIDER_LABELS[p] ?? p] : []; })()}
-		{@const stremioUrl = c.source_id?.match(/^tt\d+$/)
-			? `stremio://detail/${c.content_type === 'series' ? 'series' : 'movie'}/${c.source_id}`
-			: (c.url && c.url.includes('stremio') ? c.url : null)}
+		{@const stremioUrl = (() => {
+			if (c.source_id?.match(/^tt\d+$/))
+				return `stremio://detail/${c.content_type === 'series' ? 'series' : 'movie'}/${c.source_id}`;
+			if (c.url && c.url.includes('stremio')) return c.url;
+			if (c.content_type === 'movie' || c.content_type === 'series')
+				return `https://web.strem.io/#/search?search=${encodeURIComponent(c.title)}`;
+			return null;
+		})()}
 			{@const pct = progressPercent(c)}
 			{@const hasProgress = (c.progress ?? 0) > 0}
 			{@const remaining = remainingMinutes(c)}

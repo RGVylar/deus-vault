@@ -44,9 +44,15 @@ async function apiFetch(method, path, body) {
 
   if (resp.status === 204) return null;
   if (!resp.ok) {
+    // Token expirado o inválido — limpiar sesión para que el popup muestre login
+    if (resp.status === 401) {
+      await chrome.storage.local.remove(['token', 'user']);
+    }
     let detail = resp.statusText;
     try { detail = (await resp.json()).detail || detail; } catch (_) {}
-    throw new Error(detail);
+    const err = new Error(detail);
+    err.status = resp.status;
+    throw err;
   }
   return resp.json();
 }
