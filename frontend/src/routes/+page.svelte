@@ -932,9 +932,9 @@ $effect(() => {
 			: (() => { const p = resolveProvider(c); return p && p !== 'stremio' ? [PROVIDER_LABELS[p] ?? p] : []; })()}
 		{@const stremioUrl = (() => {
 			const type = c.content_type === 'series' ? 'series' : 'movie';
-			// Best: IMDb ID → direct link in Stremio app
+			// Best: IMDb ID → direct link (web.strem.io works in browser and auto-opens app)
 			const imdb = c.imdb_id || (c.source_id?.match(/^tt\d+$/) ? c.source_id : null);
-			if (imdb) return `stremio://detail/${type}/${imdb}`;
+			if (imdb) return `https://web.strem.io/#/detail/${type}/${imdb}`;
 			if (c.url && c.url.includes('stremio')) return c.url;
 			if (c.content_type === 'movie' || c.content_type === 'series')
 				return `https://web.strem.io/#/search?search=${encodeURIComponent(c.title)}`;
