@@ -575,7 +575,7 @@ def list_contents(
     provider: str | None = Query(None, max_length=50),
     search: str | None = Query(None, max_length=200),
     sort: str = Query(default="recent", pattern="^(recent|duration_asc|duration_desc|title_asc|rating_desc|rating_asc)$"),
-    limit: int = Query(default=PAGE_LIMIT, ge=1, le=100),
+    limit: int = Query(default=PAGE_LIMIT, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
