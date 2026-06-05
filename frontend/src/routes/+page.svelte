@@ -274,7 +274,8 @@
 	});
 
 	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string, sort = 'recent', col: string | null = null, prov: string | null = null) {
-		let url = `/contents?consumed=${consumed}&limit=${LIMIT}&offset=${off}&sort=${sort}`;
+		const effectiveLimit = groupByType ? 500 : LIMIT;
+		let url = `/contents?consumed=${consumed}&limit=${effectiveLimit}&offset=${off}&sort=${sort}`;
 		if (type !== 'all') url += `&content_type=${type}`;
 		if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
 		if (col) url += `&collection=${encodeURIComponent(col)}`;
@@ -1171,7 +1172,7 @@ $effect(() => {
 			</div>
 		{/if}
 
-		{#if contents.length < total}
+		{#if !groupByType && contents.length < total}
 			<div class="center mt16">
 				<button class="btn btn-lg" onclick={loadMore} disabled={loadingMore}>
 					{loadingMore ? 'Cargando…' : `Cargar más (${total - contents.length} restantes)`}
