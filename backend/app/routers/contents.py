@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 
 import httpx
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")  # guaranteed visible in journalctl
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -987,10 +987,9 @@ async def _run_tmdb_backfill(user_id: int, force: bool) -> None:
 
 @router.post("/backfill-tmdb-metadata", status_code=202)
 async def backfill_tmdb_metadata(
-    background_tasks: BackgroundTasks,
     force: bool = Query(False),
     user: User = Depends(get_admin_user),
 ) -> dict:
-    """Fires TMDB metadata backfill as a background task. Returns immediately."""
-    background_tasks.add_task(_run_tmdb_backfill, user.id, force)
+    """Fires TMDB metadata backfill as an asyncio task. Returns immediately."""
+    asyncio.create_task(_run_tmdb_backfill(user.id, force))
     return {"status": "started", "message": "Backfill en curso — revisa los logs del servidor"}
