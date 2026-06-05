@@ -18,8 +18,7 @@
 		backfillState = 'running';
 		backfillResult = null;
 		try {
-			const result = await api.post<any>(`/contents/backfill-tmdb-metadata${force ? '?force=true' : ''}`);
-			backfillResult = result;
+			await api.post<any>(`/contents/backfill-tmdb-metadata${force ? '?force=true' : ''}`);
 			backfillState = 'done';
 		} catch (e: any) {
 			backfillState = 'error';
@@ -271,11 +270,9 @@
 					style="opacity:0.6; font-size:11px;"
 				>Forzar todo</button>
 			</div>
-			{#if backfillState === 'done' && backfillResult}
+			{#if backfillState === 'done'}
 				<div style="font-size:12px; color:var(--green);">
-					✅ Actualizados: <strong>{backfillResult.updated}</strong> ·
-					Fallados: <strong>{backfillResult.failed}</strong> ·
-					Total: <strong>{backfillResult.total}</strong>
+					✅ Backfill iniciado en segundo plano — tardará ~30-60s. Recarga la bóveda cuando acabe.
 				</div>
 			{:else if backfillState === 'error'}
 				<div style="font-size:12px; color:var(--red);">⚠ Error al ejecutar el backfill</div>
