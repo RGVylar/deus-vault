@@ -776,21 +776,9 @@ $effect(() => {
 	<p class="muted center">Redirigiendo…</p>
 {:else}
 
-	<!-- ── Desktop topbar (search + sort integrated) ── -->
+	<!-- ── Desktop topbar (title only) ── -->
 	<div class="desk-topbar desk-only">
 		<h1 class="desk-title">Bóveda</h1>
-		<div class="desk-search">
-			<span class="ico">🔍</span>
-			<input type="search" bind:value={searchQuery} placeholder="Buscar en la bóveda…" />
-		</div>
-		<select class="sort" bind:value={sortOrder} style="max-width:150px;">
-			<option value="recent">📅 Recientes</option>
-			<option value="duration_asc">⏱ Duración ↑</option>
-			<option value="duration_desc">⏱ Duración ↓</option>
-			<option value="title_asc">🔤 Título A–Z</option>
-			<option value="rating_desc">★ Puntuación ↓</option>
-			<option value="rating_asc">★ Puntuación ↑</option>
-		</select>
 	</div>
 
 	{#if stats}
@@ -872,15 +860,11 @@ $effect(() => {
 	</div>
 	{/if}
 
-	<!-- Search + sort (mobile only — desktop has it in topbar) -->
-	<div class="search-row mobile-only">
+	<!-- Search + sort (now shown on all screen sizes in filter zone) -->
+	<div class="search-row">
 		<div class="search">
 			<span class="ico">🔍</span>
-			<input
-				type="search"
-				bind:value={searchQuery}
-				placeholder="Buscar…"
-			/>
+			<input type="search" bind:value={searchQuery} placeholder="Buscar en la bóveda…" />
 		</div>
 		<select class="sort" bind:value={sortOrder}>
 			<option value="recent">📅 Recientes</option>

@@ -1167,6 +1167,15 @@ async def lookup_steam(url: str) -> dict:
     info = app_data["data"]
     duration_minutes = await _get_hltb_duration_minutes(info.get("name", ""))
 
+    # Rating: Metacritic score /10, or Steam review percentage converted to /10
+    rating: float | None = None
+    metacritic = info.get("metacritic") or {}
+    if metacritic.get("score"):
+        try:
+            rating = round(int(metacritic["score"]) / 10, 1)
+        except Exception:
+            pass
+
     return {
         "title": info.get("name", ""),
         "author": ", ".join(info.get("developers", [])),
@@ -1176,6 +1185,8 @@ async def lookup_steam(url: str) -> dict:
         "duration_minutes": duration_minutes,
         "suggested_content_type": "game",
         "provider": "steam",
+        "rating": rating,
+        "genres": ", ".join(g.get("description", "") for g in (info.get("genres") or [])) or None,
     }
 
 
