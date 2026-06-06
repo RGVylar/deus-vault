@@ -102,7 +102,7 @@ SELECT
     COUNT(DISTINCT user_id)                             AS usuarios,
     COUNT(*)                                            AS veces_añadido,
     COUNT(*) FILTER (WHERE consumed = true)            AS veces_consumido,
-    ROUND(AVG(rating)::numeric FILTER (WHERE rating IS NOT NULL), 2) AS rating_medio
+    ROUND(AVG(rating::numeric) FILTER (WHERE rating IS NOT NULL), 2) AS rating_medio
 FROM contents
 GROUP BY title, content_type
 HAVING COUNT(DISTINCT user_id) > 1
@@ -188,7 +188,7 @@ SELECT
     COUNT(*)                                            AS apariciones,
     COUNT(DISTINCT user_id)                             AS usuarios,
     COUNT(*) FILTER (WHERE consumed = true)            AS consumidos,
-    ROUND(AVG(rating)::numeric FILTER (WHERE rating IS NOT NULL), 2) AS rating_medio
+    ROUND(AVG(rating::numeric) FILTER (WHERE rating IS NOT NULL), 2) AS rating_medio
 FROM contents,
      UNNEST(STRING_TO_ARRAY(genres, ',')) AS genre
 WHERE genres IS NOT NULL
@@ -203,9 +203,9 @@ LIMIT 20;
 SELECT
     content_type                                        AS tipo,
     COUNT(*) FILTER (WHERE rating IS NOT NULL)         AS items_con_rating,
-    ROUND(AVG(rating)::numeric FILTER (WHERE rating IS NOT NULL), 2) AS rating_medio,
-    ROUND(MIN(rating)::numeric FILTER (WHERE rating IS NOT NULL), 2) AS rating_min,
-    ROUND(MAX(rating)::numeric FILTER (WHERE rating IS NOT NULL), 2) AS rating_max
+    ROUND(AVG(rating::numeric) FILTER (WHERE rating IS NOT NULL), 2) AS rating_medio,
+    ROUND(MIN(rating::numeric) FILTER (WHERE rating IS NOT NULL), 2) AS rating_min,
+    ROUND(MAX(rating::numeric) FILTER (WHERE rating IS NOT NULL), 2) AS rating_max
 FROM contents
 GROUP BY content_type
 ORDER BY rating_medio DESC NULLS LAST;
