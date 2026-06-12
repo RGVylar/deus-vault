@@ -39,6 +39,7 @@
 		percent:    { d: '<path d="M5 19L19 5"/><circle cx="7" cy="7" r="2.2"/><circle cx="17" cy="17" r="2.2"/>' },
 		award:      { d: '<circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5L7 21l5-2.5L17 21l-1.5-7.5"/>' },
 		ban:        { d: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>' },
+		chevron:    { d: '<path d="M6 9l6 6 6-6"/>' },
 	};
 
 	const ic = $derived(ICONS[name] ?? ICONS.list);

@@ -6,6 +6,7 @@
 	import { formatDuration, TYPE_LABELS } from '$lib/utils';
 	import type { RewindStats } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
+	import Chapter from '$lib/components/Chapter.svelte';
 	import { exportShareImage } from '$lib/rewindShare';
 
 	const MONTHS_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -177,9 +178,6 @@
 		return { label: 'Tarde libre', sub: `El ${Math.round(afternoon/total*100)}% de tu consumo es por la tarde` };
 	});
 
-	const bestDayLabel = $derived(stats?.by_day?.length ? DAYS_FULL[stats.by_day.indexOf(Math.max(...stats.by_day))] : null);
-	void bestDayLabel; // disponible por si se quiere mostrar en alguna tarjeta
-
 	const epicDay = $derived.by(() => {
 		if (!stats?.calendar) return null;
 		let best = { date: '', minutes: 0, count: 0 };
@@ -200,15 +198,6 @@
 		return REFS.map(r => ({ ...r, times: +(stats!.total_consumed_minutes / r.minutes).toFixed(1) }))
 			.filter(r => r.times >= 0.5);
 	});
-
-	const consumerProfile = $derived.by(() => {
-		if (!stats) return null;
-		const avg = stats.total_consumed_count > 0 ? stats.total_consumed_minutes / stats.total_consumed_count : 0;
-		const sizeLabel = avg > 180 ? 'Maratoniano' : avg > 60 ? 'Consumidor regular' : 'Picoteo';
-		const fav = stats.favorite_type ? (TYPE_LABELS[stats.favorite_type] ?? stats.favorite_type) : '';
-		return { size: sizeLabel, fav, avg: Math.round(avg) };
-	});
-	void consumerProfile; // disponible por si se quiere una tarjeta de perfil
 
 	// Logros (icon = nombre de Icon, no emoji)
 	type Milestone = { icon: string; tt: string; ss: string; color: string };
@@ -233,6 +222,12 @@
 			ms.push({ icon: 'book', tt: '10+ libros', ss: `Este año: ${stats.by_type['book'].count}`, color: 'var(--book)' });
 		return ms;
 	});
+
+	// Stats por tipo (para las secciones de cada tipo)
+	function typeAvg(type: string): number { const t = stats?.by_type[type]; return t && t.count > 0 ? Math.round(t.minutes / t.count) : 0; }
+	function typePct(type: string): number { const t = stats?.by_type[type]; return t && stats ? Math.round(t.minutes / stats.total_consumed_minutes * 100) : 0; }
+	// Artistas de música (campo opcional del backend; si no existe, la sub-sección se oculta)
+	const musicArtists = $derived((((stats as unknown as { top_music_artists?: { name: string; count: number; minutes: number }[] })?.top_music_artists) ?? []));
 
 	const ITEMS_PAGE = 12;
 </script>
@@ -310,8 +305,7 @@
 	{/if}
 </div>
 
-<!-- ─── TU AÑO EN EL TIEMPO ─── -->
-<div class="deep-divider"><div class="dd-line"></div><span class="dd-label"><Icon name="calendar" size={12} /> TU AÑO EN EL TIEMPO</span><div class="dd-line"></div></div>
+<Chapter id="tiempo" label="TU AÑO EN EL TIEMPO" icon="calendar">
 
 <div class="surface time-surface">
 	<!-- Por mes -->
@@ -425,10 +419,27 @@
 	{/if}
 </div>
 
-<!-- ─── YOUTUBE (zona propia) ─── -->
+</Chapter>
+
+{#if typeSorted.length > 0}
+<Chapter id="reparto" label="EN QUÉ SE TE VA EL TIEMPO" icon="layers">
+	<div class="surface type-overview">
+		<div class="div-bar">
+			{#each typeSorted as [type, s]}<div class="div-seg" style="flex:{s.minutes}; background:{TYPE_COLORS[type] ?? 'var(--primary)'}"></div>{/each}
+		</div>
+		<div class="to-legend">
+			{#each typeSorted as [type, s]}
+				<div class="to-item"><span class="to-dot" style="background:{TYPE_COLORS[type] ?? 'var(--primary)'}"></span><span class="to-ic"><Icon name={TYPE_ICON[type] ?? 'list'} size={14} /></span><span class="to-nm">{TYPE_LABELS[type] ?? type}</span><span class="to-pct">{Math.round(s.minutes / typeTotal * 100)}%</span></div>
+			{/each}
+		</div>
+	</div>
+</Chapter>
+{/if}
+
+<!-- ─── YOUTUBE ─── -->
 {#if stats.top_youtube_channels.length > 0}
 	{@const topCh = stats.top_youtube_channels[0]}
-	<div class="deep-divider"><div class="dd-line"></div><span class="dd-label"><Icon name="play" size={12} /> YOUTUBE</span><div class="dd-line"></div></div>
+	<Chapter id="youtube" label="YOUTUBE" icon="play">
 
 	<!-- Hero de creador -->
 	<div class="surface yt-hero">
@@ -524,107 +535,206 @@
 			</div>
 		</section>
 	{/if}
+	</Chapter>
 {/if}
 
-<!-- ─── RANKINGS (resto) ─── -->
-<div class="deep-divider"><div class="dd-line"></div><span class="dd-label"><Icon name="trophy" size={12} /> RANKINGS</span><div class="dd-line"></div></div>
-
-{#if stats.streaming_breakdown.length > 0}
-	<section class="rewind-section">
-		<h2><span class="hico"><Icon name="film" size={15} /></span> Plataformas de streaming</h2>
-		<div class="surface streaming-grid" style="grid-template-columns:repeat({stats.streaming_breakdown.length}, 1fr)">
-			{#each stats.streaming_breakdown as plat, i}
-				{@const pct = Math.round(plat.minutes / maxStreamingMins * 100)}
-				{@const pc = PLATFORM_COLORS[plat.name] ?? 'var(--movie)'}
-				{@const avgMin = plat.count > 0 ? Math.round(plat.minutes / plat.count) : 0}
-				<div class="plat-card" style="--pc:{pc}">
-					<div class="plat-header"><span class="plat-name">{plat.name}</span><span class="plat-rank">#{i + 1}</span></div>
-					<div class="plat-time">{formatDuration(plat.minutes)}</div>
-					<div class="plat-bar-wrap"><div class="plat-bar" style="width:{pct}%;"></div></div>
-					<div class="plat-footer"><span class="plat-count">{plat.count} título{plat.count !== 1 ? 's' : ''}</span>{#if avgMin > 0}<span class="plat-avg">~{formatDuration(avgMin)}/u</span>{/if}</div>
-				</div>
-			{/each}
-		</div>
-	</section>
-{/if}
-
-{#each [['movie','film','Películas más largas','land'],['series','tv','Series más largas','land']] as [type, ic, title, shape]}
-	{#if (stats.top_items_by_type[type]?.length ?? 0) > 0}
+<!-- ─── SECCIONES POR TIPO ─── -->
+{#if stats.by_type['series']}
+<Chapter id="series" label="SERIES" icon="tv">
+	{#if (stats.top_items_by_type['series']?.length ?? 0) > 0}
+		{@const top = stats.top_items_by_type['series'][0]}
+		<div class="tb-hook">Maratoneaste <strong>{top.title}</strong> — {formatDuration(top.minutes)} tú solo.</div>
+	{/if}
+	<div class="surface kpi-strip" style="--accent:var(--series)">
+		<div class="estat2"><div class="e-ic"><Icon name="tv" size={20} /></div><div class="e-v">{stats.by_type['series'].count}</div><div class="e-l">series</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['series'].minutes)}</div><div class="e-l">en total</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('series'))}</div><div class="e-l">media/u</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('series')}%</div><div class="e-l">de tu consumo</div></div>
+	</div>
+	{#if (stats.top_items_by_type['series']?.length ?? 0) > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name={ic} size={15} /></span> {title}</h2>
+			<h2><span class="hico"><Icon name="tv" size={15} /></span> Series más largas</h2>
 			<div class="surface podium-grid">
-				{#each (stats.top_items_by_type[type] ?? []) as item, i}
-					<div class="podium-card" style="--accent:var(--{type})">
+				{#each (stats.top_items_by_type['series'] ?? []) as item, i}
+					<div class="podium-card" style="--accent:var(--series)">
 						<div class="podium-no">{i + 1}</div>
-						{#if item.thumbnail}<img class="podium-img {shape}" src={item.thumbnail} alt="" loading="lazy" />{:else}<div class="podium-img {shape} ph"><Icon name={ic} size={20} /></div>{/if}
+						{#if item.thumbnail}<img class="podium-img land" src={item.thumbnail} alt="" loading="lazy" />{:else}<div class="podium-img land ph"><Icon name="tv" size={20} /></div>{/if}
 						<div class="podium-body"><div class="podium-title">{item.title}</div>{#if item.author}<div class="podium-sub">{item.author}</div>{/if}<div class="podium-badge">{formatDuration(item.minutes)}</div></div>
 					</div>
 				{/each}
 			</div>
 		</section>
 	{/if}
-{/each}
-
-{#if stats.top_book_authors.length > 0}
-	<section class="rewind-section">
-		<h2><span class="hico"><Icon name="book" size={15} /></span> Autores más leídos</h2>
-		<div class="surface channel-grid channel-grid-multi">
-			{#each stats.top_book_authors as author, i}
-				<div class="channel-card" style="--ch-color:var(--book)">
-					<div class="ch-rank">#{i + 1}</div>
-					<div class="ch-avatar" style="background:var(--book)">{author.name[0]?.toUpperCase() ?? '?'}</div>
-					<div class="ch-info"><div class="ch-name">{author.name}</div><div class="ch-meta">{author.count} libro{author.count !== 1 ? 's' : ''}</div></div>
-					<div class="ch-time" style="color:var(--book)">{formatDuration(author.minutes)}</div>
-				</div>
-			{/each}
-		</div>
-	</section>
+	{#if stats.streaming_breakdown.length > 0}
+		<section class="rewind-section">
+			<h2><span class="hico"><Icon name="film" size={15} /></span> Plataformas de streaming</h2>
+			<div class="surface streaming-grid" style="grid-template-columns:repeat({stats.streaming_breakdown.length}, 1fr)">
+				{#each stats.streaming_breakdown as plat, i}
+					{@const ppct = Math.round(plat.minutes / maxStreamingMins * 100)}
+					{@const pc = PLATFORM_COLORS[plat.name] ?? 'var(--movie)'}
+					{@const avgMin = plat.count > 0 ? Math.round(plat.minutes / plat.count) : 0}
+					<div class="plat-card" style="--pc:{pc}">
+						<div class="plat-header"><span class="plat-name">{plat.name}</span><span class="plat-rank">#{i + 1}</span></div>
+						<div class="plat-time">{formatDuration(plat.minutes)}</div>
+						<div class="plat-bar-wrap"><div class="plat-bar" style="width:{ppct}%;"></div></div>
+						<div class="plat-footer"><span class="plat-count">{plat.count} título{plat.count !== 1 ? 's' : ''}</span>{#if avgMin > 0}<span class="plat-avg">~{formatDuration(avgMin)}/u</span>{/if}</div>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+</Chapter>
 {/if}
 
-{#each [['book','book','Libros más largos','port'],['game','game','Juegos más largos','land']] as [type, ic, title, shape]}
-	{#if (stats.top_items_by_type[type]?.length ?? 0) > 0}
+{#if stats.by_type['game']}
+<Chapter id="game" label="JUEGOS" icon="game">
+	{#if (stats.top_items_by_type['game']?.length ?? 0) > 0}
+		{@const top = stats.top_items_by_type['game'][0]}
+		<div class="tb-hook"><strong>{top.title}</strong> se llevó {formatDuration(top.minutes)} de tu año.</div>
+	{/if}
+	<div class="surface kpi-strip" style="--accent:var(--game)">
+		<div class="estat2"><div class="e-ic"><Icon name="game" size={20} /></div><div class="e-v">{stats.by_type['game'].count}</div><div class="e-l">juegos</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['game'].minutes)}</div><div class="e-l">en total</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('game'))}</div><div class="e-l">media/u</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('game')}%</div><div class="e-l">de tu consumo</div></div>
+	</div>
+	{#if (stats.top_items_by_type['game']?.length ?? 0) > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name={ic} size={15} /></span> {title}</h2>
+			<h2><span class="hico"><Icon name="game" size={15} /></span> Juegos más largos</h2>
 			<div class="surface podium-grid">
-				{#each (stats.top_items_by_type[type] ?? []) as item, i}
-					<div class="podium-card" style="--accent:var(--{type})">
+				{#each (stats.top_items_by_type['game'] ?? []) as item, i}
+					<div class="podium-card" style="--accent:var(--game)">
 						<div class="podium-no">{i + 1}</div>
-						{#if item.thumbnail}<img class="podium-img {shape}" src={item.thumbnail} alt="" loading="lazy" />{:else}<div class="podium-img {shape} ph"><Icon name={ic} size={20} /></div>{/if}
+						{#if item.thumbnail}<img class="podium-img land" src={item.thumbnail} alt="" loading="lazy" />{:else}<div class="podium-img land ph"><Icon name="game" size={20} /></div>{/if}
 						<div class="podium-body"><div class="podium-title">{item.title}</div>{#if item.author}<div class="podium-sub">{item.author}</div>{/if}<div class="podium-badge">{formatDuration(item.minutes)}</div></div>
 					</div>
 				{/each}
 			</div>
 		</section>
 	{/if}
-{/each}
 
-<!-- Reparto por tipo -->
-{#if typeSorted.length > 0}
-	<section class="rewind-section">
-		<h2><span class="hico"><Icon name="layers" size={15} /></span> Reparto por tipo</h2>
-		<div class="div-bar">
-			{#each typeSorted as [type, s]}
-				<div class="div-seg" style="flex:{s.minutes}; background:{TYPE_COLORS[type] ?? 'var(--primary)'}"></div>
-			{/each}
-		</div>
-		<div class="surface type-grid" style="grid-template-columns:repeat({typeSorted.length}, 1fr)">
-			{#each typeSorted as [type, s]}
-				{@const pct = (s.minutes / typeTotal * 100).toFixed(0)}
-				<div class="type-card2" style="--accent:{TYPE_COLORS[type] ?? 'var(--primary)'}">
-					<div class="tc2-ic"><Icon name={TYPE_ICON[type] ?? 'list'} size={22} /></div>
-					<div class="tc2-nm">{TYPE_LABELS[type] ?? type}</div>
-					<div class="tc2-ct">{s.count} ítem{s.count !== 1 ? 's' : ''}</div>
-					<div class="tc2-tm">{formatDuration(s.minutes)}</div>
-					<div class="tc2-pc">{pct}% del tiempo</div>
-				</div>
-			{/each}
-		</div>
-	</section>
+</Chapter>
+{/if}
+
+{#if stats.by_type['movie']}
+<Chapter id="movie" label="PELÍCULAS" icon="film">
+	{#if (stats.top_items_by_type['movie']?.length ?? 0) > 0}
+		{@const top = stats.top_items_by_type['movie'][0]}
+		<div class="tb-hook">Tu sesión más larga fue <strong>{top.title}</strong> ({formatDuration(top.minutes)}).</div>
+	{/if}
+	<div class="surface kpi-strip" style="--accent:var(--movie)">
+		<div class="estat2"><div class="e-ic"><Icon name="film" size={20} /></div><div class="e-v">{stats.by_type['movie'].count}</div><div class="e-l">películas</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['movie'].minutes)}</div><div class="e-l">en total</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('movie'))}</div><div class="e-l">media/u</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('movie')}%</div><div class="e-l">de tu consumo</div></div>
+	</div>
+	{#if (stats.top_items_by_type['movie']?.length ?? 0) > 0}
+		<section class="rewind-section">
+			<h2><span class="hico"><Icon name="film" size={15} /></span> Películas más largas</h2>
+			<div class="surface podium-grid">
+				{#each (stats.top_items_by_type['movie'] ?? []) as item, i}
+					<div class="podium-card" style="--accent:var(--movie)">
+						<div class="podium-no">{i + 1}</div>
+						{#if item.thumbnail}<img class="podium-img land" src={item.thumbnail} alt="" loading="lazy" />{:else}<div class="podium-img land ph"><Icon name="film" size={20} /></div>{/if}
+						<div class="podium-body"><div class="podium-title">{item.title}</div>{#if item.author}<div class="podium-sub">{item.author}</div>{/if}<div class="podium-badge">{formatDuration(item.minutes)}</div></div>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+</Chapter>
+{/if}
+
+{#if stats.by_type['book']}
+<Chapter id="book" label="LIBROS" icon="book">
+	{#if (stats.top_items_by_type['book']?.length ?? 0) > 0}
+		{@const top = stats.top_items_by_type['book'][0]}
+		<div class="tb-hook">{#if stats.top_book_authors.length > 0}<strong>{stats.top_book_authors[0].name}</strong> fue tu autor más leído.{/if}</div>
+	{/if}
+	<div class="surface kpi-strip" style="--accent:var(--book)">
+		<div class="estat2"><div class="e-ic"><Icon name="book" size={20} /></div><div class="e-v">{stats.by_type['book'].count}</div><div class="e-l">libros</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['book'].minutes)}</div><div class="e-l">en total</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('book'))}</div><div class="e-l">media/u</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('book')}%</div><div class="e-l">de tu consumo</div></div>
+	</div>
+	{#if stats.top_book_authors.length > 0}
+		<section class="rewind-section">
+			<h2><span class="hico"><Icon name="book" size={15} /></span> Autores más leídos</h2>
+			<div class="surface channel-grid channel-grid-multi">
+				{#each stats.top_book_authors as author, i}
+					<div class="channel-card" style="--ch-color:var(--book)">
+						<div class="ch-rank">#{i + 1}</div>
+						<div class="ch-avatar" style="background:var(--book)">{author.name[0]?.toUpperCase() ?? '?'}</div>
+						<div class="ch-info"><div class="ch-name">{author.name}</div><div class="ch-meta">{author.count} libro{author.count !== 1 ? 's' : ''}</div></div>
+						<div class="ch-time" style="color:var(--book)">{formatDuration(author.minutes)}</div>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+	{#if (stats.top_items_by_type['book']?.length ?? 0) > 0}
+		<section class="rewind-section">
+			<h2><span class="hico"><Icon name="book" size={15} /></span> Libros más largos</h2>
+			<div class="surface podium-grid">
+				{#each (stats.top_items_by_type['book'] ?? []) as item, i}
+					<div class="podium-card" style="--accent:var(--book)">
+						<div class="podium-no">{i + 1}</div>
+						{#if item.thumbnail}<img class="podium-img port" src={item.thumbnail} alt="" loading="lazy" />{:else}<div class="podium-img port ph"><Icon name="book" size={20} /></div>{/if}
+						<div class="podium-body"><div class="podium-title">{item.title}</div>{#if item.author}<div class="podium-sub">{item.author}</div>{/if}<div class="podium-badge">{formatDuration(item.minutes)}</div></div>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+</Chapter>
+{/if}
+
+{#if stats.by_type['music']}
+<Chapter id="music" label="MÚSICA" icon="music">
+	{#if musicArtists.length > 0}
+		<div class="tb-hook"><strong>{musicArtists[0].name}</strong> sonó más que nadie.</div>
+	{/if}
+	<div class="surface kpi-strip" style="--accent:var(--music)">
+		<div class="estat2"><div class="e-ic"><Icon name="music" size={20} /></div><div class="e-v">{stats.by_type['music'].count}</div><div class="e-l">temas</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['music'].minutes)}</div><div class="e-l">en total</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('music'))}</div><div class="e-l">media/u</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('music')}%</div><div class="e-l">de tu consumo</div></div>
+	</div>
+	{#if musicArtists.length > 0}
+		<section class="rewind-section">
+			<h2><span class="hico"><Icon name="music" size={15} /></span> Artistas más escuchados</h2>
+			<div class="surface channel-grid channel-grid-multi">
+				{#each musicArtists as artist, i}
+					<div class="channel-card" style="--ch-color:var(--music)">
+						<div class="ch-rank">#{i + 1}</div>
+						<div class="ch-avatar" style="background:var(--music)">{artist.name[0]?.toUpperCase() ?? '?'}</div>
+						<div class="ch-info"><div class="ch-name">{artist.name}</div><div class="ch-meta">{artist.count} tema{artist.count !== 1 ? 's' : ''}</div></div>
+						<div class="ch-time" style="color:var(--music)">{formatDuration(artist.minutes)}</div>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+	{#if (stats.top_items_by_type['music']?.length ?? 0) > 0}
+		<section class="rewind-section">
+			<h2><span class="hico"><Icon name="music" size={15} /></span> Más escuchado</h2>
+			<div class="surface podium-grid">
+				{#each (stats.top_items_by_type['music'] ?? []) as item, i}
+					<div class="podium-card" style="--accent:var(--music)">
+						<div class="podium-no">{i + 1}</div>
+						{#if item.thumbnail}<img class="podium-img port" src={item.thumbnail} alt="" loading="lazy" />{:else}<div class="podium-img port ph"><Icon name="music" size={20} /></div>{/if}
+						<div class="podium-body"><div class="podium-title">{item.title}</div>{#if item.author}<div class="podium-sub">{item.author}</div>{/if}<div class="podium-badge">{formatDuration(item.minutes)}</div></div>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+</Chapter>
 {/if}
 
 <!-- ─── TU PERFIL ─── -->
-<div class="deep-divider"><div class="dd-line"></div><span class="dd-label"><Icon name="sparkles" size={12} /> TU PERFIL</span><div class="dd-line"></div></div>
-
+<Chapter id="perfil" label="TU PERFIL" icon="sparkles">
 <div class="surface profile-grid">
 	<!-- Racha -->
 	{#if stats.streak_max > 0}
@@ -715,8 +825,10 @@
 	</section>
 {/if}
 
+</Chapter>
+
 <!-- ─── COMPARTIR ─── -->
-<div class="deep-divider"><div class="dd-line"></div><span class="dd-label"><Icon name="share" size={12} /> COMPARTIR</span><div class="dd-line"></div></div>
+<Chapter id="compartir" label="COMPARTIR" icon="share">
 <section class="rewind-section">
 	<div class="share-card">
 		<div class="share-head">
@@ -734,6 +846,8 @@
 		</div>
 	</div>
 </section>
+
+</Chapter>
 
 <!-- Quote -->
 <div class="glass quote-card">
@@ -947,6 +1061,25 @@
 	/* Reparto por tipo */
 	.div-bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; gap: 1px; margin-bottom: 12px; }
 	.div-seg { height: 100%; min-width: 3px; }
+
+	/* Overview "en qué se te va el tiempo" */
+	.type-overview { padding: 18px 20px; }
+	.type-overview .div-bar { margin-bottom: 14px; }
+	.to-legend { display: flex; flex-wrap: wrap; gap: 9px 20px; }
+	.to-item { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+	.to-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+	.to-ic { color: var(--text-muted); display: inline-flex; }
+	.to-nm { color: var(--text-muted); }
+	.to-pct { font-weight: 800; color: var(--text); }
+
+	/* KPI strip por tipo */
+	.kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); }
+	.kpi-strip .e-ic { color: var(--accent); }
+	.kpi-strip .e-v { color: var(--accent); filter: brightness(1.2); }
+
+	/* Frase de gancho por tipo */
+	.tb-hook { font-size: 13px; color: var(--text-muted); margin: -2px 0 14px; line-height: 1.4; }
+	.tb-hook strong { color: var(--text); font-weight: 700; }
 	.type-grid { display: grid; }
 	.type-card2 { padding: 14px 13px 13px; border-top: 2px solid var(--accent); display: flex; flex-direction: column; gap: 2px; }
 	.type-card2:not(:first-child) { border-left: 1px solid var(--glass-border); }
@@ -1041,7 +1174,7 @@
 		.yt-runners { border-left: none; padding-left: 0; border-top: 1px solid var(--glass-border); padding-top: 14px; width: 100%; flex-direction: row; }
 	}
 	@media (max-width: 560px) {
-		.estats-row, .yt-stats, .share-grid { grid-template-columns: repeat(2, 1fr); }
+		.estats-row, .yt-stats, .kpi-strip, .share-grid { grid-template-columns: repeat(2, 1fr); }
 		.podium-grid, .streaming-grid, .type-grid, .ms-grid { grid-template-columns: 1fr !important; }
 		.podium-card:not(:first-child), .plat-card:not(:first-child), .type-card2:not(:first-child) { border-left: none; border-top: 1px solid var(--glass-border); }
 	}
