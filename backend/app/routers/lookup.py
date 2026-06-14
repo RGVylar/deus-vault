@@ -59,6 +59,51 @@ def _clean_gb_thumb(url: str) -> str:
     return url
 
 
+def _ytdlp_extract_video(url: str) -> dict:
+    """Extract YouTube video metadata using yt-dlp (synchronous, run in executor)."""
+    import yt_dlp
+
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+
+    video_id = info.get("id", "")
+
+    # Best video thumbnail — prefer hqdefault, fall back to hardcoded URL
+    thumbnails = info.get("thumbnails") or []
+    video_thumb = next(
+        (t["url"] for t in reversed(thumbnails) if "hqdefault" in t.get("url", "")),
+        f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
+    )
+
+    # Channel avatar from channel_thumbnails[], closest to 88px
+    channel_thumbs = info.get("channel_thumbnails") or []
+    channel_thumb = ""
+    if channel_thumbs:
+        best = min(channel_thumbs, key=lambda t: abs(t.get("width", 0) - 88))
+        channel_thumb = best.get("url", "")
+
+    # YouTube categories → genres field (already exists in ContentCreate)
+    categories = info.get("categories") or []
+    genres = ", ".join(categories) if categories else None
+
+    return {
+        "title": info.get("title", ""),
+        "author": info.get("uploader") or info.get("channel", ""),
+        "source_id": video_id,
+        "url": f"https://www.youtube.com/watch?v={video_id}",
+        "duration_minutes": (info.get("duration") or 0) // 60,
+        "thumbnail": video_thumb,
+        "channel_thumbnail": channel_thumb,
+        "genres": genres,
+        "suggested_content_type": "youtube",
+    }
+
+
 def _extract_channel_thumbnail(html: str) -> str:
     """Extract channel avatar URL from YouTube watch page HTML.
 
@@ -1109,14 +1154,22 @@ async def _get_hltb_duration_minutes(game_name: str) -> int:
         return 0
 
 
-@router.get("/youtube")
-async def lookup_youtube(url: str) -> dict:
-    """Use YouTube oEmbed to get title/author and parse duration from watch page."""
-    match = YOUTUBE_REGEX.search(url)
-    if not match:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid YouTube URL")
+async def _fetch_watch_html(video_id: str) -> str:
+    """Fetch the YouTube watch page HTML for channel thumbnail extraction."""
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            resp = await client.get(
+                f"https://www.youtube.com/watch?v={video_id}",
+                headers={"User-Agent": "Mozilla/5.0"},
+                follow_redirects=True,
+            )
+            return resp.text if resp.status_code == 200 else ""
+    except Exception:
+        return ""
 
-    video_id = match.group(1)
+
+async def _lookup_youtube_fallback(url: str, video_id: str) -> dict:
+    """Fallback: oEmbed + HTML scraping (used when yt-dlp fails or times out)."""
     watch_url = f"https://www.youtube.com/watch?v={video_id}"
     oembed_url = f"https://www.youtube.com/oembed?url={watch_url}&format=json"
 
@@ -1133,18 +1186,49 @@ async def lookup_youtube(url: str) -> dict:
 
     data = resp.json()
     watch_html = watch_resp.text if watch_resp.status_code == 200 else ""
-    duration_minutes = _extract_duration_minutes(watch_html)
-    channel_thumbnail = _extract_channel_thumbnail(watch_html)
-
     return {
         "title": data.get("title", ""),
         "author": data.get("author_name", ""),
         "thumbnail": f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
-        "channel_thumbnail": channel_thumbnail,
+        "channel_thumbnail": _extract_channel_thumbnail(watch_html),
         "source_id": video_id,
         "url": watch_url,
-        "duration_minutes": duration_minutes,
+        "duration_minutes": _extract_duration_minutes(watch_html),
+        "suggested_content_type": "youtube",
     }
+
+
+@router.get("/youtube")
+async def lookup_youtube(url: str) -> dict:
+    """Extract YouTube metadata via yt-dlp, with oEmbed+HTML scraping as fallback.
+
+    yt-dlp and the watch page HTML fetch run concurrently so channel thumbnail
+    extraction adds zero extra latency.
+    """
+    match = YOUTUBE_REGEX.search(url)
+    if not match:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid YouTube URL")
+
+    video_id = match.group(1)
+    loop = asyncio.get_event_loop()
+
+    yt_task = asyncio.wait_for(
+        loop.run_in_executor(None, _ytdlp_extract_video, url),
+        timeout=10.0,
+    )
+    html_task = _fetch_watch_html(video_id)
+
+    yt_result, watch_html = await asyncio.gather(yt_task, html_task, return_exceptions=True)
+
+    if isinstance(yt_result, Exception):
+        logger.warning("yt-dlp failed for %s, falling back to oEmbed+scraping", url)
+        return await _lookup_youtube_fallback(url, video_id)
+
+    # yt-dlp succeeded — supplement channel_thumbnail from concurrent HTML fetch if missing
+    if not yt_result.get("channel_thumbnail") and isinstance(watch_html, str) and watch_html:
+        yt_result["channel_thumbnail"] = _extract_channel_thumbnail(watch_html)
+
+    return yt_result
 
 
 @router.get("/steam")

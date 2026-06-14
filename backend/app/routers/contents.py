@@ -534,17 +534,16 @@ def list_providers(
     db: Session = Depends(get_db),
 ) -> list[str]:
     """Return distinct providers for the user's pending content (from provider field or known authors)."""
-    base = (
-        select(Content)
+    rows = db.execute(
+        select(Content.provider, Content.author)
         .where(Content.user_id == user.id, Content.consumed == False, Content.abandoned == False)  # noqa: E712
-    )
-    items = db.scalars(base).all()
+    ).all()
     found: set[str] = set()
-    for item in items:
-        if item.provider:
-            found.add(item.provider)
-        elif item.author and item.author in _AUTHOR_TO_PROVIDER:
-            found.add(_AUTHOR_TO_PROVIDER[item.author])
+    for provider, author in rows:
+        if provider:
+            found.add(provider)
+        elif author and author in _AUTHOR_TO_PROVIDER:
+            found.add(_AUTHOR_TO_PROVIDER[author])
     return sorted(found)
 
 
@@ -826,24 +825,14 @@ async def backfill_channel_thumbnails(
     user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Re-fetch YouTube channel thumbnails for items that are missing one.
+    """Re-fetch YouTube channel thumbnails (and genres) for items that are missing them.
 
-    Pass ?force=true to also overwrite existing (potentially wrong) thumbnails.
+    Pass ?force=true to also overwrite existing thumbnails.
     Safe to call multiple times — without force, only touches NULL rows.
     Returns counts of how many were updated vs failed.
     """
-    from app.routers.lookup import _extract_channel_thumbnail
+    from app.routers.lookup import _ytdlp_extract_video
 
-    HEADERS = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-        ),
-        "Accept-Language": "en-US,en;q=0.9",
-        "Cookie": "CONSENT=YES+cb.20210328-17-p0.en+FX+119",
-    }
-
-    # Find YouTube items to process
     q = select(Content).where(
         Content.user_id == user.id,
         Content.content_type == "youtube",
@@ -854,32 +843,36 @@ async def backfill_channel_thumbnails(
     items = list(db.scalars(q).all())
 
     if not items:
-        logger.info("backfill: no YouTube items missing channel thumbnails for user %s", user.id)
+        logger.info("backfill: no YouTube items to process for user %s", user.id)
         return {"updated": 0, "failed": 0, "total": 0}
 
-    logger.info("backfill: found %d YouTube items without channel thumbnail for user %s", len(items), user.id)
+    logger.info("backfill: found %d YouTube items for user %s", len(items), user.id)
 
+    loop = asyncio.get_event_loop()
     updated = 0
     failed = 0
 
-    async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True, timeout=15) as client:
-        for item in items:
-            watch_url = f"https://www.youtube.com/watch?v={item.source_id}"
-            try:
-                resp = await client.get(watch_url)
-                thumb = _extract_channel_thumbnail(resp.text)
-                if thumb:
-                    item.channel_thumbnail = thumb
-                    updated += 1
-                    logger.info("backfill: [OK]  %s — %s", item.source_id, item.title[:50])
-                else:
-                    failed += 1
-                    logger.warning("backfill: [MISS] %s — %s (no thumbnail in page)", item.source_id, item.title[:50])
-            except Exception as exc:
+    for item in items:
+        watch_url = f"https://www.youtube.com/watch?v={item.source_id}"
+        try:
+            info = await asyncio.wait_for(
+                loop.run_in_executor(None, _ytdlp_extract_video, watch_url),
+                timeout=15.0,
+            )
+            if info.get("channel_thumbnail"):
+                item.channel_thumbnail = info["channel_thumbnail"]
+                updated += 1
+                logger.info("backfill: [OK]  %s — %s", item.source_id, item.title[:50])
+            else:
                 failed += 1
-                logger.warning("backfill: [ERR]  %s — %s: %s", item.source_id, item.title[:50], exc)
-            # Small delay to be polite to YouTube
-            await asyncio.sleep(0.5)
+                logger.warning("backfill: [MISS] %s — %s (no channel thumbnail)", item.source_id, item.title[:50])
+            # Bonus: backfill genres if missing
+            if info.get("genres") and not item.genres:
+                item.genres = info["genres"]
+        except Exception as exc:
+            failed += 1
+            logger.warning("backfill: [ERR]  %s — %s: %s", item.source_id, item.title[:50], exc)
+        await asyncio.sleep(0.5)
 
     db.commit()
     logger.info("backfill: done — updated=%d failed=%d total=%d", updated, failed, len(items))

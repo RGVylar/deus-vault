@@ -7,6 +7,7 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -28,6 +29,18 @@ class ContentType(str, enum.Enum):
 
 class Content(Base):
     __tablename__ = "contents"
+    __table_args__ = (
+        # Pending vault: the most common query (user + not consumed + not abandoned)
+        Index("ix_contents_user_pending", "user_id", "consumed", "abandoned"),
+        # Consumed history + rewind (filter by year via consumed_at)
+        Index("ix_contents_user_consumed_at", "user_id", "consumed", "consumed_at"),
+        # Abandoned stats
+        Index("ix_contents_user_abandoned", "user_id", "abandoned"),
+        # Type filter on top of user
+        Index("ix_contents_user_type", "user_id", "content_type"),
+        # Default sort column
+        Index("ix_contents_created_at", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)

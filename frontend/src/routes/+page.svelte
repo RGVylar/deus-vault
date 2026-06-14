@@ -299,14 +299,17 @@
 		loading = true;
 		offset = 0;
 		try {
-			const [s, p] = await Promise.all([
-				api.get<VaultStats>('/contents/stats'),
-				api.get<PaginatedContents>(buildUrl(false, filter, 0, searchQuery, sortOrder, activeCollection))
+			const [[s, p]] = await Promise.all([
+				Promise.all([
+					api.get<VaultStats>('/contents/stats'),
+					api.get<PaginatedContents>(buildUrl(false, filter, 0, searchQuery, sortOrder, activeCollection))
+				] as const),
+				loadCollections(),
+				loadProviders()
 			]);
 			stats = s;
 			contents = p.items;
 			total = p.total;
-			await Promise.all([loadCollections(), loadProviders()]);
 		} finally { loading = false; }
 	}
 
