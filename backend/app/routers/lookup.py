@@ -1198,37 +1198,45 @@ async def _lookup_youtube_fallback(url: str, video_id: str) -> dict:
     }
 
 
-@router.get("/youtube")
-async def lookup_youtube(url: str) -> dict:
-    """Extract YouTube metadata via yt-dlp, with oEmbed+HTML scraping as fallback.
+async def _get_youtube_metadata(url: str, video_id: str, yt_timeout: float = 10.0) -> dict | None:
+    """Run yt-dlp + HTML fetch concurrently and return merged metadata.
 
-    yt-dlp and the watch page HTML fetch run concurrently so channel thumbnail
-    extraction adds zero extra latency.
+    Returns None if yt-dlp fails (caller should fall back to oEmbed scraping).
+    Channel thumbnail is supplemented from the concurrent HTML fetch when yt-dlp
+    doesn't include it (the common case for single-video extractions).
     """
-    match = YOUTUBE_REGEX.search(url)
-    if not match:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid YouTube URL")
-
-    video_id = match.group(1)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     yt_task = asyncio.wait_for(
         loop.run_in_executor(None, _ytdlp_extract_video, url),
-        timeout=10.0,
+        timeout=yt_timeout,
     )
     html_task = _fetch_watch_html(video_id)
 
     yt_result, watch_html = await asyncio.gather(yt_task, html_task, return_exceptions=True)
 
     if isinstance(yt_result, Exception):
-        logger.warning("yt-dlp failed for %s, falling back to oEmbed+scraping", url)
-        return await _lookup_youtube_fallback(url, video_id)
+        return None
 
-    # yt-dlp succeeded — supplement channel_thumbnail from concurrent HTML fetch if missing
     if not yt_result.get("channel_thumbnail") and isinstance(watch_html, str) and watch_html:
         yt_result["channel_thumbnail"] = _extract_channel_thumbnail(watch_html)
 
     return yt_result
+
+
+@router.get("/youtube")
+async def lookup_youtube(url: str) -> dict:
+    """Extract YouTube metadata via yt-dlp, with oEmbed+HTML scraping as fallback."""
+    match = YOUTUBE_REGEX.search(url)
+    if not match:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid YouTube URL")
+
+    video_id = match.group(1)
+    result = await _get_youtube_metadata(url, video_id)
+    if result is None:
+        logger.warning("yt-dlp failed for %s, falling back to oEmbed+scraping", url)
+        return await _lookup_youtube_fallback(url, video_id)
+    return result
 
 
 @router.get("/steam")

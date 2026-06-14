@@ -831,7 +831,7 @@ async def backfill_channel_thumbnails(
     Safe to call multiple times — without force, only touches NULL rows.
     Returns counts of how many were updated vs failed.
     """
-    from app.routers.lookup import _ytdlp_extract_video
+    from app.routers.lookup import _get_youtube_metadata
 
     q = select(Content).where(
         Content.user_id == user.id,
@@ -848,26 +848,21 @@ async def backfill_channel_thumbnails(
 
     logger.info("backfill: found %d YouTube items for user %s", len(items), user.id)
 
-    loop = asyncio.get_event_loop()
     updated = 0
     failed = 0
 
     for item in items:
         watch_url = f"https://www.youtube.com/watch?v={item.source_id}"
         try:
-            info = await asyncio.wait_for(
-                loop.run_in_executor(None, _ytdlp_extract_video, watch_url),
-                timeout=15.0,
-            )
-            if info.get("channel_thumbnail"):
+            info = await _get_youtube_metadata(watch_url, item.source_id, yt_timeout=15.0)
+            if info and info.get("channel_thumbnail"):
                 item.channel_thumbnail = info["channel_thumbnail"]
                 updated += 1
                 logger.info("backfill: [OK]  %s — %s", item.source_id, item.title[:50])
             else:
                 failed += 1
                 logger.warning("backfill: [MISS] %s — %s (no channel thumbnail)", item.source_id, item.title[:50])
-            # Bonus: backfill genres if missing
-            if info.get("genres") and not item.genres:
+            if info and info.get("genres") and not item.genres:
                 item.genres = info["genres"]
         except Exception as exc:
             failed += 1
