@@ -761,31 +761,6 @@ button { font-family: inherit; }
 @keyframes slideup { from { transform: translateY(40%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes fadein  { from { opacity: 0; } to { opacity: 1; } }
 
-/* ───────── DICE (random) ───────── */
-.roll-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  padding-top: 8px;
-}
-.dice {
-  width: 140px; height: 140px;
-  border-radius: 36px;
-  background: linear-gradient(135deg, oklch(0.82 0.18 310), oklch(0.62 0.22 260));
-  border: 1px solid oklch(0.9 0.12 300);
-  color: #fff;
-  font-size: 70px;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 20px 60px oklch(0.65 0.22 300 / 0.5), inset 0 2px 0 rgba(255,255,255,0.4);
-  cursor: pointer;
-  transition: transform 0.25s;
-  font-family: inherit;
-}
-.dice:hover { transform: rotate(-6deg) scale(1.05); }
-.dice.spin { animation: dicespin 0.8s linear infinite; }
-@keyframes dicespin { to { transform: rotate(360deg); } }
-
 /* ───────── RANDOM PICK GLOW ───────── */
 .random-pick {
   animation: glow 2.2s ease-in-out infinite;
@@ -1469,63 +1444,6 @@ h2 {
   .desk-fab { display: inline-flex; }
 }
 
-/* ─── RANDOM desktop: 2-col ─── */
-.desk-random {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-}
-.random-panel {
-  padding: 26px;
-  border-radius: 24px;
-  background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-  backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow), var(--glass-inner);
-  position: relative;
-}
-.random-panel::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 10%; right: 10%; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--glass-shine), transparent);
-  pointer-events: none;
-}
-.dice-area {
-  display: flex; flex-direction: column; align-items: center; gap: 14px;
-  padding: 20px 0 10px;
-}
-.random-sep {
-  height: 1px;
-  background: var(--glass-border);
-  margin: 16px 0;
-}
-.random-sub {
-  font-size: 11px; font-weight: 700; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px;
-}
-.random-result-area { width: 100%; }
-.random-empty {
-  padding: 48px 24px;
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 12px; text-align: center;
-  border-radius: 24px;
-  background: var(--glass-bg-weak);
-  border: 1px solid var(--glass-border);
-}
-@media (min-width: 1024px) {
-  .desk-random {
-    display: grid;
-    grid-template-columns: 360px 1fr;
-    gap: 22px;
-    align-items: start;
-  }
-  .dice-area { padding: 28px 0 14px; }
-  .dice-area .dice { width: 180px; height: 180px; border-radius: 44px; font-size: 96px; }
-}
-
 /* ─── REWIND desktop: 2-col ─── */
 .desk-rewind-grid {
   display: flex;
@@ -1684,3 +1602,206 @@ h2 {
   transition: color 0.15s;
 }
 .ext-banner-close:hover { color: var(--text); }
+
+/* ============================================================
+   AZAR — Rediseño · CSS a AÑADIR a frontend/src/app.css
+   ------------------------------------------------------------
+   Solo usa tokens ya existentes (--glass-*, --text-*, --primary,
+   --youtube/--movie/--series/--music/--book/--game, --blur,
+   --saturate, --danger). No introduce ningún token nuevo.
+
+   Reemplaza por completo la sección antigua de /random
+   (".roll-wrap", ".dice", "@keyframes dicespin", ".random-pick",
+    ".desk-random", ".random-panel", ".dice-area", ".random-sep",
+    ".random-sub", ".random-result-area", ".random-empty").
+   Mantén ".random-pick" SOLO si lo reutilizas (aquí se redefine
+   el glow vía la animación "glow" ya presente en app.css).
+   ============================================================ */
+
+.azar { display: flex; flex-direction: column; gap: 18px; }
+
+/* Título (solo visible en móvil; en desktop usa .desk-topbar) */
+.azar-head { text-align: center; }
+.azar-head h1 { font-size: 26px; margin-bottom: 2px; }
+.azar-head p { font-size: 13px; color: var(--text-muted); }
+
+/* ── Tarjeta de filtros ── */
+.azar-filters {
+  padding: 20px;
+  border-radius: 22px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+  backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-inner);
+  position: relative; overflow: hidden;
+}
+.azar-filters::before {
+  content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-shine), transparent); pointer-events: none;
+}
+.flt-label {
+  font-size: 11px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.12em; margin: 0 0 9px;
+  display: flex; align-items: center; gap: 6px;
+}
+.flt-label svg { width: 14px; height: 14px; }
+.flt-block + .flt-block { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--glass-border); }
+
+/* Fila de iconos de tipo */
+.type-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.type-btn {
+  appearance: none; cursor: pointer; font-family: inherit;
+  width: 46px; height: 46px; border-radius: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--glass-bg-weak); border: 1px solid var(--glass-border);
+  color: var(--text-muted); transition: all 0.18s ease; position: relative;
+  -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+}
+.type-btn svg { width: 21px; height: 21px; }
+.type-btn.all { width: auto; padding: 0 16px; font-size: 13px; font-weight: 700; }
+.type-btn:hover { color: var(--text); background: var(--glass-bg); }
+.type-btn.active {
+  color: var(--tc, var(--primary));
+  border-color: color-mix(in oklab, var(--tc, var(--primary)) 55%, transparent);
+  background: color-mix(in oklab, var(--tc, var(--primary)) 16%, var(--glass-bg-strong));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--tc, var(--primary)) 35%, transparent),
+              0 6px 18px color-mix(in oklab, var(--tc, var(--primary)) 30%, transparent);
+}
+.type-btn.all.active { color: var(--text); --tc: var(--primary); }
+
+/* Chips de tiempo + select de género */
+.chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.azar select.text { max-width: 100%; }
+.custom-range { margin-top: 12px; display: none; }
+.custom-range.show { display: block; }
+.custom-range .row { gap: 12px; }
+
+/* ── Escenario (stage) ── */
+.azar-stage {
+  position: relative; width: 100%;
+  border-radius: 26px; padding: clamp(22px, 4vw, 36px);
+  min-height: 460px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+  backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-inner);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; overflow: hidden;
+}
+.azar-stage::before {
+  content: ''; position: absolute; top: 0; left: 8%; right: 8%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-shine), transparent); pointer-events: none; z-index: 2;
+}
+.azar-stage.has-result { justify-content: flex-start; }
+
+/* Dado + hint. En estado resultado se convierte en una "píldora" arriba */
+.dice-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; transition: gap 0.4s ease; }
+.azar-stage.has-result .dice-wrap {
+  flex-direction: row; gap: 12px; align-self: center;
+  padding: 4px 14px 4px 4px; border-radius: 999px;
+  background: var(--glass-bg-weak); border: 1px solid var(--glass-border);
+  cursor: pointer;
+}
+.azar-stage.has-result .dice-wrap:hover { background: var(--glass-bg); }
+
+/* ── DADO 3D glass ──
+   El encogido se hace con transform:scale (NO transicionando --d:
+   un custom-property registrado con @property + transition + !important
+   tiene un bug de cascada en Chromium y el override no se aplica). */
+.dice3d {
+  --d: 132px; width: var(--d); height: var(--d);
+  perspective: 900px; flex-shrink: 0; position: relative;
+  transform-origin: top left;
+  transition: transform 0.45s cubic-bezier(0.3,0.85,0.3,1), width 0.45s ease, height 0.45s ease;
+}
+.azar-stage:not(.has-result) .dice3d { animation: dicefloat 4.5s ease-in-out infinite; }
+.azar-stage.has-result .dice3d { width: 46px; height: 46px; transform: scale(0.355); }
+.dice-wrap::after {
+  content: ''; position: absolute; z-index: -1;
+  width: 60%; height: 18px; left: 20%; bottom: -2px;
+  background: radial-gradient(ellipse, oklch(0.65 0.22 300 / 0.55), transparent 70%);
+  filter: blur(8px);
+}
+.azar-stage.has-result .dice-wrap::after { display: none; }
+
+.cube {
+  width: 100%; height: 100%; position: relative; transform-style: preserve-3d;
+  transform: rotateX(-22deg) rotateY(-28deg);
+  transition: transform 0.85s cubic-bezier(0.18,0.9,0.25,1);
+}
+.face {
+  position: absolute; inset: 0; width: var(--d); height: var(--d);
+  border-radius: calc(var(--d) * 0.18);
+  background: linear-gradient(140deg, oklch(0.84 0.10 305 / 0.62), oklch(0.55 0.17 290 / 0.62));
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  border: 1px solid oklch(0.92 0.08 300 / 0.55);
+  box-shadow: inset 0 2px 5px rgba(255,255,255,0.45), inset 0 calc(var(--d) * -0.07) calc(var(--d) * 0.18) rgba(0,0,0,0.4);
+  display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
+  padding: calc(var(--d) * 0.13);
+}
+.face > span { display: flex; align-items: center; justify-content: center; }
+.pip {
+  width: calc(var(--d) * 0.135); height: calc(var(--d) * 0.135); border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, oklch(0.86 0.04 300));
+  box-shadow: 0 1px 2px rgba(0,0,0,0.45), 0 0 6px rgba(255,255,255,0.5);
+}
+.dice-hint { font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+.azar-stage.has-result .dice-hint { font-size: 12px; font-weight: 600; color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
+.azar-stage.has-result .dice-hint svg { width: 14px; height: 14px; }
+
+@keyframes dicefloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+
+/* ── Slot de resultado ── */
+.result-slot { width: 100%; }
+.result-kicker {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-muted); text-align: center; margin-bottom: 10px;
+}
+/* IMPORTANTE: la animación de reveal NO toca opacity (solo transform),
+   para que la carta nunca quede invisible si la animación no llega a correr. */
+.result-inner { opacity: 1; }
+.result-inner.reveal { animation: revealCard 0.4s cubic-bezier(0.2,0.9,0.25,1); }
+.result-inner.ghost .c-card { opacity: 0.5; filter: blur(1.6px); transform: scale(0.985); }
+@keyframes revealCard {
+  0%   { transform: scale(0.93) translateY(10px); }
+  100% { transform: scale(1) translateY(0); }
+}
+.c-card .meta svg { width: 13px; height: 13px; vertical-align: -2px; }
+.c-card .ph svg { width: 40px; height: 40px; opacity: 0.5; }
+.retry { font-size: 13px; margin-top: 14px; }
+.linkbtn {
+  all: unset; cursor: pointer; color: var(--primary); font-weight: 700;
+  border-bottom: 1px solid color-mix(in oklab, var(--primary) 40%, transparent);
+}
+.btn svg { width: 14px; height: 14px; }
+.stage-error {
+  padding: 14px 18px; border-radius: 16px; text-align: center;
+  background: color-mix(in oklab, var(--danger) 12%, var(--glass-bg-weak));
+  border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
+}
+
+/* ── Desktop: split 340px / 1fr ── */
+@media (min-width: 1024px) {
+  .azar { display: grid; grid-template-columns: 340px 1fr; gap: 22px; align-items: start; }
+  .azar-head { display: none; }
+  .dice3d { --d: 156px; }
+  .azar-stage { min-height: 520px; }
+}
+
+/* ── Móvil: filtros planos, orden título → dado → filtros ── */
+@media (max-width: 1023px) {
+  .azar-filters {
+    background: transparent !important; border: none !important;
+    box-shadow: none !important; padding: 0 !important;
+  }
+  .azar-filters::before { display: none; }
+  .azar-stage { min-height: 360px; padding: 24px 18px; }
+  .dice3d { --d: 128px; }
+  .azar-head   { order: 0; }
+  .azar-stage  { order: 1; }
+  .azar-filters{ order: 2; }
+  .azar-filters .flt-block:first-of-type { padding-top: 0; border-top: none; }
+}
+
