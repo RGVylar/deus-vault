@@ -65,8 +65,8 @@ const apiPost = (path, body)  => apiFetch('POST', path, body ?? null);
 // ================================================================
 
 const BADGE_STATES = {
-  none:     { text: '+',  color: '#f59e0b' },
-  pending:  { text: '·',  color: '#7c6fe0' },
+  none:     { text: '?',  color: '#f59e0b' },
+  pending:  { text: '⏱',  color: '#7c6fe0' },
   consumed: { text: '✓',  color: '#22c55e' },
   error:    { text: '!',  color: '#ef4444' },
   clear:    { text: '',   color: '#888888' },
