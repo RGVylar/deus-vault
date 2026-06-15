@@ -1670,9 +1670,37 @@ h2 {
 }
 .type-btn.all.active { color: var(--text); --tc: var(--primary); }
 
-/* Chips de tiempo + select de género */
+/* Indicador de selección (punto del color del tipo) en multi-selección */
+.type-btn.active::after {
+  content: ''; position: absolute; top: -4px; right: -4px;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--tc, var(--primary)); border: 2px solid var(--bg-base);
+  box-shadow: 0 0 6px var(--tc, var(--primary));
+}
+.type-btn.all.active::after { display: none; }
+
+/* Contador en vivo de coincidencias */
+.flt-count {
+  font-size: 12px; color: var(--text-muted); margin-top: 16px;
+  display: flex; align-items: center; gap: 6px;
+}
+.flt-count svg { width: 14px; height: 14px; }
+.flt-count b { color: var(--text); font-weight: 800; }
+
+/* Chips de tiempo / género (multi-selección los de género) */
+/* app.css usa `transition: all` en .tab; limitar a propiedades concretas
+   evita que el background se quede pegado entre vars en algunos motores. */
+.azar .tab, .azar .type-btn {
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+/* Chip activo claramente teñido de primario */
+.chip-row .tab.active {
+  background: color-mix(in oklab, var(--primary) 22%, var(--glass-bg-strong));
+  color: var(--text);
+  border-color: color-mix(in oklab, var(--primary) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent);
+}
 .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.azar select.text { max-width: 100%; }
 .custom-range { margin-top: 12px; display: none; }
 .custom-range.show { display: block; }
 .custom-range .row { gap: 12px; }

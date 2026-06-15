@@ -1,14 +1,3 @@
-<!--
-  REFERENCIA · frontend/src/routes/random/+page.svelte (rediseñado)
-  ----------------------------------------------------------------
-  Svelte 5 (runes). Conserva TODA la lógica del archivo actual:
-  api.get('/contents/random'), géneros, consume, TIME_PRESETS, custom range.
-  Cambios: markup nuevo (dado 3D + stage + reveal), iconos vía <Icon>,
-  estado `spinning` con tumble del dado y flicker de "barajado".
-
-  Renómbralo a +page.svelte al portarlo. Requiere el CSS de azar.css
-  añadido a app.css.
--->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -27,7 +16,6 @@
 		{ label: 'Tarde libre', min: 150,  max: null },
 	];
 
-	// Tipo → nombre de icono en Icon.svelte (ver README: youtube usa "play")
 	const TYPE_ICON: Record<string, string> = {
 		youtube: 'play', movie: 'film', series: 'tv', music: 'music', book: 'book', game: 'game'
 	};
@@ -53,19 +41,20 @@
 	const PIPS: Record<number, number[]> = { 1:[5], 2:[1,9], 3:[1,5,9], 4:[1,3,7,9], 5:[1,3,5,7,9], 6:[1,4,7,3,6,9] };
 
 	let pick: Content | null = $state(null);
-	let ghost: Content | null = $state(null);   // carta de "barajado"
-	let filter: ContentType | 'all' = $state('all');
+	let ghost: Content | null = $state(null);
+	let selectedTypes = $state<ContentType[]>([]);   // multi-selección (vacío = cualquiera)
 	let selectedPreset = $state(0);
 	let showCustom = $state(false);
 	let customMin = $state('');
 	let customMax = $state('');
-	let selectedGenre = $state('');
+	let selectedGenres = $state<string[]>([]);       // multi-selección (vacío = cualquiera)
 	let availableGenres = $state<string[]>([]);
+	let matchCount = $state<number | null>(null);
 	let error = $state('');
 	let spinning = $state(false);
 
 	let cubeRot = $state({ rx: -22, ry: -28 });
-	let recent: Content[] = [];   // cache para el flicker de barajado
+	let recent: Content[] = [];
 
 	const hasResult = $derived(!!pick || !!ghost || !!error);
 
@@ -75,10 +64,12 @@
 	});
 
 	function selectPreset(i: number) { selectedPreset = i; showCustom = false; customMin = ''; customMax = ''; }
+	function toggleType(t: ContentType) { selectedTypes = selectedTypes.includes(t) ? selectedTypes.filter(x => x !== t) : [...selectedTypes, t]; }
+	function toggleGenre(g: string) { selectedGenres = selectedGenres.includes(g) ? selectedGenres.filter(x => x !== g) : [...selectedGenres, g]; }
 
 	function buildQuery(): string {
 		const params = new URLSearchParams();
-		if (filter !== 'all') params.set('content_type', filter);
+		for (const t of selectedTypes) params.append('content_type', t);
 		if (showCustom) {
 			if (customMin) params.set('min_duration', String(Math.max(0, Number(customMin))));
 			if (customMax) params.set('max_duration', String(Math.max(0, Number(customMax))));
@@ -87,24 +78,26 @@
 			if (p.min != null) params.set('min_duration', String(p.min));
 			if (p.max != null) params.set('max_duration', String(p.max));
 		}
-		if (selectedGenre) params.set('genre', selectedGenre);
+		for (const g of selectedGenres) params.append('genre', g);
 		const qs = params.toString();
 		return qs ? '?' + qs : '';
 	}
+
+	$effect(() => {
+		selectedTypes; selectedGenres; selectedPreset; showCustom; customMin; customMax;
+		api.get<number>(`/contents/random/count${buildQuery()}`).then(n => matchCount = n).catch(() => matchCount = null);
+	});
 
 	async function roll() {
 		if (spinning) return;
 		error = '';
 		spinning = true;
-		// 1) tumble del dado (vuelve siempre a la misma pose 3D — múltiplos de 360)
 		cubeRot = { rx: cubeRot.rx - (720 + Math.floor(Math.random()*3)*360),
 		            ry: cubeRot.ry + (720 + Math.floor(Math.random()*3)*360) };
 
-		// 2) flicker de "barajado" con picks recientes (si hay), mientras se resuelve la petición
 		let flick = 0;
 		const iv = recent.length ? setInterval(() => { ghost = recent[(flick++) % recent.length]; pick = null; }, 150) : null;
 
-		// 3) petición real + mínimo 850ms de suspense
 		const minWait = new Promise(r => setTimeout(r, 850));
 		try {
 			const fetched = await api.get<Content>(`/contents/random${buildQuery()}`);
@@ -151,10 +144,10 @@
 		<div class="flt-block">
 			<p class="flt-label"><Icon name="layers" size={14} /> Tipo</p>
 			<div class="type-row">
-				<button class="type-btn all" class:active={filter === 'all'} onclick={() => filter = 'all'}>Todo</button>
+				<button class="type-btn all" class:active={selectedTypes.length === 0} onclick={() => selectedTypes = []}>Todo</button>
 				{#each TYPES as t}
-					<button class="type-btn" class:active={filter === t.key}
-						style="--tc:{TYPE_COLOR[t.key]}" onclick={() => filter = t.key} aria-label={TYPE_LABELS[t.key]}>
+					<button class="type-btn" class:active={selectedTypes.includes(t.key)}
+						style="--tc:{TYPE_COLOR[t.key]}" onclick={() => toggleType(t.key)} aria-label={TYPE_LABELS[t.key]}>
 						<Icon name={t.icon} size={21} />
 					</button>
 				{/each}
@@ -194,11 +187,17 @@
 		{#if availableGenres.length > 0}
 			<div class="flt-block">
 				<p class="flt-label"><Icon name="sparkles" size={14} /> Género</p>
-				<select class="text" bind:value={selectedGenre}>
-					<option value="">Cualquiera</option>
-					{#each availableGenres as g}<option value={g}>{g}</option>{/each}
-				</select>
+				<div class="chip-row">
+					<button class="tab" class:active={selectedGenres.length === 0} onclick={() => selectedGenres = []}>Cualquiera</button>
+					{#each availableGenres as g}
+						<button class="tab" class:active={selectedGenres.includes(g)} onclick={() => toggleGenre(g)}>{g}</button>
+					{/each}
+				</div>
 			</div>
+		{/if}
+
+		{#if matchCount !== null}
+			<p class="flt-count"><Icon name="list" size={14} /> <span><b>{matchCount}</b> {matchCount === 1 ? 'opción' : 'opciones'} cumplen tu filtro</span></p>
 		{/if}
 
 		<!-- Desktop: botón grande -->
@@ -276,7 +275,6 @@
 					{#if !isGhost}<p class="muted center retry">¿No te convence? <button class="linkbtn" onclick={roll}>Tira de nuevo</button></p>{/if}
 				</div>
 			{:else}
-				<!-- Sin resultado aún: en desktop puede mostrarse un texto tenue; en móvil se oculta -->
 				<div class="random-empty desk-only">
 					<div style="font-size:18px; font-weight:700;">Que el azar decida</div>
 					<p class="muted" style="font-size:13px; max-width:320px; margin:0 auto;">Filtra por tipo y tiempo disponible, y pulsa el dado.</p>

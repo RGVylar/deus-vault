@@ -750,29 +750,16 @@ def delete_content(
     db.commit()
 
 
-@router.get("/random", response_model=ContentOut)
-def random_pick(
-    content_type: ContentType | None = Query(None),
-    min_duration: int | None = Query(None, ge=0, description="Min remaining minutes"),
-    max_duration: int | None = Query(None, ge=0, description="Max remaining minutes"),
-    genre: str | None = Query(None, description="Filter by genre (partial match)"),
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> Content:
-    """Pick a random pending content item, optionally filtered by available time.
-    Pinned items have double weight."""
-    q = select(Content).where(
-        Content.user_id == user.id,
-        Content.consumed == False,  # noqa: E712
-        Content.abandoned == False,  # noqa: E712
-    )
-    if content_type is not None:
-        q = q.where(Content.content_type == content_type)
-    items = list(db.scalars(q).all())
-    if genre is not None:
-        genre_lower = genre.lower()
-        items = [c for c in items if c.genres and genre_lower in c.genres.lower()]
-
+def _apply_random_filters(
+    items: list,
+    genre: list[str] | None,
+    min_duration: int | None,
+    max_duration: int | None,
+) -> list:
+    """Shared filtering logic for /random and /random/count."""
+    if genre:
+        genres_lower = [g.lower() for g in genre]
+        items = [c for c in items if c.genres and any(gl in c.genres.lower() for gl in genres_lower)]
     if min_duration is not None or max_duration is not None:
         def fits(c: Content) -> bool:
             remaining = _remaining_minutes(c)
@@ -782,6 +769,50 @@ def random_pick(
                 return False
             return True
         items = [c for c in items if fits(c)]
+    return items
+
+
+@router.get("/random/count")
+def random_count(
+    content_type: list[ContentType] | None = Query(None),
+    min_duration: int | None = Query(None, ge=0),
+    max_duration: int | None = Query(None, ge=0),
+    genre: list[str] | None = Query(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> int:
+    """Count pending items matching the given filters (for the live counter in /random)."""
+    q = select(Content).where(
+        Content.user_id == user.id,
+        Content.consumed == False,  # noqa: E712
+        Content.abandoned == False,  # noqa: E712
+    )
+    if content_type:
+        q = q.where(Content.content_type.in_(content_type))
+    items = list(db.scalars(q).all())
+    return len(_apply_random_filters(items, genre, min_duration, max_duration))
+
+
+@router.get("/random", response_model=ContentOut)
+def random_pick(
+    content_type: list[ContentType] | None = Query(None),
+    min_duration: int | None = Query(None, ge=0, description="Min remaining minutes"),
+    max_duration: int | None = Query(None, ge=0, description="Max remaining minutes"),
+    genre: list[str] | None = Query(None, description="Filter by genre"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Content:
+    """Pick a random pending content item, optionally filtered by available time.
+    Accepts multiple content_type and genre values. Pinned items have double weight."""
+    q = select(Content).where(
+        Content.user_id == user.id,
+        Content.consumed == False,  # noqa: E712
+        Content.abandoned == False,  # noqa: E712
+    )
+    if content_type:
+        q = q.where(Content.content_type.in_(content_type))
+    items = list(db.scalars(q).all())
+    items = _apply_random_filters(items, genre, min_duration, max_duration)
 
     if not items:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No pending content in that time range")
