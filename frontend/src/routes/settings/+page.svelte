@@ -13,6 +13,7 @@
 	let showSpotifySecret = $state(false);
 	let backfillState = $state<'idle' | 'running' | 'done' | 'error'>('idle');
 	let backfillResult = $state<{updated: number; failed: number; total: number} | null>(null);
+	let steamApiKey = $state('');
 	let steamSyncState = $state<'idle' | 'syncing' | 'done' | 'error'>('idle');
 	let steamSyncResult = $state<{synced: number; created: number; total_steam_games: number} | null>(null);
 
@@ -37,7 +38,8 @@
 		steamSyncState = 'syncing';
 		steamSyncResult = null;
 		try {
-			steamSyncResult = await api.post<{synced: number; created: number; total_steam_games: number}>('/contents/steam/sync');
+			const keyParam = steamApiKey ? `?steam_api_key=${encodeURIComponent(steamApiKey)}` : '';
+			steamSyncResult = await api.post<{synced: number; created: number; total_steam_games: number}>(`/contents/steam/sync${keyParam}`);
 			steamSyncState = 'done';
 		} catch (e: any) {
 			steamSyncState = 'error';
@@ -73,6 +75,7 @@
 			spotifyClientId = localStorage.getItem('deus_vault_spotify_client_id') || '';
 			spotifyClientSecret = localStorage.getItem('deus_vault_spotify_client_secret') || '';
 			tmdbApiKey = localStorage.getItem('deus_vault_tmdb_api_key') || '';
+			steamApiKey = localStorage.getItem('deus_vault_steam_api_key') || '';
 			theme     = (localStorage.getItem('deus_vault_theme')     as any) || 'dark';
 			wallpaper = (localStorage.getItem('deus_vault_wallpaper') as any) || 'aurora';
 			blur      = Number(localStorage.getItem('deus_vault_blur')) || 28;
@@ -120,6 +123,11 @@
 				localStorage.setItem('deus_vault_tmdb_api_key', tmdbApiKey.trim());
 			} else {
 				localStorage.removeItem('deus_vault_tmdb_api_key');
+			}
+			if (steamApiKey.trim()) {
+				localStorage.setItem('deus_vault_steam_api_key', steamApiKey.trim());
+			} else {
+				localStorage.removeItem('deus_vault_steam_api_key');
 			}
 		} catch (e) {}
 		dispatchSettingsChanged();
@@ -257,6 +265,11 @@
 	<!-- Steam -->
 	<div class="glass setting-group">
 		<div class="setting-group-title">Steam</div>
+		<div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
+			<span class="k">Steam API Key</span>
+			<input class="text" type="password" bind:value={steamApiKey} placeholder="Tu API key de steamcommunity.com/dev/apikey" autocomplete="off" />
+			<p class="muted" style="font-size:11px;">Se guarda localmente. Consíguela gratis en <strong>steamcommunity.com/dev/apikey</strong>.</p>
+		</div>
 		{#if auth.user?.steam_id}
 			<div class="settings-row">
 				<span class="k">Steam ID</span>
@@ -291,7 +304,7 @@
 			</p>
 			<button
 				class="btn btn-primary"
-				onclick={() => window.location.href = `/api/auth/steam/login?token=${auth.token}`}
+				onclick={() => window.location.href = `/api/auth/steam/login?token=${auth.token}${steamApiKey ? '&steam_api_key=' + encodeURIComponent(steamApiKey) : ''}`}
 			>
 				🎮 Conectar con Steam
 			</button>

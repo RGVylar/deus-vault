@@ -21,11 +21,12 @@ contents_router = APIRouter(prefix="/contents", tags=["steam"])
 
 
 @auth_router.get("/steam/login")
-async def steam_login(token: str = Query(...)):
+async def steam_login(token: str = Query(...), steam_api_key: str | None = Query(None)):
     """Inicia el flujo Steam OpenID. El token JWT se pasa como query param
     porque el navegador navega directamente a esta URL (no puede enviar headers)."""
-    if not settings.steam_api_key:
-        raise HTTPException(400, "Steam API key no configurada en el servidor")
+    effective_key = steam_api_key or settings.steam_api_key
+    if not effective_key:
+        raise HTTPException(400, "Steam API key no configurada")
 
     user_id = decode_token(token)
     if user_id is None:
@@ -100,21 +101,23 @@ def steam_disconnect(
 @contents_router.post("/steam/sync")
 async def steam_sync(
     create_new: bool = Query(False, description="Crear entradas nuevas para juegos no presentes en el vault"),
+    steam_api_key: str | None = Query(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Sincroniza el tiempo real de juego de Steam con los juegos del vault.
     Busca por source_id = 'steam_{appid}'."""
+    effective_key = steam_api_key or settings.steam_api_key
     if not user.steam_id:
         raise HTTPException(400, "Cuenta de Steam no conectada")
-    if not settings.steam_api_key:
-        raise HTTPException(400, "Steam API key no configurada en el servidor")
+    if not effective_key:
+        raise HTTPException(400, "Steam API key no configurada")
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.get(
             "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/",
             params={
-                "key": settings.steam_api_key,
+                "key": effective_key,
                 "steamid": user.steam_id,
                 "include_appinfo": "true",
                 "include_played_free_games": "true",
@@ -163,18 +166,22 @@ async def steam_sync(
 
 
 @contents_router.get("/steam/library")
-async def steam_library(user: User = Depends(get_current_user)):
+async def steam_library(
+    steam_api_key: str | None = Query(None),
+    user: User = Depends(get_current_user),
+):
     """Devuelve la biblioteca de Steam del usuario (juegos con tiempo jugado > 0)."""
+    effective_key = steam_api_key or settings.steam_api_key
     if not user.steam_id:
         raise HTTPException(400, "Cuenta de Steam no conectada")
-    if not settings.steam_api_key:
-        raise HTTPException(400, "Steam API key no configurada en el servidor")
+    if not effective_key:
+        raise HTTPException(400, "Steam API key no configurada")
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.get(
             "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/",
             params={
-                "key": settings.steam_api_key,
+                "key": effective_key,
                 "steamid": user.steam_id,
                 "include_appinfo": "true",
                 "include_played_free_games": "true",
