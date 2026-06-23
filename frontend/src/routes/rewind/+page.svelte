@@ -158,6 +158,10 @@
 		stats?.top_items_by_type['movie']?.length ? Math.max(...stats.top_items_by_type['movie'].map(m => m.minutes)) : 0
 	);
 
+	const maxYtGenreMinutes = $derived(
+		stats?.top_youtube_genres?.length ? Math.max(1, ...stats.top_youtube_genres.map(g => g.minutes)) : 1
+	);
+
 	const peakHour = $derived.by(() => {
 		if (!stats?.by_hour?.length) return null;
 		return stats.by_hour.indexOf(Math.max(...stats.by_hour));
@@ -230,6 +234,21 @@
 	const musicArtists = $derived((((stats as unknown as { top_music_artists?: { name: string; count: number; minutes: number }[] })?.top_music_artists) ?? []));
 
 	const ITEMS_PAGE = 12;
+
+	// Game timeline — juegos consumidos en el año con su fecha de añadido y completado
+	const gameTimeline = $derived(
+		stats ? stats.items
+			.filter(c => c.content_type === 'game' && c.consumed_at)
+			.sort((a, b) => new Date(a.consumed_at!).getTime() - new Date(b.consumed_at!).getTime())
+		: []
+	);
+
+	function dateToPct(dateStr: string, yr: number): number {
+		const d = new Date(dateStr.length === 10 ? dateStr + 'T12:00:00' : dateStr);
+		const start = new Date(yr, 0, 1).getTime();
+		const end = new Date(yr + 1, 0, 1).getTime();
+		return Math.min(100, Math.max(0, (d.getTime() - start) / (end - start) * 100));
+	}
 </script>
 
 {#if !auth.isLoggedIn}
@@ -487,6 +506,25 @@
 		</div>
 	{/if}
 
+	<!-- Categorías de YouTube -->
+	{#if (stats.top_youtube_genres?.length ?? 0) > 0}
+		<section class="rewind-section">
+			<h2><span class="hico"><Icon name="layers" size={15} /></span> Qué tipo de contenido</h2>
+			<div class="surface yt-genres">
+				{#each stats.top_youtube_genres as g}
+					{@const pct = Math.round(g.minutes / maxYtGenreMinutes * 100)}
+					<div class="ytg-row">
+						<div class="ytg-name">{g.genre}</div>
+						<div class="ytg-bar-wrap">
+							<div class="ytg-bar" style="width:{pct}%"></div>
+						</div>
+						<div class="ytg-meta">{g.count} vídeo{g.count !== 1 ? 's' : ''} · {formatDuration(g.minutes)}</div>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
 	<!-- Canales más vistos -->
 	<section class="rewind-section">
 		<h2><span class="hico"><Icon name="play" size={15} /></span> Canales más vistos</h2>
@@ -598,6 +636,61 @@
 		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('game'))}</div><div class="e-l">media/u</div></div>
 		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('game')}%</div><div class="e-l">de tu consumo</div></div>
 	</div>
+	{#if gameTimeline.length > 0}
+		<section class="rewind-section">
+			<h2><span class="hico"><Icon name="activity" size={15} /></span> Línea de tiempo</h2>
+			<div class="surface gtl-surface">
+				<div class="gtl-header">
+					<div></div>
+					<div class="gtl-months">
+						{#each MONTHS_ES as m}<span>{m}</span>{/each}
+					</div>
+				</div>
+				<div class="gtl-rows">
+					{#each gameTimeline as game}
+						{@const addPct    = dateToPct(game.created_at, year)}
+						{@const donePct   = dateToPct(game.consumed_at!, year)}
+						{@const addedBefore = new Date(game.created_at.length === 10 ? game.created_at + 'T12:00:00' : game.created_at).getFullYear() < year}
+						{@const barLeft   = addedBefore ? 0 : addPct}
+						{@const barWidth  = Math.max(0, donePct - barLeft)}
+						<div class="gtl-row">
+							<div class="gtl-info">
+								{#if game.thumbnail}
+									<img class="gtl-thumb" src={game.thumbnail} alt="" />
+								{:else}
+									<div class="gtl-thumb-ph"><Icon name="game" size={10} /></div>
+								{/if}
+								<span class="gtl-title">{game.title}</span>
+							</div>
+							<div class="gtl-track">
+								<div class="gtl-baseline"></div>
+								{#if barWidth > 0.5}
+									<div class="gtl-bar" class:before={addedBefore}
+										style="left:{barLeft}%; width:{barWidth}%"
+										title={addedBefore ? `En backlog desde antes de ${year}` : `Añadido: ${game.created_at.slice(0,10)}`}
+									></div>
+								{/if}
+								{#if !addedBefore && Math.abs(donePct - addPct) > 0.5}
+									<div class="gtl-dot add" style="left:{addPct}%"
+										title={`Añadido: ${new Date(game.created_at.length === 10 ? game.created_at + 'T12:00:00' : game.created_at).toLocaleDateString('es', {day:'numeric', month:'short', year:'numeric'})}`}
+									></div>
+								{/if}
+								<div class="gtl-dot done" style="left:{donePct}%"
+									title={`Completado: ${new Date(game.consumed_at!.length === 10 ? game.consumed_at! + 'T12:00:00' : game.consumed_at!).toLocaleDateString('es', {day:'numeric', month:'short'})}`}
+								></div>
+							</div>
+						</div>
+					{/each}
+				</div>
+				<div class="gtl-legend">
+					<span class="gtl-leg-item"><span class="gtl-leg-dot add"></span>Añadido al vault</span>
+					<span class="gtl-leg-item"><span class="gtl-leg-dot done"></span>Completado</span>
+					<span class="gtl-leg-item"><span class="gtl-leg-line-dash"></span>Desde backlog anterior</span>
+				</div>
+			</div>
+		</section>
+	{/if}
+
 	{#if (stats.top_items_by_type['game']?.length ?? 0) > 0}
 		<section class="rewind-section">
 			<h2><span class="hico"><Icon name="game" size={15} /></span> Juegos más largos</h2>
@@ -966,6 +1059,14 @@
 	.yt-runner-time { font-size: 11px; color: var(--text-muted); }
 	.yt-stats { display: grid; grid-template-columns: repeat(4, 1fr); }
 
+	/* Géneros YouTube */
+	.yt-genres { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; }
+	.ytg-row { display: grid; grid-template-columns: 160px 1fr auto; align-items: center; gap: 12px; }
+	.ytg-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.ytg-bar-wrap { height: 8px; background: var(--glass-bg-strong); border-radius: 4px; overflow: hidden; }
+	.ytg-bar { height: 100%; background: var(--youtube); border-radius: 4px; transition: width 0.4s ease; }
+	.ytg-meta { font-size: 12px; color: var(--text-muted); white-space: nowrap; text-align: right; min-width: 130px; }
+
 	/* Sección tiempo 2×2 */
 	.time-surface { display: grid; grid-template-columns: 1fr 1fr; }
 	.tcell { padding: 16px 18px; min-width: 0; }
@@ -1160,6 +1261,34 @@
 	.show-more { text-align: center; margin-top: 14px; }
 	.content-grid > :global(.c-card) { align-self: start; }
 
+	/* Game timeline */
+	.gtl-surface { padding: 14px 18px 16px; }
+	.gtl-header { display: grid; grid-template-columns: 164px 1fr; gap: 12px; margin-bottom: 4px; }
+	.gtl-months { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-dim); padding: 0 2px; }
+	.gtl-rows { display: flex; flex-direction: column; }
+	.gtl-row { display: grid; grid-template-columns: 164px 1fr; gap: 12px; align-items: center; padding: 6px 0; }
+	.gtl-row:not(:last-child) { border-bottom: 1px solid var(--glass-border); }
+	.gtl-info { display: flex; align-items: center; gap: 8px; min-width: 0; }
+	.gtl-thumb { width: 28px; height: 18px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+	.gtl-thumb-ph { width: 28px; height: 18px; border-radius: 4px; background: rgba(255,255,255,0.06); display: grid; place-items: center; flex-shrink: 0; color: var(--game); }
+	.gtl-title { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.gtl-track {
+		position: relative; height: 28px;
+		background-image: repeating-linear-gradient(90deg, var(--glass-border) 0, var(--glass-border) 1px, transparent 1px, transparent calc(100% / 12));
+	}
+	.gtl-baseline { position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: oklch(0.38 0.02 290 / 0.5); transform: translateY(-50%); pointer-events: none; }
+	.gtl-bar { position: absolute; top: 50%; height: 4px; transform: translateY(-50%); border-radius: 2px; background: linear-gradient(90deg, oklch(0.52 0.12 300 / 0.55), var(--game)); }
+	.gtl-bar.before { border-left: 3px dashed oklch(0.58 0.12 300 / 0.55); border-radius: 0 2px 2px 0; background: linear-gradient(90deg, oklch(0.45 0.10 300 / 0.35), var(--game)); }
+	.gtl-dot { position: absolute; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; cursor: default; }
+	.gtl-dot.add { width: 8px; height: 8px; background: oklch(0.55 0.12 300); border: 1.5px solid oklch(0.72 0.14 300 / 0.9); }
+	.gtl-dot.done { width: 11px; height: 11px; background: var(--game); border: 2px solid rgba(255,255,255,0.18); box-shadow: 0 0 9px color-mix(in srgb, var(--game) 75%, transparent); }
+	.gtl-legend { display: flex; align-items: center; gap: 18px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--glass-border); flex-wrap: wrap; }
+	.gtl-leg-item { display: flex; align-items: center; gap: 7px; font-size: 10px; color: var(--text-dim); }
+	.gtl-leg-dot { display: inline-block; border-radius: 50%; flex-shrink: 0; }
+	.gtl-leg-dot.add { width: 8px; height: 8px; background: oklch(0.55 0.12 300); border: 1.5px solid oklch(0.72 0.14 300 / 0.9); }
+	.gtl-leg-dot.done { width: 10px; height: 10px; background: var(--game); box-shadow: 0 0 6px color-mix(in srgb, var(--game) 70%, transparent); }
+	.gtl-leg-line-dash { display: inline-block; width: 18px; height: 0; border-top: 3px dashed oklch(0.58 0.12 300 / 0.65); flex-shrink: 0; }
+
 	/* Responsive: colapsar superficies multi-columna en pantallas estrechas */
 	@media (max-width: 900px) {
 		.rw-hero, .time-surface, .moment-surface, .profile-grid { grid-template-columns: 1fr; }
@@ -1172,10 +1301,16 @@
 		.channels-dual { flex-direction: column; }
 		.yt-hero { flex-wrap: wrap; }
 		.yt-runners { border-left: none; padding-left: 0; border-top: 1px solid var(--glass-border); padding-top: 14px; width: 100%; flex-direction: row; }
+		.gtl-header { grid-template-columns: 1fr; }
+		.gtl-header > div:first-child { display: none; }
+		.gtl-row { grid-template-columns: 1fr; gap: 3px; }
+		.gtl-track { margin-left: 0; }
 	}
 	@media (max-width: 560px) {
 		.estats-row, .yt-stats, .kpi-strip, .share-grid { grid-template-columns: repeat(2, 1fr); }
 		.podium-grid, .streaming-grid, .type-grid, .ms-grid { grid-template-columns: 1fr !important; }
 		.podium-card:not(:first-child), .plat-card:not(:first-child), .type-card2:not(:first-child) { border-left: none; border-top: 1px solid var(--glass-border); }
+		.ytg-row { grid-template-columns: 110px 1fr; }
+		.ytg-meta { display: none; }
 	}
 </style>

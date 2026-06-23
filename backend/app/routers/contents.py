@@ -30,6 +30,7 @@ from app.schemas.content import (
     AbandonedTopItem,
     TypeStats,
     VaultStats,
+    YoutubeGenreStat,
 )
 
 router = APIRouter(prefix="/contents", tags=["contents"])
@@ -399,6 +400,23 @@ def rewind(
         for v in sorted(book_authors.values(), key=lambda x: x["minutes"], reverse=True)[:5]
     ]
 
+    # Top YouTube genres (from the comma-separated genres field)
+    yt_genre_data: dict[str, dict] = {}
+    for c in items:
+        if c.content_type == ContentType.youtube and c.genres:
+            for g in c.genres.split(","):
+                g = g.strip()
+                if not g:
+                    continue
+                if g not in yt_genre_data:
+                    yt_genre_data[g] = {"genre": g, "count": 0, "minutes": 0}
+                yt_genre_data[g]["count"] += 1
+                yt_genre_data[g]["minutes"] += _effective_duration(c)
+    top_youtube_genres = [
+        YoutubeGenreStat(**v)
+        for v in sorted(yt_genre_data.values(), key=lambda x: x["minutes"], reverse=True)
+    ]
+
     # --- Time distribution ---
     by_hour: list[int] = [0] * 24
     by_day_list: list[int] = [0] * 7
@@ -485,6 +503,7 @@ def rewind(
         completion_rate=completion_rate,
         top_youtube_channels=top_youtube_channels,
         top_youtube_channels_by_count=top_youtube_channels_by_count,
+        top_youtube_genres=top_youtube_genres,
         top_items_by_type=top_items_by_type,
         streaming_breakdown=streaming_breakdown,
         top_book_authors=top_book_authors,

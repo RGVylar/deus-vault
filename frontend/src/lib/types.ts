@@ -165,6 +165,7 @@ export interface RewindStats {
 	completion_rate: number | null;
 	top_youtube_channels: TopAuthor[];
 	top_youtube_channels_by_count: TopAuthor[];
+	top_youtube_genres: { genre: string; count: number; minutes: number }[];
 	top_items_by_type: Record<string, TopItem[]>;
 	streaming_breakdown: StreamingPlatform[];
 	top_book_authors: TopAuthor[];

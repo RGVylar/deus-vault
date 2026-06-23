@@ -155,6 +155,12 @@ class MomentStats(BaseModel):
     count: int
 
 
+class YoutubeGenreStat(BaseModel):
+    genre: str
+    count: int
+    minutes: int
+
+
 class TypeRewindStats(BaseModel):
     count: int
     minutes: int
@@ -195,6 +201,7 @@ class RewindStats(BaseModel):
     # Deep stats
     top_youtube_channels: list[TopAuthor]           # top channels by watch time
     top_youtube_channels_by_count: list[TopAuthor]  # top channels by video count
+    top_youtube_genres: list[YoutubeGenreStat]      # top categories by watch time
     top_items_by_type: dict[str, list[TopItem]]  # top 3 per type
     streaming_breakdown: list[StreamingPlatform]  # platforms for movies+series
     top_book_authors: list[TopAuthor]           # top book authors
