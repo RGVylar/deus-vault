@@ -2,6 +2,7 @@ export interface User {
 	id: number;
 	email: string;
 	name: string;
+	steam_id: string | null;
 }
 
 export interface TokenResponse {
@@ -24,6 +25,7 @@ export interface Content {
 	seasons?: number | null;
 	consumed: boolean;
 	consumed_at: string | null;
+	started_at: string | null;
 	abandoned: boolean;
 	abandoned_at: string | null;
 	created_at: string;

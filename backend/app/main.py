@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.routers import auth, contents, lookup
+from app.routers.steam import auth_router as steam_auth_router, contents_router as steam_contents_router
 from app.telegram import send_error_alert
 
 # Transient network errors — log but don't spam Telegram
@@ -44,3 +45,5 @@ api_prefix = "/api"
 app.include_router(auth.router, prefix=api_prefix)
 app.include_router(contents.router, prefix=api_prefix)
 app.include_router(lookup.router, prefix=api_prefix)
+app.include_router(steam_auth_router, prefix=api_prefix)
+app.include_router(steam_contents_router, prefix=api_prefix)

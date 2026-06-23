@@ -45,6 +45,7 @@ class ContentUpdate(BaseModel):
     pinned: bool | None = None
     collection: str | None = None
     consumed_at: datetime | None = None  # allows correcting the consumed date
+    started_at: datetime | None = None   # allows setting when the user started
     next_episode_date: datetime | None = None
     rating: float | None = None
     provider: str | None = None
@@ -67,6 +68,7 @@ class ContentOut(BaseModel):
     seasons: int | None
     consumed: bool
     consumed_at: datetime | None
+    started_at: datetime | None
     abandoned: bool
     abandoned_at: datetime | None
     created_at: datetime

@@ -151,6 +151,7 @@
 	let editNotes = $state('');
 	let editCollection = $state('');
 	let editPinned = $state(false);
+	let editStartedAt = $state('');
 	let editError = $state('');
 
 	// Settings
@@ -669,6 +670,7 @@ $effect(() => {
 		editNotes = c.notes ?? '';
 		editCollection = c.collection ?? '';
 		editPinned = c.pinned;
+		editStartedAt = c.started_at ? c.started_at.slice(0, 10) : '';
 		editError = '';
 	}
 
@@ -692,6 +694,9 @@ $effect(() => {
 			if (editingItem.content_type === 'series') {
 				patch.episode_count = editEpisodeCount ? Number(editEpisodeCount) : null;
 				patch.seasons = editSeasons ? Number(editSeasons) : null;
+			}
+			if (editingItem.content_type === 'game') {
+				patch.started_at = editStartedAt ? new Date(editStartedAt + 'T12:00:00').toISOString() : null;
 			}
 			const updated = await api.patch<Content>(`/contents/${editingItem.id}`, patch);
 			contents = contents.map(x => x.id === editingItem!.id ? updated : x);
@@ -1214,6 +1219,12 @@ $effect(() => {
 							<label for="edit-episodes">Episodios</label>
 							<input id="edit-episodes" class="text" type="number" bind:value={editEpisodeCount} min="0" />
 						</div>
+					</div>
+				{/if}
+				{#if editingItem.content_type === 'game'}
+					<div class="field">
+						<label for="edit-started-at">Fecha de inicio</label>
+						<input id="edit-started-at" class="text" type="date" bind:value={editStartedAt} />
 					</div>
 				{/if}
 				<div class="field">

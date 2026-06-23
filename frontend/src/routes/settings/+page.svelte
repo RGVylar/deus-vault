@@ -13,6 +13,8 @@
 	let showSpotifySecret = $state(false);
 	let backfillState = $state<'idle' | 'running' | 'done' | 'error'>('idle');
 	let backfillResult = $state<{updated: number; failed: number; total: number} | null>(null);
+	let steamSyncState = $state<'idle' | 'syncing' | 'done' | 'error'>('idle');
+	let steamSyncResult = $state<{synced: number; created: number; total_steam_games: number} | null>(null);
 
 	async function runTmdbBackfill(force = false) {
 		backfillState = 'running';
@@ -31,8 +33,38 @@
 	let wallpaper = $state<'aurora' | 'atardecer' | 'oceano' | 'bosque'>('aurora');
 	let blur      = $state(28);
 
-	onMount(() => {
+	async function steamSync() {
+		steamSyncState = 'syncing';
+		steamSyncResult = null;
+		try {
+			steamSyncResult = await api.post<{synced: number; created: number; total_steam_games: number}>('/contents/steam/sync');
+			steamSyncState = 'done';
+		} catch (e: any) {
+			steamSyncState = 'error';
+		}
+	}
+
+	async function steamDisconnect() {
+		try {
+			await api.del('/auth/steam/disconnect');
+			auth.login(auth.token!, { ...auth.user!, steam_id: null });
+		} catch (e: any) {}
+	}
+
+	onMount(async () => {
 		if (!auth.isLoggedIn) goto('/login');
+
+		// Tras el callback de Steam, refrescar datos del usuario
+		const url = new URL(window.location.href);
+		if (url.searchParams.get('steam') === 'connected') {
+			try {
+				const freshUser = await api.get<import('$lib/types').User>('/auth/me');
+				auth.login(auth.token!, freshUser);
+			} catch (e) {}
+			url.searchParams.delete('steam');
+			history.replaceState({}, '', url.toString());
+		}
+
 		try {
 			const stored = localStorage.getItem('deus_vault_reading_wpm');
 			if (stored) readingWpm = Number(stored) || 200;
@@ -220,6 +252,53 @@
 			</div>
 			<p class="muted" style="font-size:11px;">Necesario para detectar canciones de Spotify. Crea una app gratis en <strong>developer.spotify.com</strong>.</p>
 		</div>
+	</div>
+
+	<!-- Steam -->
+	<div class="glass setting-group">
+		<div class="setting-group-title">Steam</div>
+		{#if auth.user?.steam_id}
+			<div class="settings-row">
+				<span class="k">Steam ID</span>
+				<span class="v steam-id">{auth.user.steam_id}</span>
+			</div>
+			<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+				<button
+					class="btn btn-primary"
+					onclick={steamSync}
+					disabled={steamSyncState === 'syncing'}
+					style="flex:1; justify-content:center;"
+				>
+					{steamSyncState === 'syncing' ? '⏳ Sincronizando…' : '🎮 Sincronizar tiempo jugado'}
+				</button>
+				<button class="btn" onclick={steamDisconnect} style="opacity:0.6; font-size:12px;">Desconectar</button>
+			</div>
+			{#if steamSyncState === 'done' && steamSyncResult}
+				<p class="muted" style="font-size:12px; margin-top:8px; color:var(--game);">
+					✅ {steamSyncResult.synced} juego{steamSyncResult.synced !== 1 ? 's' : ''} sincronizado{steamSyncResult.synced !== 1 ? 's' : ''}
+					de {steamSyncResult.total_steam_games} en tu biblioteca Steam.
+				</p>
+			{:else if steamSyncState === 'error'}
+				<p class="muted" style="font-size:12px; margin-top:8px; color:var(--red);">⚠ Error al sincronizar</p>
+			{/if}
+			<p class="muted" style="font-size:11px; margin-top:8px;">
+				Actualiza la duración de los juegos del vault que tengan un <code>source_id</code> tipo <code>steam_APPID</code>
+				con tu tiempo real de juego.
+			</p>
+		{:else}
+			<p class="muted" style="font-size:13px; margin-bottom:12px;">
+				Conecta tu cuenta de Steam para sincronizar el tiempo real de juego con los juegos del vault.
+			</p>
+			<button
+				class="btn btn-primary"
+				onclick={() => window.location.href = `/api/auth/steam/login?token=${auth.token}`}
+			>
+				🎮 Conectar con Steam
+			</button>
+			<p class="muted" style="font-size:11px; margin-top:10px;">
+				Requiere <code>STEAM_API_KEY</code> configurada en el servidor y perfil de Steam público.
+			</p>
+		{/if}
 	</div>
 
 	<!-- Actions (save buttons — span full width on desktop) -->

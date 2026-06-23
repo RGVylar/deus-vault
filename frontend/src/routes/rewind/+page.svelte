@@ -648,9 +648,10 @@
 				</div>
 				<div class="gtl-rows">
 					{#each gameTimeline as game}
-						{@const addPct    = dateToPct(game.created_at, year)}
+						{@const startDate = game.started_at ?? game.created_at}
+						{@const addPct    = dateToPct(startDate, year)}
 						{@const donePct   = dateToPct(game.consumed_at!, year)}
-						{@const addedBefore = new Date(game.created_at.length === 10 ? game.created_at + 'T12:00:00' : game.created_at).getFullYear() < year}
+						{@const addedBefore = new Date(startDate.length === 10 ? startDate + 'T12:00:00' : startDate).getFullYear() < year}
 						{@const barLeft   = addedBefore ? 0 : addPct}
 						{@const barWidth  = Math.max(0, donePct - barLeft)}
 						<div class="gtl-row">
@@ -671,8 +672,9 @@
 									></div>
 								{/if}
 								{#if !addedBefore && Math.abs(donePct - addPct) > 0.5}
+									{@const startDate2 = game.started_at ?? game.created_at}
 									<div class="gtl-dot add" style="left:{addPct}%"
-										title={`Añadido: ${new Date(game.created_at.length === 10 ? game.created_at + 'T12:00:00' : game.created_at).toLocaleDateString('es', {day:'numeric', month:'short', year:'numeric'})}`}
+										title={`${game.started_at ? 'Inicio' : 'Añadido'}: ${new Date(startDate2.length === 10 ? startDate2 + 'T12:00:00' : startDate2).toLocaleDateString('es', {day:'numeric', month:'short', year:'numeric'})}`}
 									></div>
 								{/if}
 								<div class="gtl-dot done" style="left:{donePct}%"
@@ -683,7 +685,7 @@
 					{/each}
 				</div>
 				<div class="gtl-legend">
-					<span class="gtl-leg-item"><span class="gtl-leg-dot add"></span>Añadido al vault</span>
+					<span class="gtl-leg-item"><span class="gtl-leg-dot add"></span>Inicio / Añadido</span>
 					<span class="gtl-leg-item"><span class="gtl-leg-dot done"></span>Completado</span>
 					<span class="gtl-leg-item"><span class="gtl-leg-line-dash"></span>Desde backlog anterior</span>
 				</div>

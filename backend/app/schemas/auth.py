@@ -16,6 +16,7 @@ class UserOut(BaseModel):
     id: int
     email: str
     name: str
+    steam_id: str | None = None
 
     model_config = {"from_attributes": True}
 

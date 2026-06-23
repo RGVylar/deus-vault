@@ -57,6 +57,7 @@ class Content(Base):
     seasons: Mapped[int | None] = mapped_column(Integer, nullable=True)
     consumed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     abandoned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     abandoned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     times_consumed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
