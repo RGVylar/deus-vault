@@ -17,8 +17,9 @@ class Settings(BaseSettings):
     words_per_page: int = 300
     # Steam integration
     steam_api_key: str | None = None
-    steam_callback_url: str = "http://localhost:8000/api/auth/steam/callback"
-    steam_frontend_url: str = "http://localhost:5173"
+    # Si se dejan vacíos, el backend auto-detecta la URL del request (recomendado en producción)
+    steam_callback_url: str = ""
+    steam_frontend_url: str = ""
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

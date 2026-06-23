@@ -1,9 +1,10 @@
+import logging
 import re
 from urllib.parse import urlencode, urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -14,14 +15,23 @@ from app.models.content import Content, ContentType
 from app.models.user import User
 from app.security import decode_token
 
+logger = logging.getLogger("uvicorn.error")
+
 STEAM_OPENID_URL = "https://steamcommunity.com/openid/login"
 
 auth_router = APIRouter(prefix="/auth", tags=["steam"])
 contents_router = APIRouter(prefix="/contents", tags=["steam"])
 
 
+def _base_url(request: Request) -> str:
+    """Devuelve la URL base (scheme://host) respetando cabeceras de proxy."""
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    host  = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    return f"{proto}://{host}"
+
+
 @auth_router.get("/steam/login")
-async def steam_login(token: str = Query(...), steam_api_key: str | None = Query(None)):
+async def steam_login(request: Request, token: str = Query(...), steam_api_key: str | None = Query(None)):
     """Inicia el flujo Steam OpenID. El token JWT se pasa como query param
     porque el navegador navega directamente a esta URL (no puede enviar headers)."""
     effective_key = steam_api_key or settings.steam_api_key
@@ -32,9 +42,10 @@ async def steam_login(token: str = Query(...), steam_api_key: str | None = Query
     if user_id is None:
         raise HTTPException(401, "Token inválido")
 
-    parsed = urlparse(settings.steam_callback_url)
-    realm = f"{parsed.scheme}://{parsed.netloc}"
-    return_to = f"{settings.steam_callback_url}?state={token}"
+    base = _base_url(request)
+    callback_url = settings.steam_callback_url or f"{base}/api/auth/steam/callback"
+    realm        = settings.steam_callback_url and f"{urlparse(settings.steam_callback_url).scheme}://{urlparse(settings.steam_callback_url).netloc}" or base
+    return_to    = f"{callback_url}?state={token}"
 
     params = {
         "openid.ns": "http://specs.openid.net/auth/2.0",
@@ -70,8 +81,11 @@ async def steam_callback(
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(STEAM_OPENID_URL, data=verify_params)
 
+    logger.info("Steam verify response: %s", resp.text)
+
     if "is_valid:true" not in resp.text:
-        raise HTTPException(400, "Verificación con Steam fallida")
+        logger.warning("Steam verification failed: %s", resp.text)
+        raise HTTPException(400, f"Verificación con Steam fallida: {resp.text[:200]}")
 
     # Extraer steamid64 de openid.claimed_id
     claimed_id = verify_params.get("openid.claimed_id", "")
@@ -82,10 +96,8 @@ async def steam_callback(
     user.steam_id = match.group(1)
     db.commit()
 
-    return HTMLResponse(
-        f'<html><head><meta http-equiv="refresh" content="0;url={settings.steam_frontend_url}/settings?steam=connected"></head>'
-        f'<body>Conectado con Steam. Redirigiendo…</body></html>'
-    )
+    frontend = settings.steam_frontend_url or _base_url(request)
+    return RedirectResponse(f"{frontend}/settings?steam=connected")
 
 
 @auth_router.delete("/steam/disconnect")
