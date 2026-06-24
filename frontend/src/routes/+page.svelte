@@ -135,6 +135,10 @@
 	let editingProgressId = $state<number | null>(null);
 	let progressValue = $state(0);
 
+	// Started-at inline editing on cards
+	let editingStartedAtCardId = $state<number | null>(null);
+	let cardStartedAtValue = $state('');
+
 	// Delete confirmation
 	let deletingId = $state<number | null>(null);
 
@@ -708,6 +712,30 @@ $effect(() => {
 		}
 	}
 
+	// --- Started-at helpers (games) ---
+	async function markStarted(c: Content) {
+		const iso = new Date().toISOString();
+		contents = contents.map(x => x.id === c.id ? { ...x, started_at: iso } : x);
+		await api.patch(`/contents/${c.id}`, { started_at: iso });
+	}
+
+	async function clearStarted(c: Content) {
+		contents = contents.map(x => x.id === c.id ? { ...x, started_at: null } : x);
+		await api.patch(`/contents/${c.id}`, { started_at: null });
+	}
+
+	function startEditStartedAt(c: Content) {
+		editingStartedAtCardId = c.id;
+		cardStartedAtValue = c.started_at ? c.started_at.slice(0, 10) : new Date().toISOString().slice(0, 10);
+	}
+
+	async function saveStartedAt(c: Content) {
+		editingStartedAtCardId = null;
+		const iso = cardStartedAtValue ? new Date(cardStartedAtValue + 'T12:00:00').toISOString() : null;
+		contents = contents.map(x => x.id === c.id ? { ...x, started_at: iso } : x);
+		await api.patch(`/contents/${c.id}`, { started_at: iso });
+	}
+
 	// --- Progress helpers ---
 	function remainingMinutes(c: Content): number {
 		const progress = c.progress ?? 0;
@@ -1055,6 +1083,36 @@ $effect(() => {
 										<span style="font-size:10px; color:var(--text-dim);">+ progreso</span>
 									{/if}
 								</button>
+							{/if}
+						{/if}
+
+						<!-- Game start date -->
+						{#if c.content_type === 'game'}
+							{#if editingStartedAtCardId === c.id}
+								<div class="progress-edit-wrap">
+									<span class="progress-edit-label">Fecha de inicio</span>
+									<div class="progress-edit-row">
+										<!-- svelte-ignore a11y_autofocus -->
+										<input
+											type="date"
+											bind:value={cardStartedAtValue}
+											class="text progress-input"
+											onkeydown={(e) => { if (e.key === 'Enter') saveStartedAt(c); if (e.key === 'Escape') editingStartedAtCardId = null; }}
+											autofocus
+										/>
+										<button class="btn" onclick={() => saveStartedAt(c)}>✓</button>
+										<button class="btn" onclick={() => editingStartedAtCardId = null}>✕</button>
+									</div>
+								</div>
+							{:else if c.started_at}
+								<div class="started-row">
+									<button class="started-badge" onclick={() => startEditStartedAt(c)} title="Editar fecha de inicio">
+										🎮 Iniciado: {new Date(c.started_at).toLocaleDateString('es', {day:'numeric', month:'short', year:'numeric'})} <span class="started-edit-ico">✏️</span>
+									</button>
+									<button class="started-clear" onclick={() => clearStarted(c)} title="Quitar inicio">×</button>
+								</div>
+							{:else}
+								<button class="btn btn-start-game" onclick={() => markStarted(c)} title="Marcar como empezado">▶ Empezar</button>
 							{/if}
 						{/if}
 
@@ -1777,5 +1835,46 @@ $effect(() => {
 	}
 	.next-ep.aired {
 		color: var(--text-dim);
+	}
+
+	/* Game started-at */
+	.started-row {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		margin: 2px 0;
+	}
+	.started-badge {
+		all: unset;
+		cursor: pointer;
+		font-size: 11px;
+		font-weight: 600;
+		color: var(--game, #7c3aed);
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		padding: 2px 0;
+	}
+	.started-badge:hover { opacity: 0.75; }
+	.started-edit-ico { font-size: 10px; opacity: 0.6; }
+	.started-clear {
+		all: unset;
+		cursor: pointer;
+		font-size: 13px;
+		color: var(--text-dim);
+		line-height: 1;
+		padding: 0 3px;
+		opacity: 0.5;
+	}
+	.started-clear:hover { opacity: 1; color: var(--danger, #e53e3e); }
+	.btn-start-game {
+		font-size: 11px;
+		padding: 3px 10px;
+		color: var(--game, #7c3aed);
+		border-color: color-mix(in oklch, var(--game, #7c3aed) 40%, transparent);
+		background: color-mix(in oklch, var(--game, #7c3aed) 8%, transparent);
+	}
+	.btn-start-game:hover {
+		background: color-mix(in oklch, var(--game, #7c3aed) 20%, transparent);
 	}
 </style>
