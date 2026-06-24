@@ -178,355 +178,509 @@
 		} catch (e) {}
 		dispatchSettingsChanged();
 	}
+
+	// Derived state for handoff
+	const tmdbOk    = $derived(!!tmdbApiKey.trim());
+	const spotifyOk = $derived(!!spotifyClientId.trim() && !!spotifyClientSecret.trim());
+	const initial   = $derived((auth.user?.name?.charAt(0) ?? '?').toUpperCase());
+
+	const wallpapers = [
+		{ id: 'aurora',    label: 'Aurora',    colors: ['#9b5de5','#00b4d8','#ff006e','#38b000'] },
+		{ id: 'atardecer', label: 'Atardecer', colors: ['#ff6b35','#f7c59f','#e63946','#ff9f1c'] },
+		{ id: 'oceano',    label: 'Océano',    colors: ['#0077b6','#00b4d8','#90e0ef','#48cae4'] },
+		{ id: 'bosque',    label: 'Bosque',    colors: ['#2d6a4f','#52b788','#95d5b2','#1b4332'] },
+	] as const;
 </script>
 
 {#if auth.isLoggedIn}
 
-	<!-- Desktop topbar -->
-	<div class="desk-topbar desk-only">
-		<h1 class="desk-title">Ajustes</h1>
-	</div>
-
 	<!-- Mobile title -->
-	<h1 class="mobile-only">Ajustes</h1>
+	<h1 class="cx-mtitle mobile-only">Ajustes</h1>
 
-	<div class="desk-settings-grid">
-
-	<!-- Cuenta -->
-	<div class="glass setting-group">
-		<div class="setting-group-title">Cuenta</div>
-		<div class="settings-row">
-			<span class="k">Nombre</span>
-			<span class="v">{auth.user?.name}</span>
-		</div>
-		<div class="settings-row">
-			<span class="k">Email</span>
-			<span class="v">{auth.user?.email}</span>
+	<!-- Desktop topbar -->
+	<div class="desk-topbar desk-only" style="margin-bottom:18px;">
+		<div>
+			<h1 class="desk-title">Ajustes</h1>
+			<div class="cx-toptag">Personaliza tu bóveda y conexiones</div>
 		</div>
 	</div>
 
-	<!-- Apariencia -->
-	<div class="glass setting-group">
-		<div class="setting-group-title">Apariencia</div>
-
-		<div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
-			<span class="k">Tema</span>
-			<div class="seg" style="margin-bottom:0; width:100%;">
-				<button class:active={theme === 'dark'}  onclick={() => { theme = 'dark';  applyAppearance(); }}>🌙 Oscuro</button>
-				<button class:active={theme === 'light'} onclick={() => { theme = 'light'; applyAppearance(); }}>☀️ Claro</button>
-			</div>
+	<!-- ── Identity header ── -->
+	<div class="glass cx-head">
+		<div class="cx-av">{initial}</div>
+		<div class="cx-id">
+			<div class="cx-kicker">Tu cuenta</div>
+			<div class="cx-name">{auth.user?.name}</div>
+			<div class="cx-email">{auth.user?.email}</div>
 		</div>
-
-		<div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
-			<span class="k">Fondo</span>
-			<div class="wallpaper-grid">
-				{#each [
-					{ id: 'aurora',    label: 'Aurora',    colors: ['#9b5de5','#00b4d8','#ff006e','#38b000'] },
-					{ id: 'atardecer', label: 'Atardecer', colors: ['#ff6b35','#f7c59f','#e63946','#ff9f1c'] },
-					{ id: 'oceano',    label: 'Océano',    colors: ['#0077b6','#00b4d8','#90e0ef','#48cae4'] },
-					{ id: 'bosque',    label: 'Bosque',    colors: ['#2d6a4f','#52b788','#95d5b2','#1b4332'] },
-				] as wp}
-					<button
-						class="wp-btn"
-						class:wp-active={wallpaper === wp.id}
-						onclick={() => { wallpaper = wp.id as any; applyAppearance(); }}
-						title={wp.label}
-					>
-						<div class="wp-swatch">
-							{#each wp.colors as c, i}
-								<div style="background:{c}; border-radius:{i === 0 ? '8px 0 0 0' : i === 1 ? '0 8px 0 0' : i === 2 ? '0 0 0 8px' : '0 0 8px 0'};"></div>
-							{/each}
-						</div>
-						<span>{wp.label}</span>
-					</button>
-				{/each}
-			</div>
-		</div>
-
-		<div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:6px; border-bottom:none;">
-			<span class="k">Desenfoque del cristal ({blur}px)</span>
-			<input
-				type="range" min="8" max="48" step="4"
-				bind:value={blur}
-				oninput={applyAppearance}
-				style="width:100%; accent-color:var(--primary);"
-			/>
+		<div class="cx-brand">
+			<div class="mk">⛧</div>
+			<div class="tg">memento mori</div>
 		</div>
 	</div>
 
-	<!-- Lectura -->
-	<div class="glass setting-group">
-		<div class="setting-group-title">Lectura</div>
-		<div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
-			<span class="k">Velocidad de lectura (palabras/min)</span>
-			<input id="settings-wpm" class="text" type="number" bind:value={readingWpm} min="50" max="2000" />
-		</div>
-		<div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
-			<span class="k">Palabras por página (promedio)</span>
-			<input id="settings-pages" class="text" type="number" bind:value={readingWordsPerPage} min="50" max="1000" />
-		</div>
-		<div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:8px; border-bottom:none;">
-			<span class="k">Prueba de velocidad lectora</span>
-			{#if testPhase === 'idle'}
-				<p class="muted" style="font-size:12px; margin:0;">Lee el texto a tu ritmo habitual y pulsa «Listo» al terminar. Se medirán las palabras por minuto.</p>
-				<button class="btn" onclick={startSpeedTest} style="margin-top:4px;">▶ Iniciar prueba</button>
-			{:else if testPhase === 'reading'}
-				<div class="test-text">{TEST_TEXT}</div>
-				<button class="btn btn-primary" onclick={stopSpeedTest} style="width:100%; justify-content:center;">✓ Listo, terminé de leer</button>
-			{:else if testPhase === 'result'}
-				<div class="test-result">
-					<div class="test-result-wpm">{testResultWpm} <span>ppm</span></div>
-					<div class="test-result-meta">
-						{TEST_WORD_COUNT} palabras · {testElapsedSec}s
-						{#if testResultWpm && testResultWpm < 100}
-							· Lector lento (&lt; 100 ppm)
-						{:else if testResultWpm && testResultWpm < 200}
-							· Lector medio
-						{:else if testResultWpm && testResultWpm < 350}
-							· Lector rápido
-						{:else}
-							· Lector muy rápido
-						{/if}
+	<!-- ── Bento ── -->
+	<div class="cx-grid">
+
+		<!-- Apariencia (full width) -->
+		<div class="glass cx-card cx-span2" style="--accent: var(--primary);">
+			<div class="cx-card-head">
+				<div class="cx-ico">🎨</div>
+				<div class="cx-htxt">
+					<div class="cx-title">Apariencia</div>
+					<div class="cx-sub">Tema, fondo animado y nivel de cristal</div>
+				</div>
+			</div>
+			<div class="cx-body">
+				<!-- Tema -->
+				<div>
+					<span class="cx-label">Tema</span>
+					<div class="cx-theme-row">
+						<button class="cx-theme dark" class:on={theme === 'dark'} onclick={() => { theme = 'dark'; applyAppearance(); }}>
+							<div class="cx-theme-prev"><div class="swatch"></div><div class="lines"><i></i><i></i><i></i></div></div>
+							<div class="cx-theme-tag"><span>🌙 Oscuro</span><span class="chk">✓</span></div>
+						</button>
+						<button class="cx-theme light" class:on={theme === 'light'} onclick={() => { theme = 'light'; applyAppearance(); }}>
+							<div class="cx-theme-prev"><div class="swatch"></div><div class="lines"><i></i><i></i><i></i></div></div>
+							<div class="cx-theme-tag"><span>☀️ Claro</span><span class="chk">✓</span></div>
+						</button>
 					</div>
 				</div>
-				<div style="display:flex; gap:8px; width:100%;">
-					<button class="btn btn-primary" onclick={applyTestWpm} style="flex:1; justify-content:center;">Aplicar como velocidad</button>
-					<button class="btn" onclick={resetSpeedTest}>Repetir</button>
+
+				<!-- Fondo -->
+				<div>
+					<span class="cx-label">Fondo</span>
+					<div class="cx-wp-grid">
+						{#each wallpapers as wp}
+							<button class="cx-wp" class:on={wallpaper === wp.id} onclick={() => { wallpaper = wp.id as any; applyAppearance(); }} title={wp.label}>
+								<div class="cx-wp-sw">
+									{#each wp.colors as c}
+										<i style="background:{c};"></i>
+									{/each}
+									<span class="chk">✓</span>
+								</div>
+								<span>{wp.label}</span>
+							</button>
+						{/each}
+					</div>
 				</div>
-			{/if}
-		</div>
-		<p class="muted" style="font-size:12px; margin-top:8px;">Se guardan localmente y se usan para estimar la duración de libros.</p>
-	</div>
 
-	<!-- APIs externas -->
-	<div class="glass setting-group">
-		<div class="setting-group-title">APIs externas</div>
-		<div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
-			<span class="k">TMDb API Key</span>
-			<input id="settings-tmdb" class="text" type="password" bind:value={tmdbApiKey} placeholder="Tu API key de themoviedb.org" autocomplete="off" />
-			<p class="muted" style="font-size:11px;">Mejora la detección de películas y series desde Netflix, Prime, etc.</p>
+				<!-- Blur -->
+				<div>
+					<span class="cx-label">Desenfoque del cristal · <span class="cx-blur-val">{blur}px</span></span>
+					<div class="cx-blur">
+						<input class="cx-range" type="range" min="8" max="48" step="4" bind:value={blur} oninput={applyAppearance} />
+						<div class="cx-blur-demo"><div class="panel">glass</div></div>
+					</div>
+				</div>
+			</div>
 		</div>
-		<div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
-			<span class="k">Spotify Client ID</span>
-			<input id="settings-spotify-id" class="text" type="text" bind:value={spotifyClientId} placeholder="Client ID" autocomplete="off" />
+
+		<!-- Lectura -->
+		<div class="glass cx-card" style="--accent: var(--book);">
+			<div class="cx-card-head">
+				<div class="cx-ico">📖</div>
+				<div class="cx-htxt">
+					<div class="cx-title">Lectura</div>
+					<div class="cx-sub">Para estimar la duración de libros</div>
+				</div>
+			</div>
+			<div class="cx-body">
+				<div class="cx-two">
+					<div class="cx-field">
+						<label for="cx-wpm">Velocidad</label>
+						<div class="cx-input-unit">
+							<input id="cx-wpm" class="text" type="number" bind:value={readingWpm} min="50" max="2000" />
+							<span class="u">ppm</span>
+						</div>
+					</div>
+					<div class="cx-field">
+						<label for="cx-pages">Palabras/página</label>
+						<div class="cx-input-unit">
+							<input id="cx-pages" class="text" type="number" bind:value={readingWordsPerPage} min="50" max="1000" />
+						</div>
+					</div>
+				</div>
+				<!-- Prueba de velocidad -->
+				<div class="cx-field">
+					<span class="cx-label">Prueba de velocidad lectora</span>
+					{#if testPhase === 'idle'}
+						<p class="cx-hint">Lee el texto a tu ritmo habitual y pulsa «Listo» al terminar.</p>
+						<button class="btn" onclick={startSpeedTest} style="margin-top:4px;">▶ Iniciar prueba</button>
+					{:else if testPhase === 'reading'}
+						<div class="cx-test-text">{TEST_TEXT}</div>
+						<button class="btn btn-primary" onclick={stopSpeedTest} style="justify-content:center;">✓ Listo, terminé de leer</button>
+					{:else if testPhase === 'result'}
+						<div class="cx-test-result">
+							<span class="cx-test-wpm">{testResultWpm}</span>
+							<span class="cx-test-unit">ppm</span>
+							<span class="cx-test-meta">
+								{TEST_WORD_COUNT} palabras · {testElapsedSec}s ·
+								{#if testResultWpm && testResultWpm < 100}lento
+								{:else if testResultWpm && testResultWpm < 200}medio
+								{:else if testResultWpm && testResultWpm < 350}rápido
+								{:else}muy rápido{/if}
+							</span>
+						</div>
+						<div style="display:flex; gap:8px;">
+							<button class="btn btn-primary" onclick={applyTestWpm} style="flex:1; justify-content:center;">Aplicar velocidad</button>
+							<button class="btn" onclick={resetSpeedTest}>Repetir</button>
+						</div>
+					{/if}
+				</div>
+				<p class="cx-hint">Se guardan localmente en tu dispositivo.</p>
+			</div>
 		</div>
-		<div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:8px; border-bottom:none;">
-			<span class="k">Spotify Client Secret</span>
-			<div class="row" style="width:100%;">
-				{#if showSpotifySecret}
-					<input id="settings-spotify-secret" class="text" type="text" bind:value={spotifyClientSecret} placeholder="Client Secret" autocomplete="off" style="flex:1;" />
+
+		<!-- APIs externas -->
+		<div class="glass cx-card" style="--accent: var(--movie);">
+			<div class="cx-card-head">
+				<div class="cx-ico">🔌</div>
+				<div class="cx-htxt">
+					<div class="cx-title">APIs externas</div>
+					<div class="cx-sub">Mejoran la detección de contenido</div>
+				</div>
+			</div>
+			<div class="cx-body">
+				<div class="cx-api" style="--g: var(--movie);">
+					<div class="cx-api-top">
+						<div class="cx-api-glyph">T</div>
+						<div class="cx-api-name">TMDb</div>
+						<span class="cx-dot" class:ok={tmdbOk}>{tmdbOk ? 'Configurada' : 'Sin configurar'}</span>
+					</div>
+					<input class="text" type="password" bind:value={tmdbApiKey} placeholder="API key de themoviedb.org" autocomplete="off" />
+				</div>
+				<div class="cx-api" style="--g: var(--music);">
+					<div class="cx-api-top">
+						<div class="cx-api-glyph">S</div>
+						<div class="cx-api-name">Spotify</div>
+						<span class="cx-dot" class:ok={spotifyOk}>{spotifyOk ? 'Configurada' : 'Sin configurar'}</span>
+					</div>
+					<input class="text" type="text" bind:value={spotifyClientId} placeholder="Client ID" autocomplete="off" />
+					<div class="cx-pwrow">
+						{#if showSpotifySecret}
+							<input class="text" type="text" bind:value={spotifyClientSecret} placeholder="Client Secret" autocomplete="off" />
+						{:else}
+							<input class="text" type="password" bind:value={spotifyClientSecret} placeholder="Client Secret" autocomplete="off" />
+						{/if}
+						<button class="btn" type="button" onclick={() => showSpotifySecret = !showSpotifySecret}>{showSpotifySecret ? '🙈' : '👁'}</button>
+					</div>
+					<p class="cx-hint">Necesario para detectar canciones de Spotify. Crea una app gratis en <strong>developer.spotify.com</strong>.</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Steam (full width) -->
+		<div class="glass cx-card cx-span2" style="--accent: var(--game);">
+			<div class="cx-card-head">
+				<div class="cx-ico">🎮</div>
+				<div class="cx-htxt">
+					<div class="cx-title">Steam</div>
+					<div class="cx-sub">Sincroniza tu tiempo real de juego</div>
+				</div>
+				<span class="cx-dot" class:ok={!!auth.user?.steam_id}>{auth.user?.steam_id ? 'Conectado' : 'Sin conectar'}</span>
+			</div>
+			<div class="cx-body">
+				<div class="cx-field">
+					<label for="cx-steam">Steam API Key</label>
+					<input id="cx-steam" class="text" type="password" bind:value={steamApiKey} placeholder="API key de steamcommunity.com/dev/apikey" autocomplete="off" />
+					<p class="cx-hint">Se guarda localmente. Consíguela gratis en <strong>steamcommunity.com/dev/apikey</strong>.</p>
+				</div>
+
+				{#if auth.user?.steam_id}
+					<div class="cx-steam-connect">
+						<div class="settings-row" style="border:none; padding:0;">
+							<span class="k">Steam ID</span>
+							<span class="v steam-id">{auth.user.steam_id}</span>
+						</div>
+						<div style="display:flex; gap:8px; flex-wrap:wrap;">
+							<button class="btn cx-btn-steam" onclick={steamSync} disabled={steamSyncState === 'syncing'} style="flex:1; justify-content:center;">
+								{steamSyncState === 'syncing' ? '⏳ Sincronizando…' : '🎮 Sincronizar tiempo jugado'}
+							</button>
+							<button class="btn" onclick={steamDisconnect} style="opacity:0.6; font-size:12px;">Desconectar</button>
+						</div>
+						{#if steamSyncState === 'done' && steamSyncResult}
+							<p class="cx-hint" style="color:var(--game);">✅ {steamSyncResult.synced} juego{steamSyncResult.synced !== 1 ? 's' : ''} sincronizado{steamSyncResult.synced !== 1 ? 's' : ''} de {steamSyncResult.total_steam_games} en tu biblioteca.</p>
+						{:else if steamSyncState === 'error'}
+							<p class="cx-hint" style="color:var(--red, var(--danger));">⚠ Error al sincronizar</p>
+						{/if}
+					</div>
 				{:else}
-					<input id="settings-spotify-secret" class="text" type="password" bind:value={spotifyClientSecret} placeholder="Client Secret" autocomplete="off" style="flex:1;" />
+					<div class="cx-steam-connect">
+						<p>Conecta tu cuenta para volcar las horas reales jugadas en los juegos de tu bóveda.</p>
+						<button class="btn cx-btn-steam" onclick={() => window.location.href = `/api/auth/steam/login?token=${auth.token}${steamApiKey ? '&steam_api_key=' + encodeURIComponent(steamApiKey) : ''}`}>
+							🎮 Conectar con Steam
+						</button>
+						<p class="cx-hint">Requiere <code>STEAM_API_KEY</code> en el servidor y perfil de Steam público.</p>
+					</div>
 				{/if}
-				<button class="btn" onclick={() => showSpotifySecret = !showSpotifySecret}>
-					{showSpotifySecret ? '🙈' : '👁'}
-				</button>
 			</div>
-			<p class="muted" style="font-size:11px;">Necesario para detectar canciones de Spotify. Crea una app gratis en <strong>developer.spotify.com</strong>.</p>
+		</div>
+
+	</div><!-- /cx-grid -->
+
+	<!-- Save bar -->
+	<div class="glass-strong cx-savebar">
+		<button class="btn btn-primary" onclick={saveLocalSettings}>Guardar ajustes</button>
+		<button class="btn" onclick={resetLocalSettings}>Restablecer lectura</button>
+		{#if saved}<span class="cx-saved">Guardado ✓</span>{/if}
+	</div>
+
+	<!-- Sesión -->
+	<div class="glass cx-card cx-session" style="--accent: var(--danger); margin-top:14px;">
+		<div class="cx-card-head">
+			<div class="cx-ico">🔐</div>
+			<div class="cx-htxt">
+				<div class="cx-title">Sesión</div>
+				<div class="cx-sub">Conectado como {auth.user?.name}</div>
+			</div>
+			<button class="btn btn-danger" onclick={logout} style="padding:9px 18px;">Cerrar sesión</button>
 		</div>
 	</div>
 
-	<!-- Steam -->
-	<div class="glass setting-group">
-		<div class="setting-group-title">Steam</div>
-		<div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
-			<span class="k">Steam API Key</span>
-			<input class="text" type="password" bind:value={steamApiKey} placeholder="Tu API key de steamcommunity.com/dev/apikey" autocomplete="off" />
-			<p class="muted" style="font-size:11px;">Se guarda localmente. Consíguela gratis en <strong>steamcommunity.com/dev/apikey</strong>.</p>
-		</div>
-		{#if auth.user?.steam_id}
-			<div class="settings-row">
-				<span class="k">Steam ID</span>
-				<span class="v steam-id">{auth.user.steam_id}</span>
-			</div>
-			<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-				<button
-					class="btn btn-primary"
-					onclick={steamSync}
-					disabled={steamSyncState === 'syncing'}
-					style="flex:1; justify-content:center;"
-				>
-					{steamSyncState === 'syncing' ? '⏳ Sincronizando…' : '🎮 Sincronizar tiempo jugado'}
-				</button>
-				<button class="btn" onclick={steamDisconnect} style="opacity:0.6; font-size:12px;">Desconectar</button>
-			</div>
-			{#if steamSyncState === 'done' && steamSyncResult}
-				<p class="muted" style="font-size:12px; margin-top:8px; color:var(--game);">
-					✅ {steamSyncResult.synced} juego{steamSyncResult.synced !== 1 ? 's' : ''} sincronizado{steamSyncResult.synced !== 1 ? 's' : ''}
-					de {steamSyncResult.total_steam_games} en tu biblioteca Steam.
-				</p>
-			{:else if steamSyncState === 'error'}
-				<p class="muted" style="font-size:12px; margin-top:8px; color:var(--red);">⚠ Error al sincronizar</p>
-			{/if}
-			<p class="muted" style="font-size:11px; margin-top:8px;">
-				Actualiza la duración de los juegos del vault que tengan un <code>source_id</code> tipo <code>steam_APPID</code>
-				con tu tiempo real de juego.
-			</p>
-		{:else}
-			<p class="muted" style="font-size:13px; margin-bottom:12px;">
-				Conecta tu cuenta de Steam para sincronizar el tiempo real de juego con los juegos del vault.
-			</p>
-			<button
-				class="btn btn-primary"
-				onclick={() => window.location.href = `/api/auth/steam/login?token=${auth.token}${steamApiKey ? '&steam_api_key=' + encodeURIComponent(steamApiKey) : ''}`}
-			>
-				🎮 Conectar con Steam
-			</button>
-			<p class="muted" style="font-size:11px; margin-top:10px;">
-				Requiere <code>STEAM_API_KEY</code> configurada en el servidor y perfil de Steam público.
-			</p>
-		{/if}
-	</div>
-
-	<!-- Actions (save buttons — span full width on desktop) -->
-	<div class="desk-settings-save glass setting-group" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
-		<button class="btn btn-primary" onclick={saveLocalSettings} style="flex:1; justify-content:center;">Guardar ajustes</button>
-		<button class="btn" onclick={resetLocalSettings} style="flex:1; justify-content:center;">Restablecer lectura</button>
-		{#if saved}
-			<span style="color:var(--game); font-weight:600; font-size:13px; width:100%; text-align:center;">Guardado ✓</span>
-		{/if}
-	</div>
-
-	</div><!-- /desk-settings-grid -->
-
-	<!-- Sesión (full width on desktop) -->
-	<div class="glass setting-group" style="margin-top:0;">
-		<div class="setting-group-title">Sesión</div>
-		<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-			<div>
-				<div style="font-weight:700; font-size:15px;">{auth.user?.name}</div>
-				<div class="muted" style="font-size:13px;">{auth.user?.email}</div>
-			</div>
-			<button class="btn btn-danger" onclick={logout} style="padding:10px 20px;">Cerrar sesión</button>
-		</div>
-	</div>
-
-	<!-- Herramientas de mantenimiento -->
-	<details class="glass setting-group" style="margin-top:0; cursor:pointer;">
-		<summary style="font-size:13px; font-weight:700; color:var(--text-dim); letter-spacing:0.05em; list-style:none; display:flex; align-items:center; gap:6px; padding:2px 0;">
-			<span>⚙️ Mantenimiento</span>
+	<!-- Mantenimiento -->
+	<details class="glass cx-card cx-maint" style="margin-top:14px;">
+		<summary>
+			<span>🛠️</span><span>Mantenimiento</span><span class="chev">›</span>
 		</summary>
-		<div style="margin-top:14px; display:flex; flex-direction:column; gap:10px;">
-			<div style="font-size:12px; color:var(--text-muted); line-height:1.5;">
-				Actualiza plataformas, trailer, géneros y fecha de estreno para todas las películas y series con ID de TMDB.
+		<div class="cx-body" style="padding-top:0;">
+			<p class="cx-hint" style="color:var(--text-muted); line-height:1.5;">
+				Actualiza plataformas, trailer, géneros y fecha de estreno de las películas y series con ID de TMDB.
 				Solo toca los que aún no tienen datos (sin <code>?force</code>).
-			</div>
+			</p>
 			<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-				<button
-					class="btn"
-					onclick={() => runTmdbBackfill(false)}
-					disabled={backfillState === 'running'}
-				>
+				<button class="btn" onclick={() => runTmdbBackfill(false)} disabled={backfillState === 'running'}>
 					{backfillState === 'running' ? '⏳ Actualizando…' : '🔄 Actualizar metadatos TMDB'}
 				</button>
-				<button
-					class="btn"
-					onclick={() => runTmdbBackfill(true)}
-					disabled={backfillState === 'running'}
-					style="opacity:0.6; font-size:11px;"
-				>Forzar todo</button>
+				<button class="btn" onclick={() => runTmdbBackfill(true)} disabled={backfillState === 'running'} style="opacity:0.6; font-size:11px;">Forzar todo</button>
 			</div>
 			{#if backfillState === 'done'}
-				<div style="font-size:12px; color:var(--green);">
-					✅ Backfill iniciado en segundo plano — tardará ~30-60s. Recarga la bóveda cuando acabe.
-				</div>
+				<p class="cx-hint" style="color:var(--game);">✅ Backfill iniciado en segundo plano — tardará ~30-60s. Recarga la bóveda cuando acabe.</p>
 			{:else if backfillState === 'error'}
-				<div style="font-size:12px; color:var(--red);">⚠ Error al ejecutar el backfill</div>
+				<p class="cx-hint" style="color:var(--red, var(--danger));">⚠ Error al ejecutar el backfill</p>
 			{/if}
 		</div>
 	</details>
 
-	<div class="center mt16" style="padding-bottom:8px;">
-		<a href="https://ko-fi.com/Z8Z81OW7UV" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:12px;">
-			☕ Invítame una
-		</a>
+	<div class="cx-footer">
+		<a href="https://ko-fi.com/Z8Z81OW7UV" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:12px;">☕ Invítame una</a>
 	</div>
 {/if}
 
 <style>
-	.wallpaper-grid {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 8px;
-		width: 100%;
-	}
-	.wp-btn {
-		all: unset;
-		cursor: pointer;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 5px;
-		padding: 6px 4px;
-		border-radius: 12px;
-		border: 1px solid var(--glass-border);
-		background: var(--glass-bg-weak);
-		transition: border-color 0.15s, background 0.15s;
-		font-size: 10px;
-		color: var(--text-muted);
-		font-family: inherit;
-		font-weight: 600;
-	}
-	.wp-btn:hover { background: var(--glass-bg); }
-	.wp-btn.wp-active {
-		border-color: var(--glass-border-bright);
-		background: var(--glass-bg);
-		color: var(--text);
-		box-shadow: 0 0 0 1px var(--primary);
-	}
-	.wp-swatch {
-		width: 40px;
-		height: 30px;
-		border-radius: 8px;
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		grid-template-rows: 1fr 1fr;
+	/* ════════ AJUSTES — REDISEÑO ════════ */
+
+	.cx-mtitle { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; }
+	.cx-toptag { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+	/* ── Identity header ── */
+	.cx-head {
+		position: relative;
+		display: flex; align-items: center; gap: 18px;
+		padding: 22px;
+		margin-bottom: 18px;
+		border-radius: var(--radius);
 		overflow: hidden;
 	}
-	.wp-swatch div { width: 100%; height: 100%; }
+	.cx-head::after {
+		content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+		background:
+			radial-gradient(120% 140% at 0% 0%, oklch(0.78 0.16 300 / 0.30), transparent 55%),
+			radial-gradient(120% 140% at 100% 100%, oklch(0.74 0.16 210 / 0.22), transparent 55%);
+	}
+	.cx-head > :global(*) { position: relative; z-index: 1; }
+	.cx-av {
+		width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0;
+		display: grid; place-items: center;
+		font-size: 26px; font-weight: 800; color: #fff;
+		background: linear-gradient(135deg, oklch(0.80 0.16 290), oklch(0.62 0.20 250));
+		box-shadow: 0 0 0 3px oklch(0.80 0.12 290 / 0.25), 0 8px 24px oklch(0.55 0.18 290 / 0.45);
+	}
+	.cx-id { flex: 1; min-width: 0; }
+	.cx-kicker { font-size: 10px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
+	.cx-name { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+	.cx-email { font-size: 13px; color: var(--text-muted); margin-top: 5px; }
+	.cx-brand { display: none; text-align: right; flex-shrink: 0; }
+	.cx-brand .mk { font-size: 22px; line-height: 1; }
+	.cx-brand .tg { font-size: 11px; font-style: italic; color: var(--text-dim); letter-spacing: 0.08em; margin-top: 4px; }
+	@media (min-width: 720px) { .cx-brand { display: block; } }
 
+	/* ── Bento grid ── */
+	.cx-grid { display: flex; flex-direction: column; gap: 14px; }
 	@media (min-width: 1024px) {
-		.desk-settings-save { grid-column: 1 / -1; }
+		.cx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+		.cx-span2 { grid-column: 1 / -1; }
 	}
 
-	.test-text {
+	/* ── Section card ── */
+	.cx-card { --accent: var(--primary); padding: 0; border-radius: var(--radius); overflow: hidden; }
+	.cx-card-head {
+		display: flex; align-items: center; gap: 12px;
+		padding: 16px 18px 14px;
+		border-bottom: 1px solid var(--glass-border);
+		position: relative;
+	}
+	.cx-card-head::before {
+		content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+		background: var(--accent); box-shadow: 0 0 12px var(--accent);
+	}
+	.cx-ico {
+		width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0;
+		display: grid; place-items: center; font-size: 18px;
+		background: color-mix(in oklab, var(--accent) 18%, transparent);
+		border: 1px solid color-mix(in oklab, var(--accent) 35%, transparent);
+	}
+	.cx-htxt { flex: 1; min-width: 0; }
+	.cx-title { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+	.cx-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+	.cx-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 16px; }
+	.cx-label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 9px; display: block; }
+	.cx-hint { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+	.cx-hint strong { color: var(--text-muted); }
+
+	/* ── Theme tiles ── */
+	.cx-theme-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+	.cx-theme {
+		all: unset; cursor: pointer; border-radius: 14px; overflow: hidden;
+		border: 1px solid var(--glass-border); position: relative;
+		transition: border-color .15s, box-shadow .15s;
+	}
+	.cx-theme.on { border-color: var(--glass-border-bright); box-shadow: 0 0 0 2px var(--primary); }
+	.cx-theme-prev { height: 58px; display: flex; align-items: center; gap: 6px; padding: 12px; }
+	.cx-theme-prev .swatch { width: 22px; height: 22px; border-radius: 6px; }
+	.cx-theme-prev .lines { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+	.cx-theme-prev .lines i { height: 5px; border-radius: 3px; display: block; }
+	.cx-theme.dark  .cx-theme-prev { background: linear-gradient(135deg, #14121f, #1d1830); }
+	.cx-theme.dark  .swatch { background: linear-gradient(135deg, oklch(0.78 0.16 290), oklch(0.62 0.20 250)); }
+	.cx-theme.dark  .lines i { background: rgba(255,255,255,0.22); }
+	.cx-theme.dark  .lines i:first-child { background: rgba(255,255,255,0.45); width: 70%; }
+	.cx-theme.light .cx-theme-prev { background: linear-gradient(135deg, #efe9ff, #fdfbff); }
+	.cx-theme.light .swatch { background: linear-gradient(135deg, oklch(0.72 0.16 290), oklch(0.6 0.2 250)); }
+	.cx-theme.light .lines i { background: rgba(40,20,70,0.20); }
+	.cx-theme.light .lines i:first-child { background: rgba(40,20,70,0.42); width: 70%; }
+	.cx-theme-tag {
+		display: flex; align-items: center; justify-content: space-between;
+		padding: 8px 12px; font-size: 12px; font-weight: 600;
+		background: var(--glass-bg-weak);
+	}
+	.cx-theme-tag .chk { opacity: 0; color: var(--primary); font-weight: 800; }
+	.cx-theme.on .cx-theme-tag .chk { opacity: 1; }
+
+	/* ── Wallpaper swatches ── */
+	.cx-wp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+	.cx-wp { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 7px; transition: transform .12s; }
+	.cx-wp:hover { transform: translateY(-2px); }
+	.cx-wp-sw {
+		width: 100%; aspect-ratio: 1; border-radius: 13px; overflow: hidden;
+		display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+		border: 1px solid var(--glass-border); position: relative; box-shadow: var(--glass-inner);
+	}
+	.cx-wp-sw i { display: block; }
+	.cx-wp.on .cx-wp-sw { box-shadow: 0 0 0 2px var(--primary), 0 6px 18px rgba(0,0,0,0.4); }
+	.cx-wp-sw .chk {
+		position: absolute; inset: 0; display: grid; place-items: center;
+		font-size: 18px; color: #fff; opacity: 0;
+		background: rgba(0,0,0,0.35); text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+	}
+	.cx-wp.on .cx-wp-sw .chk { opacity: 1; }
+	.cx-wp span { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+	.cx-wp.on span { color: var(--text); }
+
+	/* ── Blur control + live demo ── */
+	.cx-blur { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; }
+	.cx-blur-demo {
+		width: 74px; height: 74px; border-radius: 16px; flex-shrink: 0; position: relative; overflow: hidden;
+		background: conic-gradient(from 45deg, oklch(0.78 0.2 300), oklch(0.78 0.2 200), oklch(0.8 0.18 140), oklch(0.78 0.2 340), oklch(0.78 0.2 300));
+	}
+	.cx-blur-demo .panel {
+		position: absolute; inset: 14px; border-radius: 10px;
+		background: var(--glass-bg); border: 1px solid var(--glass-border-bright);
+		-webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+		display: grid; place-items: center; font-size: 10px; font-weight: 700; color: var(--text);
+	}
+	.cx-range { width: 100%; accent-color: var(--primary); }
+	.cx-blur-val { font-variant-numeric: tabular-nums; color: var(--text); font-weight: 700; }
+
+	/* ── Fields ── */
+	.cx-field { display: flex; flex-direction: column; gap: 7px; }
+	.cx-field > label, .cx-field > span.cx-label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+	.cx-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+	.cx-two :global(.text) { width: 100%; }
+	.cx-input-unit { position: relative; }
+	.cx-input-unit .u { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--text-dim); pointer-events: none; font-weight: 600; }
+
+	/* ── Reading speed test ── */
+	.cx-test-text {
 		background: var(--glass-bg-weak);
 		border: 1px solid var(--glass-border);
 		border-radius: 10px;
-		padding: 14px 16px;
-		font-size: 14px;
+		padding: 12px 14px;
+		font-size: 13px;
 		line-height: 1.7;
 		color: var(--text);
-		width: 100%;
-		box-sizing: border-box;
 		user-select: none;
 	}
-
-	.test-result {
-		width: 100%;
-		background: var(--glass-bg-weak);
-		border: 1px solid var(--glass-border);
-		border-radius: 10px;
-		padding: 14px 16px;
+	.cx-test-result {
 		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 4px;
+		align-items: baseline;
+		gap: 6px;
+		flex-wrap: wrap;
+		background: color-mix(in oklab, var(--book) 10%, transparent);
+		border: 1px solid color-mix(in oklab, var(--book) 25%, transparent);
+		border-radius: 10px;
+		padding: 12px 14px;
 	}
-	.test-result-wpm {
-		font-size: 36px;
-		font-weight: 800;
-		color: var(--primary);
-		line-height: 1;
+	.cx-test-wpm { font-size: 32px; font-weight: 800; color: var(--book); }
+	.cx-test-unit { font-size: 14px; font-weight: 600; color: var(--text-muted); }
+	.cx-test-meta { margin-left: auto; font-size: 11px; color: var(--text-dim); }
+
+	/* ── API rows ── */
+	.cx-api { display: flex; flex-direction: column; gap: 7px; }
+	.cx-api :global(.text) { width: 100%; }
+	.cx-api-top { display: flex; align-items: center; gap: 9px; }
+	.cx-api-glyph {
+		width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+		display: grid; place-items: center; font-size: 13px; font-weight: 800;
+		background: color-mix(in oklab, var(--g, var(--primary)) 18%, transparent);
+		color: var(--g, var(--primary));
+		border: 1px solid color-mix(in oklab, var(--g, var(--primary)) 35%, transparent);
 	}
-	.test-result-wpm span {
-		font-size: 16px;
-		font-weight: 600;
-		color: var(--text-dim);
+	.cx-api-name { font-size: 13px; font-weight: 700; flex: 1; }
+	.cx-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-dim); }
+	.cx-dot::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); }
+	.cx-dot.ok { color: var(--game); }
+	.cx-dot.ok::before { background: var(--game); box-shadow: 0 0 8px var(--game); }
+	.cx-pwrow { display: flex; gap: 8px; }
+	.cx-pwrow :global(.text) { flex: 1; }
+
+	/* ── Steam connect ── */
+	.cx-steam-connect {
+		display: flex; flex-direction: column; gap: 12px;
+		padding: 16px; border-radius: 14px;
+		background: color-mix(in oklab, var(--game) 8%, transparent);
+		border: 1px solid color-mix(in oklab, var(--game) 22%, transparent);
 	}
-	.test-result-meta {
-		font-size: 12px;
-		color: var(--text-muted);
-		margin-top: 4px;
+	.cx-steam-connect p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+	.cx-btn-steam {
+		background: linear-gradient(180deg, oklch(0.5 0.07 230), oklch(0.36 0.06 235));
+		color: #fff; border: none; font-weight: 700;
+		box-shadow: 0 4px 16px oklch(0.4 0.08 235 / 0.5), var(--glass-inner);
 	}
+	.cx-btn-steam:hover { filter: brightness(1.1); }
+	.steam-id { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+
+	/* ── Maintenance ── */
+	.cx-maint summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-muted); padding: 16px 18px; }
+	.cx-maint summary::-webkit-details-marker { display: none; }
+	.cx-maint summary .chev { margin-left: auto; transition: transform .2s; color: var(--text-dim); }
+	.cx-maint[open] summary .chev { transform: rotate(90deg); }
+
+	/* ── Save bar ── */
+	.cx-savebar { display: flex; gap: 10px; align-items: center; padding: 12px 14px; margin-top: 16px; border-radius: 18px; }
+	@media (min-width: 1024px) { .cx-savebar { position: sticky; bottom: 14px; z-index: 5; } }
+	.cx-savebar :global(.btn) { flex: 1; justify-content:center; }
+	.cx-saved { color: var(--game); font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+
+	.cx-footer { text-align: center; margin-top: 18px; padding-bottom: 6px; }
+
 </style>
