@@ -17,6 +17,40 @@
 	let steamSyncState = $state<'idle' | 'syncing' | 'done' | 'error'>('idle');
 	let steamSyncResult = $state<{synced: number; created: number; total_steam_games: number} | null>(null);
 
+	// Reading speed test
+	const TEST_TEXT = `El hábito de la lectura es una de las mejores costumbres que puede cultivar una persona. A través de los libros descubrimos mundos que jamás podríamos visitar, conocemos personas que nunca existieron pero que nos enseñan verdades eternas, y exploramos ideas que transforman nuestra manera de ver la realidad. Leer con regularidad mejora la concentración, amplía el vocabulario y desarrolla la capacidad de pensar con claridad. No importa el género ni el tema: cada libro abre una puerta hacia algo nuevo. Algunos prefieren la ficción porque les permite escapar de la rutina diaria; otros se inclinan por el ensayo o la divulgación científica porque satisface su curiosidad sobre el mundo. Lo que importa es encontrar aquello que te haga querer seguir leyendo, página tras página, sin importar la hora ni el lugar. La lectura nos hace más empáticos, porque nos obliga a ponernos en el lugar de otros, a entender sus miedos, sus alegrías y sus contradicciones. Un buen libro puede cambiar la perspectiva de una persona para siempre.`;
+	const TEST_WORD_COUNT = TEST_TEXT.trim().split(/\s+/).length;
+
+	let testPhase = $state<'idle' | 'reading' | 'result'>('idle');
+	let testStartTime = $state<number | null>(null);
+	let testResultWpm = $state<number | null>(null);
+	let testElapsedSec = $state<number | null>(null);
+
+	function startSpeedTest() {
+		testPhase = 'reading';
+		testStartTime = Date.now();
+	}
+
+	function stopSpeedTest() {
+		if (!testStartTime) return;
+		const elapsed = (Date.now() - testStartTime) / 1000;
+		testElapsedSec = Math.round(elapsed);
+		testResultWpm = Math.round(TEST_WORD_COUNT / (elapsed / 60));
+		testPhase = 'result';
+	}
+
+	function applyTestWpm() {
+		if (testResultWpm) readingWpm = testResultWpm;
+		testPhase = 'idle';
+	}
+
+	function resetSpeedTest() {
+		testPhase = 'idle';
+		testStartTime = null;
+		testResultWpm = null;
+		testElapsedSec = null;
+	}
+
 	async function runTmdbBackfill(force = false) {
 		backfillState = 'running';
 		backfillResult = null;
@@ -231,6 +265,36 @@
 			<span class="k">Palabras por página (promedio)</span>
 			<input id="settings-pages" class="text" type="number" bind:value={readingWordsPerPage} min="50" max="1000" />
 		</div>
+		<div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:8px; border-bottom:none;">
+			<span class="k">Prueba de velocidad lectora</span>
+			{#if testPhase === 'idle'}
+				<p class="muted" style="font-size:12px; margin:0;">Lee el texto a tu ritmo habitual y pulsa «Listo» al terminar. Se medirán las palabras por minuto.</p>
+				<button class="btn" onclick={startSpeedTest} style="margin-top:4px;">▶ Iniciar prueba</button>
+			{:else if testPhase === 'reading'}
+				<div class="test-text">{TEST_TEXT}</div>
+				<button class="btn btn-primary" onclick={stopSpeedTest} style="width:100%; justify-content:center;">✓ Listo, terminé de leer</button>
+			{:else if testPhase === 'result'}
+				<div class="test-result">
+					<div class="test-result-wpm">{testResultWpm} <span>ppm</span></div>
+					<div class="test-result-meta">
+						{TEST_WORD_COUNT} palabras · {testElapsedSec}s
+						{#if testResultWpm && testResultWpm < 100}
+							· Lector lento (&lt; 100 ppm)
+						{:else if testResultWpm && testResultWpm < 200}
+							· Lector medio
+						{:else if testResultWpm && testResultWpm < 350}
+							· Lector rápido
+						{:else}
+							· Lector muy rápido
+						{/if}
+					</div>
+				</div>
+				<div style="display:flex; gap:8px; width:100%;">
+					<button class="btn btn-primary" onclick={applyTestWpm} style="flex:1; justify-content:center;">Aplicar como velocidad</button>
+					<button class="btn" onclick={resetSpeedTest}>Repetir</button>
+				</div>
+			{/if}
+		</div>
 		<p class="muted" style="font-size:12px; margin-top:8px;">Se guardan localmente y se usan para estimar la duración de libros.</p>
 	</div>
 
@@ -423,5 +487,46 @@
 
 	@media (min-width: 1024px) {
 		.desk-settings-save { grid-column: 1 / -1; }
+	}
+
+	.test-text {
+		background: var(--glass-bg-weak);
+		border: 1px solid var(--glass-border);
+		border-radius: 10px;
+		padding: 14px 16px;
+		font-size: 14px;
+		line-height: 1.7;
+		color: var(--text);
+		width: 100%;
+		box-sizing: border-box;
+		user-select: none;
+	}
+
+	.test-result {
+		width: 100%;
+		background: var(--glass-bg-weak);
+		border: 1px solid var(--glass-border);
+		border-radius: 10px;
+		padding: 14px 16px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+	}
+	.test-result-wpm {
+		font-size: 36px;
+		font-weight: 800;
+		color: var(--primary);
+		line-height: 1;
+	}
+	.test-result-wpm span {
+		font-size: 16px;
+		font-weight: 600;
+		color: var(--text-dim);
+	}
+	.test-result-meta {
+		font-size: 12px;
+		color: var(--text-muted);
+		margin-top: 4px;
 	}
 </style>
