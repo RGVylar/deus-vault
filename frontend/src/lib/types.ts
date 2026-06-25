@@ -147,6 +147,36 @@ export interface MomentStats {
 	count: number;
 }
 
+export interface WishlistItem {
+	id: number;
+	title: string;
+	url: string | null;
+	price: number | null;
+	image_url: string | null;
+	store: string | null;
+	notes: string | null;
+	purchased: boolean;
+	purchased_at: string | null;
+	created_at: string;
+}
+
+export interface WishlistStats {
+	total_items: number;
+	pending_items: number;
+	purchased_items: number;
+	total_cost: number;
+	pending_cost: number;
+	purchased_cost: number;
+}
+
+export interface ProductLookupResult {
+	title: string | null;
+	price: number | null;
+	image_url: string | null;
+	store: string | null;
+	url: string | null;
+}
+
 export interface RewindStats {
 	year: number;
 	total_consumed_minutes: number;

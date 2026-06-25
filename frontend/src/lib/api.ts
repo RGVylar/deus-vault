@@ -32,3 +32,20 @@ export const api = {
 		request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
 	del: <T>(path: string) => request<T>(path, { method: 'DELETE' })
 };
+
+export const wishlistApi = {
+	list: (purchased?: boolean) => {
+		const qs = purchased !== undefined ? `?purchased=${purchased}` : '';
+		return api.get<import('./types').WishlistItem[]>(`/wishlist${qs}`);
+	},
+	stats: () => api.get<import('./types').WishlistStats>('/wishlist/stats'),
+	lookup: (url: string) =>
+		api.get<import('./types').ProductLookupResult>(`/wishlist/lookup?url=${encodeURIComponent(url)}`),
+	create: (body: { title: string; url?: string | null; price?: number | null; image_url?: string | null; store?: string | null; notes?: string | null }) =>
+		api.post<import('./types').WishlistItem>('/wishlist', body),
+	update: (id: number, body: Partial<{ title: string; url: string | null; price: number | null; image_url: string | null; store: string | null; notes: string | null }>) =>
+		api.patch<import('./types').WishlistItem>(`/wishlist/${id}`, body),
+	purchase: (id: number) => api.post<import('./types').WishlistItem>(`/wishlist/${id}/purchase`),
+	unpurchase: (id: number) => api.post<import('./types').WishlistItem>(`/wishlist/${id}/unpurchase`),
+	delete: (id: number) => api.del<void>(`/wishlist/${id}`),
+};

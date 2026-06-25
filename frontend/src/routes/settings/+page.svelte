@@ -17,6 +17,16 @@
 	let steamSyncState = $state<'idle' | 'syncing' | 'done' | 'error'>('idle');
 	let steamSyncResult = $state<{synced: number; created: number; total_steam_games: number} | null>(null);
 
+	// Bóveda de Deseos — salary
+	let salaryAnnual = $state('');
+	let salaryWeeklyHours = $state(40);
+	let salaryCurrency = $state('EUR');
+	let derivedHourlyRate = $derived(() => {
+		const annual = parseFloat(salaryAnnual.replace(',', '.').replace(/\./g, '').replace(',', '.'));
+		if (!annual || !salaryWeeklyHours) return null;
+		return annual / (salaryWeeklyHours * 48);
+	});
+
 	// Reading speed test
 	const TEST_TEXT = `El hábito de la lectura es una de las mejores costumbres que puede cultivar una persona. A través de los libros descubrimos mundos que jamás podríamos visitar, conocemos personas que nunca existieron pero que nos enseñan verdades eternas, y exploramos ideas que transforman nuestra manera de ver la realidad. Leer con regularidad mejora la concentración, amplía el vocabulario y desarrolla la capacidad de pensar con claridad. No importa el género ni el tema: cada libro abre una puerta hacia algo nuevo. Algunos prefieren la ficción porque les permite escapar de la rutina diaria; otros se inclinan por el ensayo o la divulgación científica porque satisface su curiosidad sobre el mundo. Lo que importa es encontrar aquello que te haga querer seguir leyendo, página tras página, sin importar la hora ni el lugar. La lectura nos hace más empáticos, porque nos obliga a ponernos en el lugar de otros, a entender sus miedos, sus alegrías y sus contradicciones. Un buen libro puede cambiar la perspectiva de una persona para siempre.`;
 	const TEST_WORD_COUNT = TEST_TEXT.trim().split(/\s+/).length;
@@ -110,6 +120,9 @@
 			spotifyClientSecret = localStorage.getItem('deus_vault_spotify_client_secret') || '';
 			tmdbApiKey = localStorage.getItem('deus_vault_tmdb_api_key') || '';
 			steamApiKey = localStorage.getItem('deus_vault_steam_api_key') || '';
+			salaryAnnual = localStorage.getItem('deus_vault_salary_annual') || '';
+			salaryWeeklyHours = Number(localStorage.getItem('deus_vault_salary_weekly_hours')) || 40;
+			salaryCurrency = localStorage.getItem('deus_vault_salary_currency') || 'EUR';
 			theme     = (localStorage.getItem('deus_vault_theme')     as any) || 'dark';
 			wallpaper = (localStorage.getItem('deus_vault_wallpaper') as any) || 'aurora';
 			blur      = Number(localStorage.getItem('deus_vault_blur')) || 28;
@@ -162,6 +175,19 @@
 				localStorage.setItem('deus_vault_steam_api_key', steamApiKey.trim());
 			} else {
 				localStorage.removeItem('deus_vault_steam_api_key');
+			}
+			if (salaryAnnual.trim()) {
+				localStorage.setItem('deus_vault_salary_annual', salaryAnnual.trim());
+			} else {
+				localStorage.removeItem('deus_vault_salary_annual');
+			}
+			localStorage.setItem('deus_vault_salary_weekly_hours', String(salaryWeeklyHours));
+			localStorage.setItem('deus_vault_salary_currency', salaryCurrency);
+			const hourly = derivedHourlyRate();
+			if (hourly) {
+				localStorage.setItem('deus_vault_hourly_rate', String(Math.round(hourly * 100) / 100));
+			} else {
+				localStorage.removeItem('deus_vault_hourly_rate');
 			}
 		} catch (e) {}
 		dispatchSettingsChanged();
@@ -329,6 +355,57 @@
 					{/if}
 				</div>
 				<p class="cx-hint">Se guardan localmente en tu dispositivo.</p>
+			</div>
+		</div>
+
+		<!-- Bóveda de Deseos — sueldo -->
+		<div class="glass cx-card" id="salary" style="--accent: oklch(0.82 0.18 75);">
+			<div class="cx-card-head">
+				<div class="cx-ico">⭐</div>
+				<div class="cx-htxt">
+					<div class="cx-title">Bóveda de Deseos</div>
+					<div class="cx-sub">Calcula cuánto tiempo tienes que trabajar</div>
+				</div>
+			</div>
+			<div class="cx-body">
+				<div class="cx-two">
+					<div class="cx-field">
+						<label for="cx-salary">Sueldo anual bruto</label>
+						<div class="cx-input-unit">
+							<input id="cx-salary" class="text" type="text" placeholder="28000" bind:value={salaryAnnual} />
+							<span class="u">{salaryCurrency === 'EUR' ? '€' : salaryCurrency === 'USD' ? '$' : '£'}</span>
+						</div>
+					</div>
+					<div class="cx-field">
+						<label for="cx-hours">Horas semanales</label>
+						<div class="cx-input-unit">
+							<input id="cx-hours" class="text" type="number" min="1" max="80" bind:value={salaryWeeklyHours} />
+							<span class="u">h</span>
+						</div>
+					</div>
+				</div>
+				<div class="cx-field">
+					<label>Moneda</label>
+					<div style="display:flex; gap:8px;">
+						{#each [['EUR','€ Euro'], ['USD','$ USD'], ['GBP','£ GBP']] as [code, label]}
+							<button
+								class="btn"
+								class:btn-primary={salaryCurrency === code}
+								onclick={() => salaryCurrency = code}
+								style="flex:1; justify-content:center; font-size:13px;"
+							>{label}</button>
+						{/each}
+					</div>
+				</div>
+				{#if derivedHourlyRate()}
+					<div class="cx-salary-result">
+						<span class="cx-salary-rate">
+							{derivedHourlyRate()!.toLocaleString('es-ES', { style: 'currency', currency: salaryCurrency, maximumFractionDigits: 2 })}/h
+						</span>
+						<span class="cx-salary-label">· basado en {salaryWeeklyHours}h/semana · 48 semanas/año</span>
+					</div>
+				{/if}
+				<p class="cx-hint">Tu sueldo se guarda solo en este dispositivo y nunca se envía al servidor.</p>
 			</div>
 		</div>
 
@@ -537,6 +614,9 @@
 	.cx-label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 9px; display: block; }
 	.cx-hint { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
 	.cx-hint strong { color: var(--text-muted); }
+	.cx-salary-result { display:flex; align-items:baseline; gap:8px; background:oklch(0.82 0.18 75 / 0.1); border:1px solid oklch(0.82 0.18 75 / 0.25); border-radius:var(--radius-xs); padding:10px 14px; }
+	.cx-salary-rate { font-size:18px; font-weight:700; color:oklch(0.82 0.18 75); }
+	.cx-salary-label { font-size:11px; color:var(--text-dim); }
 
 	/* ── Theme tiles ── */
 	.cx-theme-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

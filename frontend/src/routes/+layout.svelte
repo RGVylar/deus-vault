@@ -14,13 +14,14 @@
 		{ href: '/consumed', label: 'Consumido', icon: '✓'  },
 		{ href: '/random',   label: 'Azar',      icon: '🎲' },
 		{ href: '/rewind',   label: 'Rewind',    icon: '📊' },
+		{ href: '/wishlist', label: 'Deseos',    icon: '⭐' },
 	];
 
 	const navBottom = [
 		{ href: '/',         label: 'Bóveda',   icon: '🏛️' },
 		{ href: '/consumed', label: 'Consumido', icon: '✅' },
+		{ href: '/wishlist', label: 'Deseos',    icon: '⭐' },
 		{ href: '/random',   label: 'Azar',      icon: '🎲' },
-		{ href: '/rewind',   label: 'Rewind',    icon: '📅' },
 		{ href: '/settings', label: 'Ajustes',   icon: '⚙️' },
 	];
 
