@@ -8,7 +8,21 @@
   "host_permissions": [
     "https://www.youtube.com/*",
     "https://vault.mugrelore.com/*",
-    "https://content.mugrelore.com/*"
+    "https://content.mugrelore.com/*",
+    "https://*.amazon.es/*",
+    "https://*.amazon.com/*",
+    "https://*.amazon.co.uk/*",
+    "https://*.amazon.de/*",
+    "https://*.amazon.fr/*",
+    "https://*.fnac.es/*",
+    "https://*.pccomponentes.com/*",
+    "https://*.mediamarkt.es/*",
+    "https://*.elcorteingles.es/*",
+    "https://*.apple.com/*",
+    "https://*.ebay.es/*",
+    "https://*.ebay.com/*",
+    "https://*.zalando.es/*",
+    "https://*.zara.com/*"
   ],
 
   "background": {
@@ -26,6 +40,26 @@
       "matches": ["https://content.mugrelore.com/*"],
       "js": ["content/vault.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://*.amazon.es/*",
+        "https://*.amazon.com/*",
+        "https://*.amazon.co.uk/*",
+        "https://*.amazon.de/*",
+        "https://*.amazon.fr/*",
+        "https://*.fnac.es/*",
+        "https://*.pccomponentes.com/*",
+        "https://*.mediamarkt.es/*",
+        "https://*.elcorteingles.es/*",
+        "https://*.apple.com/*",
+        "https://*.ebay.es/*",
+        "https://*.ebay.com/*",
+        "https://*.zalando.es/*",
+        "https://*.zara.com/*"
+      ],
+      "js": ["content/product.js"],
+      "run_at": "document_idle"
     }
   ],
 

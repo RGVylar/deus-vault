@@ -331,6 +331,19 @@ async function processMessage(msg, sender) {
     }
 
     // ----------------------------------------------------------
+    case 'ADD_TO_WISHLIST': {
+      const { product } = msg;
+      await apiPost('/wishlist', {
+        title:     product.title,
+        url:       product.url || null,
+        price:     product.price || null,
+        image_url: product.image_url || null,
+        store:     product.store || null,
+      });
+      return null;
+    }
+
+    // ----------------------------------------------------------
     default:
       throw new Error(`Unknown message type: ${msg.type}`);
   }

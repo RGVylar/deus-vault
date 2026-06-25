@@ -50,6 +50,17 @@ const lrBtnConsumed = $('lr-btn-consumed');
 
 const noContentBlock = $('no-content-block');
 
+// Wishlist / product
+const productBlock     = $('product-block');
+const productThumbWrap = $('product-thumb-wrap');
+const productThumb     = $('product-thumb');
+const productTitle     = $('product-title');
+const productStore     = $('product-store');
+const productPrice     = $('product-price');
+const productActionBar = $('product-action-bar');
+const btnAddWishlist   = $('btn-add-wishlist');
+const productAddedMsg  = $('product-added-msg');
+
 const footer      = $('footer');
 const footerUser  = $('footer-user');
 const logoutBtn   = $('logout-btn');
@@ -60,6 +71,7 @@ let currentTab    = null;   // active Chrome tab
 let ytState       = null;   // { videoId, vaultStatus, url, title } from content script
 let lrMeta        = null;   // lookup result meta
 let lrExisting    = null;   // existing vault item for lookup result
+let productMeta   = null;   // extracted product data from content script
 
 // ── Helpers ─────────────────────────────────────────────────────
 
@@ -95,6 +107,20 @@ function sw(type, extra = {}) {
 
 function isYouTubeWatchTab(tab) {
   return tab?.url?.includes('youtube.com/watch');
+}
+
+const PRODUCT_HOSTS = [
+  'amazon.es', 'amazon.com', 'amazon.co.uk', 'amazon.de', 'amazon.fr',
+  'fnac.es', 'pccomponentes.com', 'mediamarkt.es', 'elcorteingles.es',
+  'apple.com', 'ebay.es', 'ebay.com', 'zalando.es', 'zara.com',
+];
+
+function isProductTab(tab) {
+  if (!tab?.url) return false;
+  try {
+    const host = new URL(tab.url).hostname.replace('www.', '');
+    return PRODUCT_HOSTS.some(h => host === h || host.endsWith('.' + h));
+  } catch (_) { return false; }
 }
 
 function formatStatus(content) {
@@ -182,6 +208,9 @@ async function loadCurrentTabContent(auth) {
   hide(actionBarPending);
   hide(lookupBlock);
   hide(noContentBlock);
+  hide(productBlock);
+  hide(productActionBar);
+  hide(productAddedMsg);
 
   if (!currentTab) {
     show(noContentBlock);
@@ -190,15 +219,74 @@ async function loadCurrentTabContent(auth) {
 
   if (isYouTubeWatchTab(currentTab)) {
     await loadYouTubeState();
+  } else if (isProductTab(currentTab)) {
+    await loadProductState();
   } else {
-    // Non-YouTube page: show lookup
+    // Non-YouTube, non-product page: show lookup
     show(lookupBlock);
-    // Pre-fill with current page URL if it looks like a supported content page
     if (currentTab.url && !currentTab.url.startsWith('chrome')) {
       lookupUrl.value = currentTab.url;
     }
   }
 }
+
+// ── Product state ────────────────────────────────────────────────
+
+async function loadProductState() {
+  productMeta = await getProductData();
+
+  if (!productMeta?.title) {
+    show(noContentBlock);
+    return;
+  }
+
+  productTitle.textContent = productMeta.title;
+  productStore.textContent = productMeta.store || '';
+
+  if (productMeta.price != null) {
+    productPrice.textContent = productMeta.price.toLocaleString('es-ES', {
+      style: 'currency', currency: 'EUR', maximumFractionDigits: 2
+    });
+  } else {
+    productPrice.textContent = 'Precio no detectado — edítalo al guardar';
+  }
+
+  if (productMeta.image_url) {
+    productThumb.src = productMeta.image_url;
+    show(productThumbWrap);
+  } else {
+    hide(productThumbWrap);
+  }
+
+  show(productBlock);
+  show(productActionBar);
+}
+
+function getProductData() {
+  return new Promise((resolve) => {
+    if (!currentTab?.id) { resolve(null); return; }
+    chrome.tabs.sendMessage(currentTab.id, { type: 'GET_PRODUCT' }, (resp) => {
+      if (chrome.runtime.lastError) { resolve(null); return; }
+      resolve(resp);
+    });
+  });
+}
+
+btnAddWishlist.addEventListener('click', async () => {
+  if (!productMeta) return;
+  btnAddWishlist.disabled = true;
+  btnAddWishlist.textContent = '…';
+  try {
+    await sw('ADD_TO_WISHLIST', { product: productMeta });
+    hide(productActionBar);
+    show(productAddedMsg);
+  } catch (err) {
+    btnAddWishlist.textContent = '⚠ ' + err.message;
+  } finally {
+    btnAddWishlist.disabled = false;
+    if (btnAddWishlist.textContent === '…') btnAddWishlist.textContent = '⭐ Añadir a Deseos';
+  }
+});
 
 // ── YouTube state ────────────────────────────────────────────────
 

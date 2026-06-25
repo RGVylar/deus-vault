@@ -336,6 +336,41 @@ input::placeholder { color: var(--text-dim); }
   gap: 4px;
 }
 
+/* ── Wishlist / product block ───────────────────────────────── */
+
+.product-block {
+  display: flex;
+  gap: 12px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.product-price {
+  font-size: 14px !important;
+  font-weight: 600;
+  color: #a78bfa !important;
+  margin-top: 2px;
+}
+
+.btn-wishlist {
+  background: rgba(167,139,250,0.15);
+  border-color: rgba(167,139,250,0.35);
+  color: #c4b5fd;
+}
+
+.btn-wishlist:hover:not(:disabled) {
+  background: rgba(167,139,250,0.28);
+}
+
+.added-msg {
+  text-align: center;
+  font-size: 13px;
+  color: #a78bfa;
+  padding: 8px 0;
+}
+
 /* ── No content ─────────────────────────────────────────────── */
 
 .no-content {
