@@ -47,5 +47,7 @@ export const wishlistApi = {
 		api.patch<import('./types').WishlistItem>(`/wishlist/${id}`, body),
 	purchase: (id: number) => api.post<import('./types').WishlistItem>(`/wishlist/${id}/purchase`),
 	unpurchase: (id: number) => api.post<import('./types').WishlistItem>(`/wishlist/${id}/unpurchase`),
+	gift: (id: number) => api.post<import('./types').WishlistItem>(`/wishlist/${id}/gift`),
+	ungift: (id: number) => api.post<import('./types').WishlistItem>(`/wishlist/${id}/ungift`),
 	delete: (id: number) => api.del<void>(`/wishlist/${id}`),
 };

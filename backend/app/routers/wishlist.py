@@ -193,13 +193,15 @@ def get_stats(
         select(WishlistItem).where(WishlistItem.user_id == current_user.id)
     ).all()
 
-    pending = [i for i in items if not i.purchased]
-    purchased = [i for i in items if i.purchased]
+    pending   = [i for i in items if not i.purchased and not i.gifted]
+    purchased = [i for i in items if i.purchased and not i.gifted]
+    gifted    = [i for i in items if i.gifted]
 
     return WishlistStats(
         total_items=len(items),
         pending_items=len(pending),
         purchased_items=len(purchased),
+        gifted_items=len(gifted),
         total_cost=round(sum(i.price or 0 for i in items), 2),
         pending_cost=round(sum(i.price or 0 for i in pending), 2),
         purchased_cost=round(sum(i.price or 0 for i in purchased), 2),
@@ -264,6 +266,38 @@ def purchase_item(
         raise HTTPException(status_code=404, detail="No encontrado")
     item.purchased = True
     item.purchased_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.post("/{item_id}/gift", response_model=WishlistItemOut)
+def gift_item(
+    item_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    item = db.get(WishlistItem, item_id)
+    if not item or item.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    item.gifted = True
+    item.purchased = False
+    item.purchased_at = None
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.post("/{item_id}/ungift", response_model=WishlistItemOut)
+def ungift_item(
+    item_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    item = db.get(WishlistItem, item_id)
+    if not item or item.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    item.gifted = False
     db.commit()
     db.refresh(item)
     return item

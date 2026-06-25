@@ -157,6 +157,7 @@ export interface WishlistItem {
 	notes: string | null;
 	purchased: boolean;
 	purchased_at: string | null;
+	gifted: boolean;
 	created_at: string;
 }
 
@@ -164,6 +165,7 @@ export interface WishlistStats {
 	total_items: number;
 	pending_items: number;
 	purchased_items: number;
+	gifted_items: number;
 	total_cost: number;
 	pending_cost: number;
 	purchased_cost: number;

@@ -6,7 +6,7 @@
 	// ── State ──────────────────────────────────────────────────────────────
 	let items = $state<WishlistItem[]>([]);
 	let stats = $state<WishlistStats | null>(null);
-	let tab = $state<'pending' | 'purchased' | 'all'>('pending');
+	let tab = $state<'pending' | 'purchased' | 'gifted' | 'all'>('pending');
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
@@ -35,8 +35,9 @@
 
 	// ── Computed ───────────────────────────────────────────────────────────
 	let displayed = $derived(
-		tab === 'pending'   ? items.filter(i => !i.purchased) :
-		tab === 'purchased' ? items.filter(i => i.purchased)  : items
+		tab === 'pending'   ? items.filter(i => !i.purchased && !i.gifted) :
+		tab === 'purchased' ? items.filter(i => i.purchased && !i.gifted)  :
+		tab === 'gifted'    ? items.filter(i => i.gifted)                  : items
 	);
 
 	function hoursForPrice(price: number | null): string {
@@ -178,6 +179,14 @@
 		} catch (e: any) { error = e.message; }
 	}
 
+	async function toggleGift(item: WishlistItem) {
+		try {
+			if (item.gifted) await wishlistApi.ungift(item.id);
+			else             await wishlistApi.gift(item.id);
+			await load();
+		} catch (e: any) { error = e.message; }
+	}
+
 	async function deleteItem(item: WishlistItem) {
 		if (!confirm(`¿Eliminar "${item.title}"?`)) return;
 		try {
@@ -238,6 +247,7 @@
 		<div class="tabs">
 			<button class="tab" class:active={tab === 'pending'}   onclick={() => tab = 'pending'}>Pendientes</button>
 			<button class="tab" class:active={tab === 'purchased'} onclick={() => tab = 'purchased'}>Comprados</button>
+			<button class="tab" class:active={tab === 'gifted'}    onclick={() => tab = 'gifted'}>Regalados</button>
 			<button class="tab" class:active={tab === 'all'}       onclick={() => tab = 'all'}>Todo</button>
 		</div>
 	</div>
@@ -252,8 +262,9 @@
 		<div class="empty-state">Cargando…</div>
 	{:else if displayed.length === 0}
 		<div class="empty-state">
-			{tab === 'pending' ? 'No tienes artículos pendientes.' :
+			{tab === 'pending'   ? 'No tienes artículos pendientes.' :
 			 tab === 'purchased' ? 'Aún no has comprado nada.' :
+			 tab === 'gifted'    ? 'Aún no tienes artículos regalados.' :
 			 'Tu lista de deseos está vacía.'}
 			{#if tab !== 'purchased'}
 				<br><button class="btn btn-primary" style="margin-top:12px" onclick={openModal}>Añadir el primero</button>
@@ -262,7 +273,7 @@
 	{:else}
 		<div class="items-list">
 			{#each displayed as item (item.id)}
-				<div class="item-card" class:purchased={item.purchased}>
+				<div class="item-card" class:purchased={item.purchased || item.gifted}>
 					<div class="item-accent" style="background:{storeColor(item.store)}"></div>
 
 					{#if item.image_url}
@@ -288,14 +299,18 @@
 					</div>
 
 					<div class="item-right">
-						<div class="item-price" class:muted={item.purchased}>{fmtPrice(item.price)}</div>
+						<div class="item-price" class:muted={item.purchased || item.gifted}>{fmtPrice(item.price)}</div>
 						<div class="item-actions">
-							{#if item.purchased}
+							{#if item.gifted}
+								<span class="badge-gifted">🎁 Regalado</span>
+								<button class="icon-btn" title="Deshacer regalo" onclick={() => toggleGift(item)}>↩</button>
+							{:else if item.purchased}
 								<span class="badge-bought">✓ Comprado</span>
 								<button class="icon-btn" title="Deshacer compra" onclick={() => togglePurchase(item)}>↩</button>
 							{:else}
 								<button class="icon-btn icon-btn-edit" title="Editar" onclick={() => openEdit(item)}>✎</button>
-								<button class="icon-btn icon-btn-buy" title="Marcar como comprado" onclick={() => togglePurchase(item)}>✓</button>
+								<button class="icon-btn icon-btn-buy"  title="Marcar como comprado" onclick={() => togglePurchase(item)}>✓</button>
+								<button class="icon-btn icon-btn-gift" title="Me lo han regalado"  onclick={() => toggleGift(item)}>🎁</button>
 							{/if}
 							<button class="icon-btn icon-btn-del" title="Eliminar" onclick={() => deleteItem(item)}>✕</button>
 						</div>
@@ -693,6 +708,17 @@
 	border-radius: 999px;
 	padding: 2px 8px;
 }
+
+.badge-gifted {
+	font-size: 11px;
+	color: oklch(0.82 0.18 330);
+	background: oklch(0.82 0.18 330 / 0.15);
+	border: 1px solid oklch(0.82 0.18 330 / 0.3);
+	border-radius: 999px;
+	padding: 2px 8px;
+}
+
+.icon-btn-gift { color: oklch(0.82 0.18 330); border-color: oklch(0.82 0.18 330 / 0.4); }
 
 /* Empty / error */
 .empty-state {

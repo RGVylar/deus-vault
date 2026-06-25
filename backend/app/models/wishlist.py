@@ -19,6 +19,7 @@ class WishlistItem(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     purchased: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     purchased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    gifted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
