@@ -283,7 +283,11 @@
 					{/if}
 
 					<div class="item-body">
-						<div class="item-name" class:strikethrough={item.purchased}>{item.title}</div>
+						{#if item.url}
+						<a class="item-name" class:strikethrough={item.purchased || item.gifted} href={item.url} target="_blank" rel="noopener noreferrer">{item.title}</a>
+					{:else}
+						<div class="item-name" class:strikethrough={item.purchased || item.gifted}>{item.title}</div>
+					{/if}
 						{#if item.store}
 							<div class="item-store">
 								<span class="store-dot" style="background:{storeColor(item.store)}"></span>
@@ -620,6 +624,12 @@
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	text-decoration: none;
+}
+
+a.item-name:hover {
+	color: var(--primary);
+	text-decoration: underline;
 }
 
 .strikethrough { text-decoration: line-through; }
