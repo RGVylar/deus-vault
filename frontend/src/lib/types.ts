@@ -155,6 +155,7 @@ export interface WishlistItem {
 	image_url: string | null;
 	store: string | null;
 	notes: string | null;
+	source_id: string | null;
 	purchased: boolean;
 	purchased_at: string | null;
 	gifted: boolean;
@@ -177,6 +178,8 @@ export interface ProductLookupResult {
 	image_url: string | null;
 	store: string | null;
 	url: string | null;
+	source_id: string | null;
+	content_type_hint: string | null;
 }
 
 export interface RewindStats {

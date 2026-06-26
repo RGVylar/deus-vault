@@ -1268,6 +1268,13 @@ async def lookup_steam(url: str) -> dict:
         except Exception:
             pass
 
+    price: float | None = None
+    price_overview = info.get("price_overview")
+    if price_overview:
+        raw_final = price_overview.get("final")
+        if raw_final is not None:
+            price = round(int(raw_final) / 100, 2)
+
     return {
         "title": info.get("name", ""),
         "author": ", ".join(info.get("developers", [])),
@@ -1279,6 +1286,7 @@ async def lookup_steam(url: str) -> dict:
         "provider": "steam",
         "rating": rating,
         "genres": ", ".join(g.get("description", "") for g in (info.get("genres") or [])) or None,
+        "price": price,
     }
 
 

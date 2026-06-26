@@ -10,6 +10,7 @@ class WishlistItemCreate(BaseModel):
     image_url: str | None = None
     store: str | None = None
     notes: str | None = None
+    source_id: str | None = None
 
 
 class WishlistItemUpdate(BaseModel):
@@ -19,6 +20,7 @@ class WishlistItemUpdate(BaseModel):
     image_url: str | None = None
     store: str | None = None
     notes: str | None = None
+    source_id: str | None = None
 
 
 class WishlistItemOut(BaseModel):
@@ -29,6 +31,7 @@ class WishlistItemOut(BaseModel):
     image_url: str | None
     store: str | None
     notes: str | None
+    source_id: str | None
     purchased: bool
     purchased_at: datetime | None
     gifted: bool
@@ -53,3 +56,5 @@ class ProductLookupResult(BaseModel):
     image_url: str | None = None
     store: str | None = None
     url: str | None = None
+    source_id: str | None = None
+    content_type_hint: str | None = None

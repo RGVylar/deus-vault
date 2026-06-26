@@ -9,8 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.content import Content, ContentType
 from app.models.wishlist import WishlistItem
 from app.routers.auth import get_current_user
+from app.routers.lookup import lookup_steam
 from app.schemas.wishlist import (
     ProductLookupResult,
     WishlistItemCreate,
@@ -177,6 +179,20 @@ async def _lookup_product(url: str) -> ProductLookupResult:
 
 @router.get("/lookup", response_model=ProductLookupResult)
 async def lookup_product(url: str):
+    if re.search(r"store\.steampowered\.com/app/", url):
+        try:
+            data = await lookup_steam(url)
+            return ProductLookupResult(
+                title=data.get("title"),
+                price=data.get("price"),
+                image_url=data.get("thumbnail"),
+                store="Steam",
+                url=data.get("url") or url,
+                source_id=data.get("source_id"),
+                content_type_hint="game",
+            )
+        except Exception:
+            pass
     return await _lookup_product(url)
 
 
@@ -266,6 +282,28 @@ def purchase_item(
         raise HTTPException(status_code=404, detail="No encontrado")
     item.purchased = True
     item.purchased_at = datetime.now(timezone.utc)
+
+    # Auto-add Steam games to the main vault (pending, not started)
+    if item.source_id and item.store == "Steam":
+        existing = db.scalars(
+            select(Content).where(
+                Content.user_id == current_user.id,
+                Content.source_id == item.source_id,
+            )
+        ).first()
+        if not existing:
+            game = Content(
+                user_id=current_user.id,
+                title=item.title,
+                content_type=ContentType.game,
+                url=item.url,
+                thumbnail=item.image_url,
+                source_id=item.source_id,
+                duration_minutes=0,
+                consumed=False,
+            )
+            db.add(game)
+
     db.commit()
     db.refresh(item)
     return item

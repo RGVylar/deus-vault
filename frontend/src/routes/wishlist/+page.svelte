@@ -128,6 +128,7 @@
 				image_url: modalLookupResult?.image_url ?? null,
 				store: modalStore.trim() || null,
 				notes: modalNotes.trim() || null,
+				source_id: modalLookupResult?.source_id ?? null,
 			});
 			await load();
 			closeModal();
@@ -279,7 +280,7 @@
 					{#if item.image_url}
 						<img class="item-thumb" src={item.image_url} alt={item.title} loading="lazy" />
 					{:else}
-						<div class="item-thumb item-thumb-placeholder">🛍️</div>
+						<div class="item-thumb item-thumb-placeholder">{item.store === 'Steam' ? '🎮' : '🛍️'}</div>
 					{/if}
 
 					<div class="item-body">
@@ -309,7 +310,11 @@
 								<span class="badge-gifted">🎁 Regalado</span>
 								<button class="icon-btn" title="Deshacer regalo" onclick={() => toggleGift(item)}>↩</button>
 							{:else if item.purchased}
-								<span class="badge-bought">✓ Comprado</span>
+								{#if item.source_id && item.store === 'Steam'}
+									<span class="badge-vault">🎮 En la Bóveda</span>
+								{:else}
+									<span class="badge-bought">✓ Comprado</span>
+								{/if}
 								<button class="icon-btn" title="Deshacer compra" onclick={() => togglePurchase(item)}>↩</button>
 							{:else}
 								<button class="icon-btn icon-btn-edit" title="Editar" onclick={() => openEdit(item)}>✎</button>
@@ -387,6 +392,10 @@
 				<label class="field-label">Notas</label>
 				<textarea class="text" rows="2" placeholder="Talla, color, variante…" bind:value={modalNotes}></textarea>
 			</div>
+
+			{#if modalLookupResult?.content_type_hint === 'game'}
+				<div class="steam-hint">🎮 Al marcarlo como comprado se añadirá automáticamente a tu bóveda principal sin empezar.</div>
+			{/if}
 
 			{#if modalTitle.trim() && modalPrice && hourlyRate}
 				<div class="hours-hint">
@@ -728,6 +737,15 @@ a.item-name:hover {
 	padding: 2px 8px;
 }
 
+.badge-vault {
+	font-size: 11px;
+	color: oklch(0.84 0.17 150);
+	background: oklch(0.84 0.17 150 / 0.15);
+	border: 1px solid oklch(0.84 0.17 150 / 0.3);
+	border-radius: 999px;
+	padding: 2px 8px;
+}
+
 .icon-btn-gift { color: oklch(0.82 0.18 330); border-color: oklch(0.82 0.18 330 / 0.4); }
 
 /* Empty / error */
@@ -863,6 +881,15 @@ a.item-name:hover {
 .lookup-error {
 	font-size: 12px;
 	color: var(--danger);
+}
+
+.steam-hint {
+	font-size: 12px;
+	color: oklch(0.84 0.17 150);
+	background: oklch(0.84 0.17 150 / 0.1);
+	border: 1px solid oklch(0.84 0.17 150 / 0.25);
+	border-radius: var(--radius-xs);
+	padding: 8px 12px;
 }
 
 .hours-hint {

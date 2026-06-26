@@ -41,7 +41,7 @@ export const wishlistApi = {
 	stats: () => api.get<import('./types').WishlistStats>('/wishlist/stats'),
 	lookup: (url: string) =>
 		api.get<import('./types').ProductLookupResult>(`/wishlist/lookup?url=${encodeURIComponent(url)}`),
-	create: (body: { title: string; url?: string | null; price?: number | null; image_url?: string | null; store?: string | null; notes?: string | null }) =>
+	create: (body: { title: string; url?: string | null; price?: number | null; image_url?: string | null; store?: string | null; notes?: string | null; source_id?: string | null }) =>
 		api.post<import('./types').WishlistItem>('/wishlist', body),
 	update: (id: number, body: Partial<{ title: string; url: string | null; price: number | null; image_url: string | null; store: string | null; notes: string | null }>) =>
 		api.patch<import('./types').WishlistItem>(`/wishlist/${id}`, body),

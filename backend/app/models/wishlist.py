@@ -17,6 +17,7 @@ class WishlistItem(Base):
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     store: Mapped[str | None] = mapped_column(String(100), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     purchased: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     purchased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     gifted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
