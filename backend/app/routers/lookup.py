@@ -1234,7 +1234,7 @@ async def lookup_youtube(url: str) -> dict:
     video_id = match.group(1)
     result = await _get_youtube_metadata(url, video_id)
     if result is None:
-        logger.warning("yt-dlp failed for %s, falling back to oEmbed+scraping", url)
+        print(f"[lookup] yt-dlp failed for {url}, falling back to oEmbed+scraping")
         return await _lookup_youtube_fallback(url, video_id)
     return result
 
