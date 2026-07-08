@@ -82,48 +82,7 @@
 </script>
 
 <div class="page">
-	<div class="page-header">
-		<div class="header-inner">
-		<div class="page-header-top">
-			<div>
-				<h1 class="page-title">Bóveda de lo Perdido</h1>
-				<p class="page-sub">Tiempo que no volverá</p>
-			</div>
-		</div>
-
-		{#if stats}
-			<div class="total-hero">
-				<div class="total-value">{fmtDur(stats.total_seconds)}</div>
-				<div class="total-caption">
-					perdidas para siempre{#if stats.total_items > 0}&nbsp;· {stats.total_items} vídeos basura{/if}
-				</div>
-				<div class="total-vs">
-					vs <strong>{fmtMins(stats.good_total_minutes)}</strong> de contenido bueno en total
-				</div>
-			</div>
-		{/if}
-
-		{#if stats}
-			<div class="stats-row">
-				<div class="stat-card">
-					<div class="stat-label">Hoy</div>
-					<div class="stat-value bad">{fmtDur(stats.today_seconds)}</div>
-					<div class="stat-sub">vs {fmtMins(stats.good_today_minutes)} de bueno</div>
-				</div>
-				<div class="stat-card">
-					<div class="stat-label">Últimos 7 días</div>
-					<div class="stat-value bad">{fmtDur(stats.week_seconds)}</div>
-					<div class="stat-sub">vs {fmtMins(stats.good_week_minutes)} de bueno</div>
-				</div>
-				<div class="stat-card">
-					<div class="stat-label">Últimos 30 días</div>
-					<div class="stat-value bad">{fmtDur(stats.month_seconds)}</div>
-					<div class="stat-sub">vs {fmtMins(stats.good_month_minutes)} de bueno</div>
-				</div>
-			</div>
-		{/if}
-		</div>
-	</div>
+	<h1 class="page-title">Bóveda de lo Perdido</h1>
 
 	{#if error}
 		<div class="error-banner">{error} <button onclick={() => (error = null)}>×</button></div>
@@ -131,14 +90,79 @@
 
 	{#if loading}
 		<div class="empty-state">Cargando…</div>
-	{:else if stats && stats.total_seconds === 0}
-		<div class="empty-state">
-			<div class="empty-icon">🕳️</div>
-			Nada perdido todavía. La extensión registrará automáticamente el tiempo que pases en
-			Shorts, TikTok, Twitter y Reels.
-		</div>
 	{:else if stats}
-		<div class="content">
+		<!-- Hero + side panel -->
+		<div class="top-grid">
+			<div class="hero-card">
+				<div class="hero-label">Tiempo perdido</div>
+				<div class="hero-value">{fmtDur(stats.total_seconds)}</div>
+				<div class="hero-caption">
+					{fmtDur(stats.total_seconds)} perdidas para siempre{#if stats.total_items > 0}
+						· {stats.total_items} vídeos basura{/if}
+				</div>
+				<div class="hero-vs">
+					vs <strong>{fmtMins(stats.good_total_minutes)}</strong> de contenido bueno
+				</div>
+
+				<div class="stats-row">
+					<div class="stat-card">
+						<div class="stat-label">Hoy</div>
+						<div class="stat-value">{fmtDur(stats.today_seconds)}</div>
+						<div class="stat-sub">vs {fmtMins(stats.good_today_minutes)} de bueno</div>
+					</div>
+					<div class="stat-card">
+						<div class="stat-label">Últimos 7 días</div>
+						<div class="stat-value">{fmtDur(stats.week_seconds)}</div>
+						<div class="stat-sub">vs {fmtMins(stats.good_week_minutes)} de bueno</div>
+					</div>
+					<div class="stat-card">
+						<div class="stat-label">Últimos 30 días</div>
+						<div class="stat-value">{fmtDur(stats.month_seconds)}</div>
+						<div class="stat-sub">vs {fmtMins(stats.good_month_minutes)} de bueno</div>
+					</div>
+				</div>
+			</div>
+
+			<aside class="side-card">
+				<div class="side-title">De dónde viene la fuga</div>
+				{#if stats.platforms.length === 0}
+					<div class="side-empty">Sin fugas registradas aún</div>
+				{:else}
+					<div class="platform-list">
+						{#each stats.platforms as p (p.platform)}
+							<div class="platform-row">
+								<span class="platform-ico">{meta(p.platform).icon}</span>
+								<div class="platform-info">
+									<div class="platform-head">
+										<span class="platform-name">{meta(p.platform).label}</span>
+										<span class="platform-time">
+											{fmtDur(p.seconds)}
+											{#if p.items_count > 0}
+												· {p.items_count} vídeos
+											{/if}
+										</span>
+									</div>
+									<div class="platform-track">
+										<div
+											class="platform-fill"
+											style="width:{(p.seconds / platformTotalSeconds) * 100}%; background:{meta(p.platform).color}"
+										></div>
+									</div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</aside>
+		</div>
+
+		{#if stats.total_seconds === 0}
+			<div class="empty-state">
+				<div class="empty-icon">🕳️</div>
+				Nada perdido todavía. La extensión registrará automáticamente el tiempo que pases en
+				Shorts, TikTok, Twitter y Reels.
+			</div>
+		{:else}
 			<!-- Ratio señal/ruido -->
 			{#if weekRatio !== null}
 				<section class="panel">
@@ -154,37 +178,8 @@
 				</section>
 			{/if}
 
-			<!-- Por plataforma -->
-			<section class="panel">
-				<h2 class="panel-title">De dónde viene la fuga</h2>
-				<div class="platform-list">
-					{#each stats.platforms as p (p.platform)}
-						<div class="platform-row">
-							<span class="platform-ico">{meta(p.platform).icon}</span>
-							<div class="platform-info">
-								<div class="platform-head">
-									<span class="platform-name">{meta(p.platform).label}</span>
-									<span class="platform-time">
-										{fmtDur(p.seconds)}
-										{#if p.items_count > 0}
-											· {p.items_count} vídeos
-										{/if}
-									</span>
-								</div>
-								<div class="platform-track">
-									<div
-										class="platform-fill"
-										style="width:{(p.seconds / platformTotalSeconds) * 100}%; background:{meta(p.platform).color}"
-									></div>
-								</div>
-							</div>
-						</div>
-					{/each}
-				</div>
-			</section>
-
 			<!-- Últimos 30 días -->
-			<section class="panel panel-wide">
+			<section class="panel">
 				<h2 class="panel-title">Últimos 30 días</h2>
 				<div class="chart">
 					{#each dailyTotals as day (day.date)}
@@ -202,85 +197,89 @@
 					<span>hoy</span>
 				</div>
 			</section>
-		</div>
+		{/if}
 	{/if}
 </div>
 
 <style>
 	.page {
-		min-height: 100%;
+		padding: 24px 28px 90px;
 		display: flex;
 		flex-direction: column;
-	}
-
-	.page-header {
-		position: sticky;
-		top: 0;
-		z-index: 10;
-		background: var(--glass-bg-strong);
-		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-		border-bottom: 1px solid var(--glass-border);
-		padding: 20px 20px 16px;
-	}
-
-	.header-inner {
-		/* .content max-width (1100) minus its 20px side padding, so cards align */
-		max-width: 1060px;
-		width: 100%;
-		margin: 0 auto;
-		display: flex;
-		flex-direction: column;
-		gap: 14px;
-	}
-
-	.page-header-top {
-		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: 12px;
+		gap: 18px;
 	}
 
 	.page-title {
-		font-size: 26px;
+		font-size: 30px;
 		font-weight: 800;
 		color: var(--text);
 		line-height: 1.1;
 	}
 
-	.page-sub {
-		font-size: 13px;
-		color: var(--text-muted);
-		margin-top: 2px;
+	/* ── Top grid: hero + side panel ─────────────────────────── */
+
+	.top-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 18px;
 	}
 
-	.total-hero {
-		text-align: center;
-		padding: 6px 0 2px;
+	@media (min-width: 980px) {
+		.top-grid {
+			grid-template-columns: 2fr 1fr;
+		}
 	}
 
-	.total-value {
-		font-size: 54px;
+	.hero-card,
+	.side-card,
+	.panel {
+		background: var(--glass-bg);
+		backdrop-filter: blur(16px);
+		-webkit-backdrop-filter: blur(16px);
+		border: 1px solid var(--glass-border);
+		border-radius: 20px;
+	}
+
+	.hero-card {
+		padding: 28px 32px;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.hero-label {
+		font-size: 12px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.22em;
+		color: var(--text-dim);
+	}
+
+	.hero-value {
+		margin-top: 8px;
+		font-size: clamp(64px, 8vw, 112px);
 		font-weight: 900;
 		line-height: 1;
-		letter-spacing: -0.02em;
-		color: oklch(0.68 0.2 25);
-		text-shadow: 0 0 32px oklch(0.6 0.22 25 / 0.35);
+		letter-spacing: -0.03em;
+		background: linear-gradient(120deg, oklch(0.72 0.21 25), oklch(0.65 0.26 355));
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+		filter: drop-shadow(0 0 28px oklch(0.6 0.22 25 / 0.3));
 	}
 
-	.total-caption {
-		margin-top: 6px;
-		font-size: 13px;
+	.hero-caption {
+		margin-top: 10px;
+		font-size: 14px;
 		color: var(--text-muted);
 	}
 
-	.total-vs {
+	.hero-vs {
 		margin-top: 2px;
-		font-size: 13px;
+		font-size: 14px;
 		color: var(--text-muted);
 	}
 
-	.total-vs strong {
+	.hero-vs strong {
 		color: oklch(0.72 0.17 150);
 		font-weight: 700;
 	}
@@ -288,14 +287,14 @@
 	.stats-row {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 10px;
+		gap: 12px;
+		margin-top: 22px;
 	}
 
 	.stat-card {
-		background: var(--glass-bg);
-		backdrop-filter: blur(16px);
+		background: oklch(0.2 0.03 300 / 0.35);
 		border: 1px solid var(--glass-border);
-		border-radius: var(--radius-xs);
+		border-radius: 14px;
 		padding: 12px 14px;
 	}
 
@@ -307,14 +306,10 @@
 	}
 
 	.stat-value {
-		font-size: 20px;
+		font-size: 22px;
 		font-weight: 800;
-		color: var(--text);
-		margin-top: 2px;
-	}
-
-	.stat-value.bad {
 		color: oklch(0.68 0.2 25);
+		margin-top: 2px;
 	}
 
 	.stat-sub {
@@ -323,65 +318,91 @@
 		margin-top: 2px;
 	}
 
-	.error-banner {
-		margin: 16px 20px 0;
-		padding: 10px 14px;
-		border-radius: var(--radius-xs);
-		background: oklch(0.3 0.1 25 / 0.5);
-		border: 1px solid oklch(0.5 0.15 25 / 0.5);
-		color: var(--text);
+	/* ── Side panel ──────────────────────────────────────────── */
+
+	.side-card {
+		padding: 22px 24px;
+	}
+
+	.side-title {
+		font-size: 12px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.22em;
+		color: var(--text-dim);
+		margin-bottom: 18px;
+	}
+
+	.side-empty {
 		font-size: 13px;
+		color: var(--text-muted);
+	}
+
+	.platform-list {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	.platform-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.platform-ico {
+		font-size: 20px;
+		width: 28px;
+		text-align: center;
+	}
+
+	.platform-info {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.platform-head {
 		display: flex;
 		justify-content: space-between;
+		gap: 8px;
+		font-size: 13px;
+		margin-bottom: 4px;
 	}
 
-	.empty-state {
-		padding: 60px 24px;
-		text-align: center;
+	.platform-name {
+		color: var(--text);
+		font-weight: 600;
+	}
+
+	.platform-time {
 		color: var(--text-muted);
-		font-size: 14px;
-		line-height: 1.6;
-		max-width: 420px;
-		margin: 0 auto;
+		white-space: nowrap;
 	}
 
-	.empty-icon {
-		font-size: 40px;
-		margin-bottom: 10px;
+	.platform-track {
+		height: 6px;
+		border-radius: 999px;
+		background: var(--glass-border);
+		overflow: hidden;
 	}
 
-	.content {
-		padding: 16px 20px 90px;
-		display: grid;
-		grid-template-columns: 1fr;
-		gap: 14px;
-		max-width: 1100px;
-		width: 100%;
-		margin: 0 auto;
+	.platform-fill {
+		height: 100%;
+		border-radius: 999px;
+		transition: width 0.5s ease;
 	}
 
-	@media (min-width: 900px) {
-		.content {
-			grid-template-columns: 1fr 1fr;
-		}
-		.panel-wide {
-			grid-column: 1 / -1;
-		}
-	}
+	/* ── Panels ──────────────────────────────────────────────── */
 
 	.panel {
-		background: var(--glass-bg);
-		backdrop-filter: blur(16px);
-		border: 1px solid var(--glass-border);
-		border-radius: var(--radius-sm, 14px);
-		padding: 16px 18px;
+		padding: 20px 24px;
 	}
 
 	.panel-title {
 		font-size: 15px;
 		font-weight: 700;
 		color: var(--text);
-		margin-bottom: 12px;
+		margin-bottom: 14px;
 	}
 
 	.panel-sub {
@@ -436,66 +457,12 @@
 		color: var(--text);
 	}
 
-	/* Plataformas */
-	.platform-list {
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-	}
-
-	.platform-row {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-	}
-
-	.platform-ico {
-		font-size: 20px;
-		width: 28px;
-		text-align: center;
-	}
-
-	.platform-info {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.platform-head {
-		display: flex;
-		justify-content: space-between;
-		gap: 8px;
-		font-size: 13px;
-		margin-bottom: 4px;
-	}
-
-	.platform-name {
-		color: var(--text);
-		font-weight: 600;
-	}
-
-	.platform-time {
-		color: var(--text-muted);
-	}
-
-	.platform-track {
-		height: 6px;
-		border-radius: 999px;
-		background: var(--glass-border);
-		overflow: hidden;
-	}
-
-	.platform-fill {
-		height: 100%;
-		border-radius: 999px;
-		transition: width 0.5s ease;
-	}
-
 	/* Gráfica diaria */
 	.chart {
 		display: flex;
 		align-items: flex-end;
-		gap: 3px;
-		height: 110px;
+		gap: 4px;
+		height: 130px;
 	}
 
 	.chart-col {
@@ -524,12 +491,43 @@
 		color: var(--text-dim);
 	}
 
-	@media (max-width: 560px) {
+	/* ── Misc ────────────────────────────────────────────────── */
+
+	.error-banner {
+		padding: 10px 14px;
+		border-radius: 12px;
+		background: oklch(0.3 0.1 25 / 0.5);
+		border: 1px solid oklch(0.5 0.15 25 / 0.5);
+		color: var(--text);
+		font-size: 13px;
+		display: flex;
+		justify-content: space-between;
+	}
+
+	.empty-state {
+		padding: 60px 24px;
+		text-align: center;
+		color: var(--text-muted);
+		font-size: 14px;
+		line-height: 1.6;
+		max-width: 420px;
+		margin: 0 auto;
+	}
+
+	.empty-icon {
+		font-size: 40px;
+		margin-bottom: 10px;
+	}
+
+	@media (max-width: 640px) {
+		.page {
+			padding: 20px 16px 90px;
+		}
 		.stats-row {
 			grid-template-columns: 1fr;
 		}
-		.stat-value {
-			font-size: 18px;
+		.hero-card {
+			padding: 22px 20px;
 		}
 	}
 </style>
