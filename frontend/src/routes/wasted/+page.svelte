@@ -83,6 +83,7 @@
 
 <div class="page">
 	<div class="page-header">
+		<div class="header-inner">
 		<div class="page-header-top">
 			<div>
 				<h1 class="page-title">Bóveda de lo Perdido</h1>
@@ -121,6 +122,7 @@
 				</div>
 			</div>
 		{/if}
+		</div>
 	</div>
 
 	{#if error}
@@ -182,7 +184,7 @@
 			</section>
 
 			<!-- Últimos 30 días -->
-			<section class="panel">
+			<section class="panel panel-wide">
 				<h2 class="panel-title">Últimos 30 días</h2>
 				<div class="chart">
 					{#each dailyTotals as day (day.date)}
@@ -220,6 +222,13 @@
 		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
 		border-bottom: 1px solid var(--glass-border);
 		padding: 20px 20px 16px;
+	}
+
+	.header-inner {
+		/* .content max-width (1100) minus its 20px side padding, so cards align */
+		max-width: 1060px;
+		width: 100%;
+		margin: 0 auto;
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
@@ -343,12 +352,21 @@
 
 	.content {
 		padding: 16px 20px 90px;
-		display: flex;
-		flex-direction: column;
+		display: grid;
+		grid-template-columns: 1fr;
 		gap: 14px;
-		max-width: 860px;
+		max-width: 1100px;
 		width: 100%;
 		margin: 0 auto;
+	}
+
+	@media (min-width: 900px) {
+		.content {
+			grid-template-columns: 1fr 1fr;
+		}
+		.panel-wide {
+			grid-column: 1 / -1;
+		}
 	}
 
 	.panel {
