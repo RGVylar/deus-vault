@@ -15,6 +15,7 @@
 		{ href: '/random',   label: 'Azar',      icon: '🎲' },
 		{ href: '/rewind',   label: 'Rewind',    icon: '📊' },
 		{ href: '/wishlist', label: 'Deseos',    icon: '⭐' },
+		{ href: '/wasted',   label: 'Perdido',   icon: '💀' },
 	];
 
 	const navBottom = [

@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.routers import auth, contents, lookup, wishlist
+from app.routers import auth, contents, distractions, lookup, wishlist
 from app.routers.steam import auth_router as steam_auth_router, contents_router as steam_contents_router
 from app.telegram import send_error_alert
 
@@ -48,3 +48,4 @@ app.include_router(lookup.router, prefix=api_prefix)
 app.include_router(steam_auth_router, prefix=api_prefix)
 app.include_router(steam_contents_router, prefix=api_prefix)
 app.include_router(wishlist.router, prefix=api_prefix)
+app.include_router(distractions.router, prefix=api_prefix)

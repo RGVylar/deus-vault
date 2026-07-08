@@ -7,6 +7,10 @@
   "permissions": ["storage", "notifications", "activeTab", "tabs"],
   "host_permissions": [
     "https://www.youtube.com/*",
+    "https://*.tiktok.com/*",
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://*.instagram.com/*",
     "https://vault.mugrelore.com/*",
     "https://content.mugrelore.com/*",
     "https://*.amazon.es/*",
@@ -34,6 +38,17 @@
       "matches": ["https://www.youtube.com/watch*"],
       "js": ["content/youtube.js"],
       "css": ["content/youtube.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://*.tiktok.com/*",
+        "https://x.com/*",
+        "https://twitter.com/*",
+        "https://*.instagram.com/*"
+      ],
+      "js": ["content/distraction.js"],
       "run_at": "document_idle"
     },
     {

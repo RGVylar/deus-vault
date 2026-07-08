@@ -14,6 +14,7 @@ chrome.notifications.onClosed.addListener((notifId) => pendingNotifs.delete(noti
 
 // --- In-memory state (reset when SW suspends, that's OK) ---
 const pendingNotifs = new Map(); // notifId → { videoId, url, existingId, senderTabId }
+let distFlushing = false;        // prevents concurrent distraction flushes
 
 // --- Constants ---
 const DEFAULT_API = 'https://content.mugrelore.com/api';
@@ -331,6 +332,14 @@ async function processMessage(msg, sender) {
     }
 
     // ----------------------------------------------------------
+    case 'DISTRACTION_TICK': {
+      // entries: [{ date, platform, seconds, items_count }]
+      await bufferDistractions(msg.entries || []);
+      await flushDistractions();
+      return null;
+    }
+
+    // ----------------------------------------------------------
     case 'ADD_TO_WISHLIST': {
       const { product } = msg;
       await apiPost('/wishlist', {
@@ -346,6 +355,60 @@ async function processMessage(msg, sender) {
     // ----------------------------------------------------------
     default:
       throw new Error(`Unknown message type: ${msg.type}`);
+  }
+}
+
+// ================================================================
+// Distraction tracking — buffer in storage, flush to API
+// Buffer survives SW suspension and being logged out; entries older
+// than a week are dropped by the backend on flush.
+// ================================================================
+
+async function bufferDistractions(entries) {
+  if (!entries.length) return;
+  const { distBuffer = {} } = await chrome.storage.local.get('distBuffer');
+  for (const e of entries) {
+    if (!e || !e.date || !e.platform) continue;
+    const key = `${e.date}|${e.platform}`;
+    const cur = distBuffer[key] || { seconds: 0, items_count: 0 };
+    cur.seconds     += Math.max(0, Math.round(e.seconds || 0));
+    cur.items_count += Math.max(0, Math.round(e.items_count || 0));
+    distBuffer[key] = cur;
+  }
+  await chrome.storage.local.set({ distBuffer });
+}
+
+async function flushDistractions() {
+  if (distFlushing) return;
+  distFlushing = true;
+  try {
+    const { token } = await getConfig();
+    if (!token) return; // logged out — keep buffering
+
+    const { distBuffer = {} } = await chrome.storage.local.get('distBuffer');
+    const entries = Object.entries(distBuffer).map(([key, v]) => {
+      const [date, platform] = key.split('|');
+      return { date, platform, seconds: v.seconds, items_count: v.items_count };
+    }).filter(e => e.seconds > 0 || e.items_count > 0);
+    if (!entries.length) return;
+
+    await apiPost('/distractions/tick', { entries });
+
+    // Subtract only what was sent — new ticks may have arrived during the POST
+    const { distBuffer: latest = {} } = await chrome.storage.local.get('distBuffer');
+    for (const e of entries) {
+      const key = `${e.date}|${e.platform}`;
+      const cur = latest[key];
+      if (!cur) continue;
+      cur.seconds     -= e.seconds;
+      cur.items_count -= e.items_count;
+      if (cur.seconds <= 0 && cur.items_count <= 0) delete latest[key];
+    }
+    await chrome.storage.local.set({ distBuffer: latest });
+  } catch (_) {
+    // Network/API error — keep the buffer, retry on next tick
+  } finally {
+    distFlushing = false;
   }
 }
 

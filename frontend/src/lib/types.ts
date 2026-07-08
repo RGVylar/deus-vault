@@ -216,3 +216,31 @@ export interface RewindStats {
 	worst_rated_item: { title: string; rating: number; content_type: string } | null;
 	epic_day_items: { title: string; content_type: string; duration_minutes: number }[];
 }
+
+// ── Distracciones (Bóveda de lo Perdido) ─────────────────────────────────
+
+export interface PlatformTotal {
+	platform: string;
+	seconds: number;
+	items_count: number;
+}
+
+export interface DistractionDay {
+	date: string;
+	platform: string;
+	seconds: number;
+	items_count: number;
+}
+
+export interface DistractionStats {
+	today_seconds: number;
+	week_seconds: number;
+	month_seconds: number;
+	total_seconds: number;
+	total_items: number;
+	platforms: PlatformTotal[];
+	days: DistractionDay[];
+	good_today_minutes: number;
+	good_week_minutes: number;
+	good_month_minutes: number;
+}

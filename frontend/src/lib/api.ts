@@ -51,3 +51,8 @@ export const wishlistApi = {
 	ungift: (id: number) => api.post<import('./types').WishlistItem>(`/wishlist/${id}/ungift`),
 	delete: (id: number) => api.del<void>(`/wishlist/${id}`),
 };
+
+export const distractionsApi = {
+	stats: (days = 30) =>
+		api.get<import('./types').DistractionStats>(`/distractions/stats?days=${days}`),
+};

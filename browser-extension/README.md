@@ -9,6 +9,7 @@ Extensión de Chrome/Firefox que rastrea automáticamente tu consumo de YouTube 
 - **Pestaña en fondo**: funciona aunque YouTube esté minimizado — recibirás una notificación del sistema al terminar el vídeo
 - **Pregunta al salir**: si abandonas un vídeo a medias (20–85%), te pregunta qué hacer
 - **Popup universal**: click en el icono de la extensión para añadir o marcar cualquier contenido manualmente (YouTube, Netflix, Steam, Goodreads…)
+- **Bóveda de lo Perdido**: registra automáticamente el tiempo activo en contenido basura (YouTube Shorts, TikTok, Twitter/X, Instagram Reels) y lo muestra en la página `/wasted` de la app, comparado con el tiempo de contenido bueno consumido
 
 ## Instalación (Chrome / Edge)
 
@@ -45,7 +46,8 @@ browser-extension/
 ├── service-worker.js     Lógica de API y notificaciones
 ├── content/
 │   ├── youtube.js        Script inyectado en youtube.com
-│   └── youtube.css       Estilos del toast
+│   ├── youtube.css       Estilos del toast
+│   └── distraction.js    Tracker de tiempo perdido (Shorts, TikTok, X, Reels)
 ├── popup/
 │   ├── popup.html
 │   ├── popup.js
@@ -65,4 +67,5 @@ browser-extension/
 | `activeTab` | Leer la URL de la pestaña activa al abrir el popup |
 | `tabs` | Enviar mensajes al content script de la pestaña activa |
 | Host: `youtube.com` | Inyectar el script de detección |
+| Host: `tiktok.com`, `x.com`, `twitter.com`, `instagram.com` | Medir el tiempo perdido en contenido basura |
 | Host: `content.mugrelore.com` | Llamadas a la API |
