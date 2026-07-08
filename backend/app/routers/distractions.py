@@ -58,16 +58,15 @@ def tick(
     db.commit()
 
 
-def _good_minutes(db: Session, user_id: int, start: datetime) -> int:
-    """Minutos de contenido bueno consumido desde `start`."""
-    items = db.scalars(
-        select(Content).where(
-            Content.user_id == user_id,
-            Content.consumed.is_(True),
-            Content.consumed_at >= start,
-        )
-    ).all()
-    return sum(_effective_duration(c) for c in items)
+def _good_minutes(db: Session, user_id: int, start: datetime | None = None) -> int:
+    """Minutos de contenido bueno consumido desde `start` (o todo el histórico)."""
+    q = select(Content).where(
+        Content.user_id == user_id,
+        Content.consumed.is_(True),
+    )
+    if start is not None:
+        q = q.where(Content.consumed_at >= start)
+    return sum(_effective_duration(c) for c in db.scalars(q).all())
 
 
 @router.get("/stats", response_model=DistractionStats)
@@ -122,4 +121,5 @@ def stats(
         good_today_minutes=_good_minutes(db, current_user.id, _utc(today)),
         good_week_minutes=_good_minutes(db, current_user.id, _utc(week_start)),
         good_month_minutes=_good_minutes(db, current_user.id, _utc(month_start)),
+        good_total_minutes=_good_minutes(db, current_user.id),
     )

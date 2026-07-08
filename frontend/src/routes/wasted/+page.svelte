@@ -96,6 +96,9 @@
 				<div class="total-caption">
 					perdidas para siempre{#if stats.total_items > 0}&nbsp;· {stats.total_items} vídeos basura{/if}
 				</div>
+				<div class="total-vs">
+					vs <strong>{fmtMins(stats.good_total_minutes)}</strong> de contenido bueno en total
+				</div>
 			</div>
 		{/if}
 
@@ -260,6 +263,17 @@
 		margin-top: 6px;
 		font-size: 13px;
 		color: var(--text-muted);
+	}
+
+	.total-vs {
+		margin-top: 2px;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+
+	.total-vs strong {
+		color: oklch(0.72 0.17 150);
+		font-weight: 700;
 	}
 
 	.stats-row {

@@ -243,4 +243,5 @@ export interface DistractionStats {
 	good_today_minutes: number;
 	good_week_minutes: number;
 	good_month_minutes: number;
+	good_total_minutes: number;
 }

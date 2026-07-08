@@ -50,6 +50,14 @@ const lrBtnConsumed = $('lr-btn-consumed');
 
 const noContentBlock = $('no-content-block');
 
+// Distraction
+const distractionBlock  = $('distraction-block');
+const distIco           = $('dist-ico');
+const distName          = $('dist-name');
+const distTodayPlatform = $('dist-today-platform');
+const distTodayTotal    = $('dist-today-total');
+const distLink          = $('dist-link');
+
 // Wishlist / product
 const productBlock     = $('product-block');
 const productThumbWrap = $('product-thumb-wrap');
@@ -107,6 +115,41 @@ function sw(type, extra = {}) {
 
 function isYouTubeWatchTab(tab) {
   return tab?.url?.includes('youtube.com/watch');
+}
+
+const DISTRACTION_META = {
+  shorts:  { label: 'YouTube Shorts',  icon: '📱' },
+  tiktok:  { label: 'TikTok',          icon: '🎵' },
+  twitter: { label: 'Twitter / X',     icon: '🐦' },
+  reels:   { label: 'Instagram Reels', icon: '📸' },
+};
+
+// Same classification as content/distraction.js
+function distractionPlatform(tab) {
+  if (!tab?.url) return null;
+  try {
+    const u = new URL(tab.url);
+    const host = u.hostname.replace(/^www\./, '');
+    const path = u.pathname;
+    if (host === 'youtube.com' || host === 'm.youtube.com') {
+      return path.startsWith('/shorts/') ? 'shorts' : null;
+    }
+    if (host === 'tiktok.com' || host.endsWith('.tiktok.com')) return 'tiktok';
+    if (host === 'x.com' || host === 'twitter.com' || host.endsWith('.twitter.com')) return 'twitter';
+    if (host === 'instagram.com' || host.endsWith('.instagram.com')) {
+      return (path.startsWith('/reels') || path.startsWith('/reel/')) ? 'reels' : null;
+    }
+    return null;
+  } catch (_) { return null; }
+}
+
+function fmtDur(seconds) {
+  const mins = Math.round(seconds / 60);
+  if (mins < 1) return seconds > 0 ? '<1m' : '0m';
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
 const PRODUCT_HOSTS = [
@@ -211,14 +254,19 @@ async function loadCurrentTabContent(auth) {
   hide(productBlock);
   hide(productActionBar);
   hide(productAddedMsg);
+  hide(distractionBlock);
 
   if (!currentTab) {
     show(noContentBlock);
     return;
   }
 
+  const distPlatform = distractionPlatform(currentTab);
+
   if (isYouTubeWatchTab(currentTab)) {
     await loadYouTubeState();
+  } else if (distPlatform) {
+    await loadDistractionState(distPlatform);
   } else if (isProductTab(currentTab)) {
     await loadProductState();
   } else {
@@ -227,6 +275,28 @@ async function loadCurrentTabContent(auth) {
     if (currentTab.url && !currentTab.url.startsWith('chrome')) {
       lookupUrl.value = currentTab.url;
     }
+  }
+}
+
+// ── Distraction state ────────────────────────────────────────────
+
+async function loadDistractionState(platform) {
+  const meta = DISTRACTION_META[platform] || { label: platform, icon: '💀' };
+  distIco.textContent  = meta.icon;
+  distName.textContent = meta.label;
+  distLink.href = openLink.href + '/wasted';
+  show(distractionBlock);
+
+  try {
+    const stats = await sw('GET_DISTRACTION_STATS');
+    distTodayTotal.textContent = fmtDur(stats.today_seconds);
+    const platformToday = (stats.days || [])
+      .filter(d => d.platform === platform)
+      .reduce((acc, d) => acc + d.seconds, 0);
+    distTodayPlatform.textContent = fmtDur(platformToday);
+  } catch (_) {
+    distTodayTotal.textContent    = '—';
+    distTodayPlatform.textContent = '—';
   }
 }
 

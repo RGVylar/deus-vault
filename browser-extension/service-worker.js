@@ -340,6 +340,13 @@ async function processMessage(msg, sender) {
     }
 
     // ----------------------------------------------------------
+    case 'GET_DISTRACTION_STATS': {
+      // Flush the local buffer first so the popup shows fresh numbers
+      await flushDistractions();
+      return apiGet('/distractions/stats?days=1');
+    }
+
+    // ----------------------------------------------------------
     case 'ADD_TO_WISHLIST': {
       const { product } = msg;
       await apiPost('/wishlist', {

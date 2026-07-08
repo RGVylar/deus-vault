@@ -46,3 +46,4 @@ class DistractionStats(BaseModel):
     good_today_minutes: int
     good_week_minutes: int
     good_month_minutes: int
+    good_total_minutes: int
