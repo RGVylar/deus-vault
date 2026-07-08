@@ -31,6 +31,11 @@ class DistractionDayOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class GoodDayOut(BaseModel):
+    date: date
+    minutes: int
+
+
 class DistractionStats(BaseModel):
     # Tiempo perdido (segundos)
     today_seconds: int
@@ -42,6 +47,8 @@ class DistractionStats(BaseModel):
     platforms: list[PlatformTotal]
     # Serie diaria para gráficas (últimos N días)
     days: list[DistractionDayOut]
+    # Minutos de contenido bueno consumido por día (últimos N días)
+    good_days: list[GoodDayOut]
     # Tiempo bueno (minutos de contenido consumido) para comparar
     good_today_minutes: int
     good_week_minutes: int

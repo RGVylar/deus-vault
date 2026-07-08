@@ -53,18 +53,57 @@
 		return out;
 	});
 
-	let maxDaily = $derived(Math.max(1, ...dailyTotals.map((d) => d.seconds)));
 	let platformTotalSeconds = $derived(
 		Math.max(1, (stats?.platforms ?? []).reduce((acc, p) => acc + p.seconds, 0))
 	);
 
-	// Ratio señal/ruido de la semana
-	let weekGoodSecs = $derived((stats?.good_week_minutes ?? 0) * 60);
-	let weekBadSecs = $derived(stats?.week_seconds ?? 0);
-	let weekRatio = $derived.by(() => {
-		const total = weekGoodSecs + weekBadSecs;
-		return total > 0 ? weekGoodSecs / total : null;
+	// Bueno por día (segundos), para las comparativas
+	let goodByDate = $derived.by(() => {
+		const m = new Map<string, number>();
+		for (const g of stats?.good_days ?? []) m.set(g.date, g.minutes * 60);
+		return m;
 	});
+
+	let dailyPairs = $derived(
+		dailyTotals.map((d) => ({ ...d, goodSeconds: goodByDate.get(d.date) ?? 0 }))
+	);
+
+	let maxPairSecs = $derived(
+		Math.max(1, ...dailyPairs.map((d) => Math.max(d.seconds, d.goodSeconds)))
+	);
+
+	// Ratio señal/ruido por periodo
+	let periods = $derived.by(() => {
+		if (!stats) return [];
+		const mk = (label: string, goodMins: number, badSecs: number) => {
+			const good = goodMins * 60;
+			const total = good + badSecs;
+			return { label, good, bad: badSecs, ratio: total > 0 ? good / total : null };
+		};
+		return [
+			mk('Hoy', stats.good_today_minutes, stats.today_seconds),
+			mk('7 días', stats.good_week_minutes, stats.week_seconds),
+			mk('30 días', stats.good_month_minutes, stats.month_seconds),
+			mk('Total', stats.good_total_minutes, stats.total_seconds)
+		];
+	});
+
+	// Por día de la semana (suma de los últimos 30 días)
+	let weekdayData = $derived.by(() => {
+		const labels = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+		const bad = Array(7).fill(0);
+		const good = Array(7).fill(0);
+		for (const d of dailyPairs) {
+			const dow = (new Date(d.date + 'T12:00:00').getDay() + 6) % 7; // lunes = 0
+			bad[dow] += d.seconds;
+			good[dow] += d.goodSeconds;
+		}
+		return labels.map((label, i) => ({ label, bad: bad[i], good: good[i] }));
+	});
+
+	let maxWeekday = $derived(
+		Math.max(1, ...weekdayData.map((w) => Math.max(w.bad, w.good)))
+	);
 
 	async function load() {
 		loading = true;
@@ -163,37 +202,82 @@
 				Shorts, TikTok, Twitter y Reels.
 			</div>
 		{:else}
-			<!-- Ratio señal/ruido -->
-			{#if weekRatio !== null}
+			<div class="mid-grid">
+				<!-- Señal vs ruido por periodo -->
 				<section class="panel">
-					<h2 class="panel-title">Señal vs ruido <span class="panel-sub">esta semana</span></h2>
-					<div class="ratio-bar">
-						<div class="ratio-good" style="width:{weekRatio * 100}%"></div>
+					<h2 class="panel-title">Señal vs ruido <span class="panel-sub">% de tiempo bien invertido</span></h2>
+					<div class="period-list">
+						{#each periods as p (p.label)}
+							<div class="period-row">
+								<span class="period-label">{p.label}</span>
+								<div
+									class="period-track"
+									class:empty={p.ratio === null}
+									title="{p.label}: {fmtDur(p.good)} bueno vs {fmtDur(p.bad)} basura"
+								>
+									{#if p.ratio !== null}
+										<div class="period-good" style="width:{p.ratio * 100}%"></div>
+									{/if}
+								</div>
+								<span class="period-pct">{p.ratio === null ? '—' : `${Math.round(p.ratio * 100)}%`}</span>
+							</div>
+						{/each}
 					</div>
-					<div class="ratio-legend">
-						<span class="dot good"></span> Contenido bueno {fmtDur(weekGoodSecs)}
-						<span class="dot bad-dot"></span> Basura {fmtDur(weekBadSecs)}
-						<span class="ratio-pct">{Math.round(weekRatio * 100)}% señal</span>
+					<div class="legend">
+						<span class="dot good"></span> Contenido bueno
+						<span class="dot bad-dot"></span> Basura
 					</div>
 				</section>
-			{/if}
 
-			<!-- Últimos 30 días -->
+				<!-- Por día de la semana -->
+				<section class="panel">
+					<h2 class="panel-title">Por día de la semana <span class="panel-sub">últimos 30 días</span></h2>
+					<div class="wchart">
+						{#each weekdayData as w (w.label)}
+							<div class="wcol" title="{w.label}: {fmtDur(w.good)} bueno · {fmtDur(w.bad)} basura">
+								<div class="wbars">
+									<div class="wbar good" style="height:{Math.max(w.good > 0 ? 3 : 1, (w.good / maxWeekday) * 100)}%"></div>
+									<div class="wbar bad"  style="height:{Math.max(w.bad  > 0 ? 3 : 1, (w.bad  / maxWeekday) * 100)}%"></div>
+								</div>
+								<div class="wlabel">{w.label}</div>
+							</div>
+						{/each}
+					</div>
+					<div class="legend">
+						<span class="dot good"></span> Bueno
+						<span class="dot bad-dot"></span> Basura
+					</div>
+				</section>
+			</div>
+
+			<!-- Bueno vs basura, últimos 30 días -->
 			<section class="panel">
-				<h2 class="panel-title">Últimos 30 días</h2>
-				<div class="chart">
-					{#each dailyTotals as day (day.date)}
-						<div class="chart-col" title="{day.label}: {fmtDur(day.seconds)}">
-							<div
-								class="chart-bar"
-								style="height:{Math.max(day.seconds > 0 ? 4 : 1, (day.seconds / maxDaily) * 100)}%"
-								class:zero={day.seconds === 0}
-							></div>
+				<h2 class="panel-title">
+					Bueno vs basura <span class="panel-sub">últimos 30 días · bueno arriba, basura abajo</span>
+				</h2>
+				<div class="dchart">
+					{#each dailyPairs as day (day.date)}
+						<div
+							class="dcol"
+							title="{day.label} · bueno: {fmtDur(day.goodSeconds)} · basura: {fmtDur(day.seconds)}"
+						>
+							<div class="dcol-top">
+								<div
+									class="dbar good"
+									style="height:{Math.max(day.goodSeconds > 0 ? 3 : 0, (day.goodSeconds / maxPairSecs) * 100)}%"
+								></div>
+							</div>
+							<div class="dcol-bottom">
+								<div
+									class="dbar bad"
+									style="height:{Math.max(day.seconds > 0 ? 3 : 0, (day.seconds / maxPairSecs) * 100)}%"
+								></div>
+							</div>
 						</div>
 					{/each}
 				</div>
 				<div class="chart-labels">
-					<span>{dailyTotals[0]?.label}</span>
+					<span>{dailyPairs[0]?.label}</span>
 					<span>hoy</span>
 				</div>
 			</section>
@@ -411,27 +495,73 @@
 		color: var(--text-dim);
 	}
 
-	/* Ratio señal/ruido */
-	.ratio-bar {
+	/* Grid intermedio: dos paneles comparativos */
+	.mid-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 18px;
+	}
+
+	@media (min-width: 980px) {
+		.mid-grid {
+			grid-template-columns: 1fr 1fr;
+		}
+	}
+
+	/* Señal vs ruido por periodo */
+	.period-list {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+	}
+
+	.period-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.period-label {
+		width: 56px;
+		flex-shrink: 0;
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--text-muted);
+		text-align: right;
+	}
+
+	.period-track {
+		flex: 1;
 		height: 14px;
 		border-radius: 999px;
 		overflow: hidden;
 		background: oklch(0.55 0.18 25 / 0.55);
 	}
 
-	.ratio-good {
+	.period-track.empty {
+		background: var(--glass-border);
+	}
+
+	.period-good {
 		height: 100%;
 		background: oklch(0.72 0.17 150);
-		border-radius: 999px 0 0 999px;
 		transition: width 0.5s ease;
 	}
 
-	.ratio-legend {
+	.period-pct {
+		width: 44px;
+		flex-shrink: 0;
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--text);
+		text-align: right;
+	}
+
+	.legend {
 		display: flex;
 		align-items: center;
-		flex-wrap: wrap;
-		gap: 6px 10px;
-		margin-top: 10px;
+		gap: 6px 12px;
+		margin-top: 14px;
 		font-size: 12px;
 		color: var(--text-muted);
 	}
@@ -448,39 +578,92 @@
 	}
 
 	.dot.bad-dot {
-		background: oklch(0.55 0.18 25);
+		background: oklch(0.62 0.19 25);
 	}
 
-	.ratio-pct {
-		margin-left: auto;
-		font-weight: 700;
-		color: var(--text);
-	}
-
-	/* Gráfica diaria */
-	.chart {
+	/* Por día de la semana */
+	.wchart {
 		display: flex;
 		align-items: flex-end;
-		gap: 4px;
+		gap: 10px;
 		height: 130px;
 	}
 
-	.chart-col {
+	.wcol {
 		flex: 1;
 		height: 100%;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.wbars {
+		flex: 1;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+		gap: 3px;
+	}
+
+	.wbar {
+		width: 100%;
+		max-width: 26px;
+		border-radius: 4px 4px 0 0;
+		min-height: 1px;
+	}
+
+	.wbar.good {
+		background: oklch(0.72 0.17 150 / 0.9);
+	}
+
+	.wbar.bad {
+		background: oklch(0.62 0.19 25 / 0.9);
+	}
+
+	.wlabel {
+		text-align: center;
+		margin-top: 6px;
+		font-size: 11px;
+		color: var(--text-dim);
+	}
+
+	/* Gráfica divergente bueno/basura */
+	.dchart {
+		display: flex;
+		gap: 4px;
+		height: 200px;
+	}
+
+	.dcol {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.dcol-top {
+		flex: 1;
 		display: flex;
 		align-items: flex-end;
 	}
 
-	.chart-bar {
-		width: 100%;
-		border-radius: 3px 3px 0 0;
-		background: oklch(0.62 0.19 25 / 0.85);
-		min-height: 1px;
+	.dcol-bottom {
+		flex: 1;
+		display: flex;
+		align-items: flex-start;
+		border-top: 1px solid var(--glass-border);
 	}
 
-	.chart-bar.zero {
-		background: var(--glass-border);
+	.dbar {
+		width: 100%;
+	}
+
+	.dbar.good {
+		background: oklch(0.72 0.17 150 / 0.9);
+		border-radius: 3px 3px 0 0;
+	}
+
+	.dbar.bad {
+		background: oklch(0.62 0.19 25 / 0.9);
+		border-radius: 0 0 3px 3px;
 	}
 
 	.chart-labels {

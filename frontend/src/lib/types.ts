@@ -232,6 +232,11 @@ export interface DistractionDay {
 	items_count: number;
 }
 
+export interface GoodDay {
+	date: string;
+	minutes: number;
+}
+
 export interface DistractionStats {
 	today_seconds: number;
 	week_seconds: number;
@@ -240,6 +245,7 @@ export interface DistractionStats {
 	total_items: number;
 	platforms: PlatformTotal[];
 	days: DistractionDay[];
+	good_days: GoodDay[];
 	good_today_minutes: number;
 	good_week_minutes: number;
 	good_month_minutes: number;

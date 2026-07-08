@@ -14,6 +14,7 @@ from app.schemas.distraction import (
     DistractionDayOut,
     DistractionStats,
     DistractionTickIn,
+    GoodDayOut,
     PlatformTotal,
 )
 
@@ -110,6 +111,23 @@ def stats(
     def _utc(d: date) -> datetime:
         return datetime.combine(d, time.min, tzinfo=timezone.utc)
 
+    # Contenido bueno por día (últimos `days` días) para gráficas comparativas
+    good_items = db.scalars(
+        select(Content).where(
+            Content.user_id == current_user.id,
+            Content.consumed.is_(True),
+            Content.consumed_at >= _utc(series_start),
+        )
+    ).all()
+    good_by_day: dict[date, int] = {}
+    for c in good_items:
+        if c.consumed_at:
+            d = c.consumed_at.date()
+            good_by_day[d] = good_by_day.get(d, 0) + _effective_duration(c)
+    good_days = [
+        GoodDayOut(date=d, minutes=m) for d, m in sorted(good_by_day.items())
+    ]
+
     return DistractionStats(
         today_seconds=today_s,
         week_seconds=week_s,
@@ -118,6 +136,7 @@ def stats(
         total_items=total_items,
         platforms=platforms,
         days=[DistractionDayOut.model_validate(r) for r in day_rows],
+        good_days=good_days,
         good_today_minutes=_good_minutes(db, current_user.id, _utc(today)),
         good_week_minutes=_good_minutes(db, current_user.id, _utc(week_start)),
         good_month_minutes=_good_minutes(db, current_user.id, _utc(month_start)),
