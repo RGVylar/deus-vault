@@ -73,12 +73,16 @@
 	);
 
 	// Ratio señal/ruido por periodo
+	// Con muy poca actividad acumulada el ratio se dispara a 100% (o 0%) con datos
+	// insignificantes -p. ej. "Hoy" en cuanto se marca un solo vídeo bueno-, así que
+	// exigimos un mínimo de señal antes de mostrar un porcentaje real.
+	const MIN_MEANINGFUL_SECONDS = 5 * 60;
 	let periods = $derived.by(() => {
 		if (!stats) return [];
 		const mk = (label: string, goodMins: number, badSecs: number) => {
 			const good = goodMins * 60;
 			const total = good + badSecs;
-			return { label, good, bad: badSecs, ratio: total > 0 ? good / total : null };
+			return { label, good, bad: badSecs, ratio: total >= MIN_MEANINGFUL_SECONDS ? good / total : null };
 		};
 		return [
 			mk('Hoy', stats.good_today_minutes, stats.today_seconds),
