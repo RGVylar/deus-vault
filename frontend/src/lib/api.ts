@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { auth } from '$lib/stores/auth.svelte';
+import { translateApiError } from '$lib/i18n/apiErrors';
 
 const BASE = Capacitor.isNativePlatform()
 	? (import.meta.env.VITE_API_URL || 'https://vault.mugrelore.com/api')
@@ -14,11 +15,11 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
 
 	if (res.status === 401) {
 		auth.logout();
-		throw new Error('Unauthorized');
+		throw new Error(translateApiError('Unauthorized'));
 	}
 	if (!res.ok) {
 		const body = await res.json().catch(() => ({}));
-		throw new Error(body.detail || res.statusText);
+		throw new Error(translateApiError(body.detail || res.statusText));
 	}
 	if (res.status === 204) return undefined as T;
 	return res.json();

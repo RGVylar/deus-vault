@@ -3,8 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration, TYPE_ICONS, TYPE_LABELS, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate } from '$lib/utils';
+	import { formatDuration, TYPE_ICONS, typeLabel, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate } from '$lib/utils';
 	import { quickAdd } from '$lib/stores/quickadd.svelte';
+	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
 	import type { Content, VaultStats, ContentType, PaginatedContents } from '$lib/types';
 
 	const LIMIT = 20;
@@ -16,10 +17,6 @@
 	};
 
 	const TYPE_ORDER: ContentType[] = ['movie', 'series', 'youtube', 'book', 'game', 'music'];
-	const TYPE_SECTION_LABEL: Record<string, string> = {
-		youtube: 'YouTube', movie: 'Películas', series: 'Series',
-		book: 'Libros', game: 'Juegos', music: 'Música',
-	};
 
 	// Reverse map: author string → provider key (for existing content without provider field)
 	const AUTHOR_TO_PROVIDER: Record<string, string> = {
@@ -436,7 +433,7 @@ $effect(() => {
 				duplicateChecked = true;
 			}
 		} catch (e: unknown) {
-			addError = e instanceof Error ? e.message : 'Lookup failed';
+			addError = e instanceof Error ? e.message : t('home.lookupFailed');
 		} finally { lookupLoading = false; }
 	}
 
@@ -520,7 +517,7 @@ $effect(() => {
 		addError = '';
 		// Block if pending duplicate
 		if (duplicateItem && !duplicateItem.consumed && !duplicateItem.abandoned) {
-			addError = 'Este ítem ya está en tu bóveda como pendiente.';
+			addError = t('home.duplicatePending');
 			return;
 		}
 		// If already consumed, increment times_consumed on the existing item instead of creating a new one
@@ -559,7 +556,7 @@ $effect(() => {
 			showAdd = false;
 			resetForm();
 			load();
-		} catch (e: unknown) { addError = e instanceof Error ? e.message : 'Error'; }
+		} catch (e: unknown) { addError = e instanceof Error ? e.message : t('errors.generic'); }
 	}
 
 	function saveSettings() {
@@ -708,7 +705,7 @@ $effect(() => {
 			await loadCollections();
 			api.get<VaultStats>('/contents/stats').then(s => { stats = s; });
 		} catch (e: unknown) {
-			editError = e instanceof Error ? e.message : 'Error al guardar';
+			editError = e instanceof Error ? e.message : t('home.saveError');
 		}
 	}
 
@@ -768,17 +765,17 @@ $effect(() => {
 	function progressLabel(c: Content): string {
 		const p = c.progress ?? 0;
 		if (p <= 0) return '';
-		if (c.content_type === 'book') return `Pág. ${p}${c.page_count ? ' / ' + c.page_count : ''}`;
-		if (c.content_type === 'game') return `${p}%`;
-		if (c.content_type === 'series') return `Ep. ${p}${c.episode_count ? ' / ' + c.episode_count : ''}`;
-		return `${p} min`;
+		if (c.content_type === 'book') return c.page_count ? t('home.progressBookTotal', { page: p, total: c.page_count }) : t('home.progressBook', { page: p });
+		if (c.content_type === 'game') return t('home.progressGame', { pct: p });
+		if (c.content_type === 'series') return c.episode_count ? t('home.progressSeriesTotal', { ep: p, total: c.episode_count }) : t('home.progressSeries', { ep: p });
+		return t('home.progressGeneric', { min: p });
 	}
 
 	function progressInputLabel(c: Content): string {
-		if (c.content_type === 'book') return `Página actual${c.page_count ? ' (1–' + c.page_count + ')' : ''}`;
-		if (c.content_type === 'game') return '% completado (0–100)';
-		if (c.content_type === 'series') return `Episodio${c.episode_count ? ' (1–' + c.episode_count + ')' : ''}`;
-		return `Minuto actual${c.duration_minutes ? ' (0–' + c.duration_minutes + ')' : ''}`;
+		if (c.content_type === 'book') return c.page_count ? t('home.progressInputBookRange', { total: c.page_count }) : t('home.progressInputBook');
+		if (c.content_type === 'game') return t('home.progressInputGame');
+		if (c.content_type === 'series') return c.episode_count ? t('home.progressInputSeriesRange', { total: c.episode_count }) : t('home.progressInputSeries');
+		return c.duration_minutes ? t('home.progressInputGenericRange', { total: c.duration_minutes }) : t('home.progressInputGeneric');
 	}
 
 	function startEditProgress(c: Content) {
@@ -809,39 +806,39 @@ $effect(() => {
 <svelte:window onclick={() => openPickerCard = null} />
 
 {#if !auth.isLoggedIn}
-	<p class="muted center">Redirigiendo…</p>
+	<p class="muted center">{t('common.redirecting')}</p>
 {:else}
 
 	<!-- ── Desktop topbar (title only) ── -->
 	<div class="desk-topbar desk-only">
-		<h1 class="desk-title">Bóveda</h1>
+		<h1 class="desk-title">{t('nav.vault')}</h1>
 	</div>
 
 	{#if stats}
 		<!-- Hero + quick stats (grid on desktop, stacked on mobile) -->
 		<div class="desk-hero-grid">
 			<div class="hero">
-				<div class="kicker">DEUDA PENDIENTE</div>
+				<div class="kicker">{t('home.pendingDebt')}</div>
 				<div class="number">{formatHeroTime(stats.total_pending_minutes)}</div>
-				<div class="unit">{formatDuration(stats.total_pending_minutes)} totales por consumir</div>
-				<div class="sub">La bóveda no espera</div>
+				<div class="unit">{t('home.totalToConsume', { time: formatDuration(stats.total_pending_minutes) })}</div>
+				<div class="sub">{t('home.vaultDoesntWait')}</div>
 			</div>
 
 			<!-- Distribution card: desktop only -->
 			{#if Object.keys(stats.by_type).length > 0}
 				<div class="desk-quick desk-only">
-					<h3>Distribución</h3>
+					<h3>{t('home.distribution')}</h3>
 					{#each Object.entries(stats.by_type).sort((a,b) => b[1]-a[1]) as [type, mins]}
 						{@const pct = totalByTypeMins > 0 ? (mins / totalByTypeMins) * 100 : 0}
 						<div class="dq-row">
-							<span class="lbl"><span>{TYPE_ICONS[type] || '📄'}</span>{TYPE_LABELS[type] || type}</span>
+							<span class="lbl"><span>{TYPE_ICONS[type] || '📄'}</span>{typeLabel(type)}</span>
 							<div class="dq-bar"><div class="dq-bar-fill" style="width:{pct}%; --bar-color:{TYPE_COLOR[type] ?? 'var(--primary)'}"></div></div>
 							<span class="val">{formatDuration(mins)}</span>
 						</div>
 					{/each}
 					<div class="dq-footer">
-						<span style="font-size:12px; color:var(--text-muted);">{stats.pending_count} pendientes · {stats.consumed_count} consumidos</span>
-						<button class="btn btn-primary" onclick={() => showAdd = true} style="padding:6px 14px; font-size:12px;">+ Añadir</button>
+						<span style="font-size:12px; color:var(--text-muted);">{t('home.pendingConsumedSummary', { pending: stats.pending_count, consumed: stats.consumed_count })}</span>
+						<button class="btn btn-primary" onclick={() => showAdd = true} style="padding:6px 14px; font-size:12px;">{t('common.add')}</button>
 					</div>
 				</div>
 			{/if}
@@ -851,10 +848,10 @@ $effect(() => {
 		<div class="mobile-only">
 			<div class="pill-row">
 				<div class="pill">
-					<span>📦</span> <span class="val">{stats.pending_count}</span> <span class="lbl">pendientes</span>
+					<span>📦</span> <span class="val">{stats.pending_count}</span> <span class="lbl">{t('home.pendingPill')}</span>
 				</div>
 				<div class="pill">
-					<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">consumidos</span>
+					<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">{t('home.consumedPill')}</span>
 				</div>
 			</div>
 			{#if Object.keys(stats.by_type).length > 0}
@@ -864,7 +861,7 @@ $effect(() => {
 						<div class="pill pill-typed" style="--pill-color:{TYPE_COLOR[type] ?? 'var(--primary)'}">
 							<span>{TYPE_ICONS[type] || '📄'}</span>
 							<span class="val">{formatDuration(mins)}</span>
-							{TYPE_LABELS[type] || type}
+							{typeLabel(type)}
 							<span class="pill-bar" style="width:{pct}%"></span>
 						</div>
 					{/each}
@@ -875,24 +872,24 @@ $effect(() => {
 
 	<!-- Section header + filter tabs -->
 	<div class="desk-section desk-only">
-		<h2>Pendiente</h2>
-		<span class="more">{total} ítems</span>
+		<h2>{t('home.pendingSectionTitle')}</h2>
+		<span class="more">{tc('home.itemsCount', total)}</span>
 		<button
 			class="btn group-toggle"
 			class:active={groupByType}
 			onclick={() => { groupByType = !groupByType; if (groupByType) filter = 'all'; }}
-			title={groupByType ? 'Vista plana' : 'Agrupar por tipo'}
-		>{groupByType ? '≡ Desagrupar' : '⊞ Agrupar'}</button>
+			title={groupByType ? t('home.flatView') : t('home.groupByTypeTitle')}
+		>{groupByType ? t('home.ungroupBtn') : t('home.groupBtn')}</button>
 	</div>
 	{#if !groupByType}
 	<div class="tabs desk-tabs">
-		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>Todos</button>
-		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️ YouTube</button>
-		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬 Películas</button>
-		<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺 Series</button>
-		<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>🎵 Música</button>
-		<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖 Libros</button>
-		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮 Juegos</button>
+		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>{t('common.all')}</button>
+		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️ {t('types.youtube')}</button>
+		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬 {t('types.movie')}</button>
+		<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺 {t('types.series')}</button>
+		<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>🎵 {t('types.music')}</button>
+		<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖 {t('types.book')}</button>
+		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮 {t('types.game')}</button>
 	</div>
 	{/if}
 
@@ -900,22 +897,22 @@ $effect(() => {
 	<div class="search-row">
 		<div class="search">
 			<span class="ico">🔍</span>
-			<input type="search" bind:value={searchQuery} placeholder="Buscar en la bóveda…" />
+			<input type="search" bind:value={searchQuery} placeholder={t('home.searchPlaceholder')} />
 		</div>
 		<select class="sort" bind:value={sortOrder}>
-			<option value="recent">📅 Recientes</option>
-			<option value="duration_asc">⏱ Duración ↑</option>
-			<option value="duration_desc">⏱ Duración ↓</option>
-			<option value="title_asc">🔤 Título A–Z</option>
-			<option value="rating_desc">★ Puntuación ↓</option>
-			<option value="rating_asc">★ Puntuación ↑</option>
+			<option value="recent">{t('home.sort.recent')}</option>
+			<option value="duration_asc">{t('home.sort.durationAsc')}</option>
+			<option value="duration_desc">{t('home.sort.durationDesc')}</option>
+			<option value="title_asc">{t('home.sort.titleAsc')}</option>
+			<option value="rating_desc">{t('home.sort.ratingDesc')}</option>
+			<option value="rating_asc">{t('home.sort.ratingAsc')}</option>
 		</select>
 	</div>
 
 	<!-- Collection filter chips -->
 	{#if collections.length > 0}
 		<div class="tabs" style="padding-top:0;">
-			<button class="tab" class:active={activeCollection === null} onclick={() => activeCollection = null}>Todas</button>
+			<button class="tab" class:active={activeCollection === null} onclick={() => activeCollection = null}>{t('home.allCollections')}</button>
 			{#each collections as col}
 				<button class="tab" class:active={activeCollection === col} onclick={() => activeCollection = activeCollection === col ? null : col}>📁 {col}</button>
 			{/each}
@@ -925,7 +922,7 @@ $effect(() => {
 	<!-- Provider filter chips -->
 	{#if availableProviders.length > 0}
 		<div class="tabs" style="padding-top:0;">
-			<button class="tab" class:active={activeProvider === null} onclick={() => activeProvider = null}>Todos</button>
+			<button class="tab" class:active={activeProvider === null} onclick={() => activeProvider = null}>{t('common.all')}</button>
 			{#each availableProviders as prov}
 				<button
 					class="tab provider-tab provider-tab-{prov}"
@@ -938,11 +935,11 @@ $effect(() => {
 
 	<!-- Content list -->
 	{#if loading}
-		<p class="muted center">Cargando…</p>
+		<p class="muted center">{t('common.loading')}</p>
 	{:else if contents.length === 0}
 		<div class="empty">
 			<span class="icon">🏛️</span>
-			<p>{searchQuery ? 'Sin resultados para "' + searchQuery + '"' : 'La bóveda está vacía. ¡Añade contenido!'}</p>
+			<p>{searchQuery ? t('home.noResultsFor', { query: searchQuery }) : t('home.vaultEmpty')}</p>
 		</div>
 	{:else}
 		{#snippet cardTpl(c: Content)}
@@ -989,11 +986,11 @@ $effect(() => {
 					{/if}
 					<div class="info">
 						<div class="title">
-							{#if c.pinned}<span title="Prioritario">📌</span>{/if}
+							{#if c.pinned}<span title={t('home.priority')}>📌</span>{/if}
 							{c.title}
 						</div>
 						<div class="meta">
-							<span class="badge">{TYPE_LABELS[c.content_type]}</span>
+							<span class="badge">{typeLabel(c.content_type)}</span>
 							{#if c.rating}
 								<span class="rating-badge">★ {c.rating.toFixed(1)}</span>
 							{/if}
@@ -1003,7 +1000,7 @@ $effect(() => {
 									{@const isPaid = rawName.startsWith('$')}
 									{@const provName = isPaid ? rawName.slice(1) : rawName}
 									{@const key = providerNameToKey(provName)}
-									<span class="provider-badge provider-{key}" class:provider-paid={isPaid} title={isPaid ? 'Alquiler / compra' : 'Incluido en suscripción'}>{shortProviderName(provName)}{isPaid ? ' €' : ''}</span>
+									<span class="provider-badge provider-{key}" class:provider-paid={isPaid} title={isPaid ? t('home.rentBuy') : t('home.includedSubscription')}>{shortProviderName(provName)}{isPaid ? ' €' : ''}</span>
 								{/each}
 							{:else if resolveProvider(c)}
 								{@const prov = resolveProvider(c)!}
@@ -1019,19 +1016,19 @@ $effect(() => {
 								{#if c.next_episode_date}
 									{@const epDate = new Date(c.next_episode_date)}
 									{@const aired = epDate < new Date()}
-									<span class="next-ep" class:aired title="Próximo episodio">{aired ? '⏰' : '🟢'} {epDate.toLocaleDateString('es',{day:'numeric',month:'short'})}</span>
+									<span class="next-ep" class:aired title={t('home.nextEpisode')}>{aired ? '⏰' : '🟢'} {fmtDateI18n(epDate,{day:'numeric',month:'short'})}</span>
 								{/if}
 							{:else}
 								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}</span>{/if}
 								{#if c.content_type === 'book' && c.page_count && Number(c.page_count) > 0}
-									<span>📚 {c.page_count} pág</span>
+									<span>📚 {t('home.pagesAbbrev', { count: c.page_count })}</span>
 								{/if}
 								{#if c.content_type === 'movie' && c.next_episode_date}
 									{@const relDate = new Date(/^\d{4}-\d{2}-\d{2}$/.test(c.next_episode_date) ? c.next_episode_date + 'T12:00:00' : c.next_episode_date)}
 									{#if !isNaN(relDate.getTime())}
 										{@const released = relDate < new Date()}
-										<span class="next-ep" class:aired={released} title="{released ? 'Fecha de estreno' : 'Próximo estreno'}">
-											{released ? '📅' : '🎬'} {relDate.toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}
+										<span class="next-ep" class:aired={released} title={released ? t('home.releaseDate') : t('home.upcomingRelease')}>
+											{released ? '📅' : '🎬'} {fmtDateI18n(relDate,{day:'numeric',month:'short',year:'numeric'})}
 										</span>
 									{/if}
 								{/if}
@@ -1039,7 +1036,7 @@ $effect(() => {
 							{#if c.author}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">{c.author}</span>{/if}
 						</div>
 						{#if c.content_type === 'series' && c.episode_count && c.episode_count > 0 && c.duration_minutes > 0}
-							<div style="font-size:11px; font-weight:600; color:var(--series);">~{formatDuration(c.duration_minutes * c.episode_count)} en total</div>
+							<div style="font-size:11px; font-weight:600; color:var(--series);">{t('home.totalMinutes', { duration: formatDuration(c.duration_minutes * c.episode_count) })}</div>
 						{/if}
 
 						{#if c.notes}
@@ -1065,22 +1062,22 @@ $effect(() => {
 									</div>
 									{#if progressValue > 0}
 										<span style="font-size:10px; color:var(--game);">
-											≈ {formatDuration(remainingMinutes({ ...c, progress: Math.floor(progressValue) }))} restante
+											≈ {t('home.remaining', { duration: formatDuration(remainingMinutes({ ...c, progress: Math.floor(progressValue) })) })}
 										</span>
 									{/if}
 								</div>
 							{:else}
-								<button class="progress-track-btn" onclick={() => startEditProgress(c)} title={hasProgress ? 'Editar progreso' : 'Añadir progreso'}>
+								<button class="progress-track-btn" onclick={() => startEditProgress(c)} title={hasProgress ? t('home.editProgress') : t('home.addProgress')}>
 									<div class="progress-track" style="flex:1; margin:0;">
 										<div class="progress-fill" style="width:{pct}%; background:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}; box-shadow:0 0 8px {TYPE_COLOR[c.content_type] ?? 'var(--primary)'};"></div>
 									</div>
 									{#if hasProgress}
 										<span style="font-size:10px; color:var(--text-muted); white-space:nowrap;">{progressLabel(c)}</span>
 										{#if remaining < (c.content_type === 'series' && c.episode_count ? c.duration_minutes * c.episode_count : c.duration_minutes)}
-											<span style="font-size:10px; color:var(--text-dim); white-space:nowrap;">· {formatDuration(remaining)} restante</span>
+											<span style="font-size:10px; color:var(--text-dim); white-space:nowrap;">{t('home.remaining', { duration: formatDuration(remaining) })}</span>
 										{/if}
 									{:else}
-										<span style="font-size:10px; color:var(--text-dim);">+ progreso</span>
+										<span style="font-size:10px; color:var(--text-dim);">{t('home.addProgressShort')}</span>
 									{/if}
 								</button>
 							{/if}
@@ -1090,7 +1087,7 @@ $effect(() => {
 						{#if c.content_type === 'game'}
 							{#if editingStartedAtCardId === c.id}
 								<div class="progress-edit-wrap">
-									<span class="progress-edit-label">Fecha de inicio</span>
+									<span class="progress-edit-label">{t('home.startDate')}</span>
 									<div class="progress-edit-row">
 										<!-- svelte-ignore a11y_autofocus -->
 										<input
@@ -1106,13 +1103,13 @@ $effect(() => {
 								</div>
 							{:else if c.started_at}
 								<div class="started-row">
-									<button class="started-badge" onclick={() => startEditStartedAt(c)} title="Editar fecha de inicio">
-										🎮 Iniciado: {new Date(c.started_at).toLocaleDateString('es', {day:'numeric', month:'short', year:'numeric'})} <span class="started-edit-ico">✏️</span>
+									<button class="started-badge" onclick={() => startEditStartedAt(c)} title={t('home.editStartDate')}>
+										{t('home.started', { date: fmtDateI18n(new Date(c.started_at), {day:'numeric', month:'short', year:'numeric'}) })} <span class="started-edit-ico">✏️</span>
 									</button>
-									<button class="started-clear" onclick={() => clearStarted(c)} title="Quitar inicio">×</button>
+									<button class="started-clear" onclick={() => clearStarted(c)} title={t('home.removeStart')}>×</button>
 								</div>
 							{:else}
-								<button class="btn btn-start-game" onclick={() => markStarted(c)} title="Marcar como empezado">▶ Empezar</button>
+								<button class="btn btn-start-game" onclick={() => markStarted(c)} title={t('home.markAsStarted')}>{t('home.startPlaying')}</button>
 							{/if}
 						{/if}
 
@@ -1125,7 +1122,7 @@ $effect(() => {
 							{:else if effectiveProviders.length > 0 || c.content_type === 'movie' || c.content_type === 'series'}
 								<!-- Has streaming platforms: dropdown -->
 								<div class="open-picker-wrap" onclick={e => e.stopPropagation()}>
-									<button class="btn" onclick={() => openPickerCard = openPickerCard === c.id ? null : c.id}>Abrir ▾</button>
+									<button class="btn" onclick={() => openPickerCard = openPickerCard === c.id ? null : c.id}>{t('home.openDropdown')}</button>
 									{#if openPickerCard === c.id}
 										{@const watchUrl = tmdbWatchUrl(c)}
 										<div class="open-picker">
@@ -1155,12 +1152,12 @@ $effect(() => {
 							{:else if link}
 								<!-- No platforms known: direct TMDB/IMDb link -->
 								<a href={link} target="_blank" rel="noopener">
-									<button class="btn">Abrir</button>
+									<button class="btn">{t('consumed.open')}</button>
 								</a>
 							{/if}
 							{#if c.trailer_url}
-								<a href={c.trailer_url} target="_blank" rel="noopener" title="Ver trailer">
-									<button class="btn btn-trailer">▶ Trailer</button>
+								<a href={c.trailer_url} target="_blank" rel="noopener" title={t('home.watchTrailer')}>
+									<button class="btn btn-trailer">{t('home.trailerBtn')}</button>
 								</a>
 							{/if}
 							{#if canRefresh(c)}
@@ -1168,7 +1165,7 @@ $effect(() => {
 									class="btn"
 									onclick={() => refresh(c)}
 									disabled={refreshingId !== null}
-									title="Actualizar metadatos"
+									title={t('home.updateMetadata')}
 									style={refreshingId === c.id ? 'animation: spin 0.8s linear infinite; opacity:0.7;' : ''}
 								>↻</button>
 							{/if}
@@ -1176,16 +1173,16 @@ $effect(() => {
 								class="btn"
 								class:pin-active={c.pinned}
 								onclick={() => togglePin(c)}
-								title={c.pinned ? 'Quitar prioridad' : 'Marcar prioritario'}
+								title={c.pinned ? t('home.removePriority') : t('home.markPriority')}
 								style="opacity:{c.pinned ? 1 : 0.5};"
 							>{c.pinned ? '📌' : '📍'}</button>
-							<button class="btn" onclick={() => startEdit(c)} title="Editar">✏️</button>
-							<button class="btn btn-consume" onclick={() => consume(c.id)} title="Marcar como consumido">✓</button>
-							<button class="btn btn-abandon" onclick={() => abandon(c.id)} title="Abandonar">🚫</button>
+							<button class="btn" onclick={() => startEdit(c)} title={t('common.edit')}>✏️</button>
+							<button class="btn btn-consume" onclick={() => consume(c.id)} title={t('home.markConsumed')}>✓</button>
+							<button class="btn btn-abandon" onclick={() => abandon(c.id)} title={t('home.abandonBtn')}>🚫</button>
 							{#if deletingId === c.id}
 								<span style="display:flex; gap:4px;">
-									<button class="btn btn-danger" onclick={() => remove(c.id)}>Sí</button>
-									<button class="btn" onclick={() => deletingId = null}>No</button>
+									<button class="btn btn-danger" onclick={() => remove(c.id)}>{t('common.yes')}</button>
+									<button class="btn" onclick={() => deletingId = null}>{t('common.no')}</button>
 								</span>
 							{:else}
 								<button class="btn btn-danger" onclick={() => deletingId = c.id}>✕</button>
@@ -1201,7 +1198,7 @@ $effect(() => {
 				<div class="type-section">
 					<button class="type-section-head" onclick={() => toggleSection(type)} style="--section-accent:{TYPE_COLOR[type] ?? 'var(--primary)'}">
 						<span class="type-section-icon">{TYPE_ICONS[type]}</span>
-						<h3>{TYPE_SECTION_LABEL[type]}</h3>
+						<h3>{typeLabel(type)}</h3>
 						<span class="type-section-count">{items.length}</span>
 						<span class="type-section-chevron" class:collapsed>{collapsed ? '▶' : '▼'}</span>
 					</button>
@@ -1225,7 +1222,7 @@ $effect(() => {
 		{#if !groupByType && contents.length < total}
 			<div class="center mt16">
 				<button class="btn btn-lg" onclick={loadMore} disabled={loadingMore}>
-					{loadingMore ? 'Cargando…' : `Cargar más (${total - contents.length} restantes)`}
+					{loadingMore ? t('common.loading') : t('consumed.loadMore', { remaining: total - contents.length })}
 				</button>
 			</div>
 		{/if}
@@ -1235,7 +1232,7 @@ $effect(() => {
 	<button class="fab" onclick={() => showAdd = true}>+</button>
 	<!-- Desktop FAB pill (hidden on mobile) -->
 	<button class="desk-fab" onclick={() => showAdd = true}>
-		<span class="plus">+</span> Añadir contenido
+		<span class="plus">+</span> {t('home.addContent')}
 	</button>
 
 	<!-- Edit modal -->
@@ -1244,50 +1241,50 @@ $effect(() => {
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div class="modal glass-strong" onclick={e => e.stopPropagation()} role="dialog" tabindex="-1">
 				<div class="modal-handle"></div>
-				<h2>Editar</h2>
+				<h2>{t('common.edit')}</h2>
 				<div class="field">
-					<label for="edit-title">Título</label>
+					<label for="edit-title">{t('home.titleLabel')}</label>
 					<input id="edit-title" class="text" bind:value={editTitle} />
 				</div>
 				<div class="field">
-					<label for="edit-author">Autor / Canal / Estudio</label>
+					<label for="edit-author">{t('home.authorLabel')}</label>
 					<input id="edit-author" class="text" bind:value={editAuthor} />
 				</div>
 				<div class="field">
-					<label for="edit-url">URL</label>
+					<label for="edit-url">{t('home.urlLabel')}</label>
 					<input id="edit-url" class="text" bind:value={editUrl} placeholder="https://…" />
 				</div>
 				<div class="field">
-					<label for="edit-duration">Duración{editingItem.content_type === 'series' ? ' por episodio' : ''} (minutos)</label>
+					<label for="edit-duration">{editingItem.content_type === 'series' ? t('home.durationPerEpisodeLabel') : t('home.durationLabel')}</label>
 					<input id="edit-duration" class="text" type="number" bind:value={editDuration} min="0" />
 				</div>
 				{#if editingItem.content_type === 'book'}
 					<div class="field">
-						<label for="edit-pages">Páginas</label>
+						<label for="edit-pages">{t('home.pagesLabel')}</label>
 						<input id="edit-pages" class="text" type="number" bind:value={editPageCount} min="0" />
 					</div>
 				{/if}
 				{#if editingItem.content_type === 'series'}
 					<div class="row">
 						<div class="field" style="flex:1;">
-							<label for="edit-seasons">Temporadas</label>
+							<label for="edit-seasons">{t('home.seasonsLabel')}</label>
 							<input id="edit-seasons" class="text" type="number" bind:value={editSeasons} min="0" />
 						</div>
 						<div class="field" style="flex:1;">
-							<label for="edit-episodes">Episodios</label>
+							<label for="edit-episodes">{t('home.episodesLabel')}</label>
 							<input id="edit-episodes" class="text" type="number" bind:value={editEpisodeCount} min="0" />
 						</div>
 					</div>
 				{/if}
 				{#if editingItem.content_type === 'game'}
 					<div class="field">
-						<label for="edit-started-at">Fecha de inicio</label>
+						<label for="edit-started-at">{t('home.startDate')}</label>
 						<input id="edit-started-at" class="text" type="date" bind:value={editStartedAt} />
 					</div>
 				{/if}
 				<div class="field">
-					<label for="edit-collection">Colección</label>
-					<input id="edit-collection" class="text" bind:value={editCollection} list="collections-list" placeholder="Sin colección" />
+					<label for="edit-collection">{t('home.collectionLabel')}</label>
+					<input id="edit-collection" class="text" bind:value={editCollection} list="collections-list" placeholder={t('home.noCollection')} />
 					<datalist id="collections-list">
 						{#each collections as col}
 							<option value={col}></option>
@@ -1295,23 +1292,23 @@ $effect(() => {
 					</datalist>
 				</div>
 				<div class="field">
-					<label for="edit-thumbnail">URL de imagen</label>
+					<label for="edit-thumbnail">{t('home.imageUrlLabel')}</label>
 					<input id="edit-thumbnail" class="text" bind:value={editThumbnail} placeholder="https://…" />
 				</div>
 				<div class="field">
-					<label for="edit-notes">Notas</label>
+					<label for="edit-notes">{t('wishlist.notes')}</label>
 					<textarea id="edit-notes" class="text" bind:value={editNotes}></textarea>
 				</div>
 				<div class="field">
 					<label style="display:flex; align-items:center; gap:8px; text-transform:none; font-size:13px; cursor:pointer;">
 						<input type="checkbox" bind:checked={editPinned} />
-						Marcar como prioritario 📌
+						{t('home.markPriorityCheckbox')}
 					</label>
 				</div>
 				{#if editError}<p class="error-msg">{editError}</p>{/if}
 				<div class="row mt16">
-					<button class="btn btn-primary btn-lg" onclick={saveEdit} style="flex:1; justify-content:center;">Guardar</button>
-					<button class="btn btn-lg" onclick={() => editingItem = null} style="flex:1; justify-content:center;">Cancelar</button>
+					<button class="btn btn-primary btn-lg" onclick={saveEdit} style="flex:1; justify-content:center;">{t('wishlist.save')}</button>
+					<button class="btn btn-lg" onclick={() => editingItem = null} style="flex:1; justify-content:center;">{t('wishlist.cancel')}</button>
 				</div>
 			</div>
 		</div>
@@ -1323,9 +1320,9 @@ $effect(() => {
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div class="modal glass-strong" onclick={e => e.stopPropagation()} role="dialog" tabindex="-1">
 				<div class="modal-handle"></div>
-				<h2>Añadir contenido</h2>
+				<h2>{t('home.addContentTitle')}</h2>
 				<div class="field">
-					<label for="add-url">URL (pega un enlace para autodetectar)</label>
+					<label for="add-url">{t('home.urlAutoLabel')}</label>
 					<div class="row">
 						<input id="add-url" class="text" bind:value={addUrl} placeholder="https://..." style="flex:1;" />
 						<button class="btn" onclick={() => lookupUrl()} disabled={lookupLoading}>
@@ -1335,25 +1332,28 @@ $effect(() => {
 					{#if lookupLoading}
 						<p class="lookup-status" aria-live="polite">
 							<span class="lookup-dot" aria-hidden="true"></span>
-							Buscando información del enlace...
+							{t('home.lookingUpInfo')}
 						</p>
 					{:else if !addUrl.trim()}
 						<p style="font-size:11px; color:var(--text-dim); margin:4px 0 0; display:flex; align-items:center; gap:4px;">
-							🔍 Sin URL, escribe el título abajo para buscar directamente
+							{t('home.noUrlHint')}
 						</p>
 					{/if}
 					{#if duplicateChecked && duplicateItem}
 						<div class="dup-banner" class:dup-pending={!duplicateItem.consumed && !duplicateItem.abandoned} class:dup-consumed={duplicateItem.consumed || duplicateItem.abandoned}>
 							{#if !duplicateItem.consumed && !duplicateItem.abandoned}
-								⚠️ Ya está en tu bóveda como pendiente: <strong>"{duplicateItem.title}"</strong>
+								{@html t('home.alreadyPending', { title: duplicateItem.title })}
 							{:else}
-								ℹ️ Ya lo {duplicateItem.consumed ? 'consumiste' : 'abandonaste'}{duplicateItem.times_consumed && duplicateItem.times_consumed > 1 ? ' ' + duplicateItem.times_consumed + ' veces' : ' una vez'}. Puedes añadirlo de nuevo.
+								{t('home.alreadyConsumedInfo', {
+									verb: duplicateItem.consumed ? t('home.consumedVerb') : t('home.abandonedVerb'),
+									times: duplicateItem.times_consumed && duplicateItem.times_consumed > 1 ? t('home.timesCount', { count: duplicateItem.times_consumed }) : t('home.onceSuffix')
+								})}
 							{/if}
 						</div>
 					{/if}
 					{#if addWatchProviders.length > 0}
 						<div class="providers-row">
-							<span class="providers-label">Disponible en:</span>
+							<span class="providers-label">{t('home.availableOn')}</span>
 							{#each addWatchProviders.slice(0, 6) as p}
 								<div class="provider-chip" title={p.provider_name}>
 									{#if p.logo_path}
@@ -1367,18 +1367,18 @@ $effect(() => {
 					{/if}
 				</div>
 				<div class="field">
-					<label for="add-type">Tipo</label>
+					<label for="add-type">{t('home.typeLabel')}</label>
 					<select id="add-type" class="text" bind:value={addType}>
-						<option value="youtube">▶️ YouTube</option>
-						<option value="movie">🎬 Película</option>
-						<option value="series">📺 Serie</option>
-						<option value="music">🎵 Música</option>
-						<option value="book">📖 Libro</option>
-						<option value="game">🎮 Juego</option>
+						<option value="youtube">▶️ {t('types.youtube')}</option>
+						<option value="movie">🎬 {t('home.typeSingular.movie')}</option>
+						<option value="series">📺 {t('home.typeSingular.series')}</option>
+						<option value="music">🎵 {t('types.music')}</option>
+						<option value="book">📖 {t('types.book')}</option>
+						<option value="game">🎮 {t('types.game')}</option>
 					</select>
 				</div>
 				<div class="field">
-					<label for="add-title">Título{!addUrl.trim() ? ' (o busca por nombre)' : ''}</label>
+					<label for="add-title">{t('home.titleFieldLabel')}{!addUrl.trim() ? t('home.orSearchByName') : ''}</label>
 					<div style="position:relative;">
 						<input
 							id="add-title"
@@ -1386,13 +1386,13 @@ $effect(() => {
 							bind:value={addTitle}
 							required
 							autocomplete="off"
-							placeholder={addUrl.trim() ? '' : 'Ej: Dune, Breaking Bad…'}
+							placeholder={addUrl.trim() ? '' : t('home.titlePlaceholder')}
 							onblur={() => setTimeout(() => showTitleDropdown = false, 150)}
 							onfocus={() => { if (titleSearchResults.length > 0) showTitleDropdown = true; }}
 							style="width:100%;"
 						/>
 						{#if titleSearchLoading && !addUrl.trim()}
-							<span style="position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:11px; color:var(--text-muted);">buscando…</span>
+							<span style="position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:11px; color:var(--text-muted);">{t('home.searchingShort')}</span>
 						{/if}
 					</div>
 					{#if showTitleDropdown && titleSearchResults.length > 0}
@@ -1408,7 +1408,7 @@ $effect(() => {
 									{/if}
 									<div class="tmdb-info">
 										<span class="tmdb-title">{result.title}</span>
-										<span class="tmdb-meta">{result.media_type === 'tv' ? 'Serie' : 'Película'}{result.year ? ' · ' + result.year : ''}</span>
+										<span class="tmdb-meta">{result.media_type === 'tv' ? t('home.typeSingular.series') : t('home.typeSingular.movie')}{result.year ? ' · ' + result.year : ''}</span>
 										{#if result.watch_providers.length > 0}
 											<div class="tmdb-providers">
 												{#each result.watch_providers.slice(0, 4) as p}
@@ -1425,58 +1425,58 @@ $effect(() => {
 					{/if}
 				</div>
 				<div class="field">
-					<label for="add-author">Autor / Canal / Estudio</label>
+					<label for="add-author">{t('home.authorLabel')}</label>
 					<input id="add-author" class="text" bind:value={addAuthor} />
 				</div>
 				<div class="field">
-					<label for="add-duration">Duración{addType === 'series' ? ' por episodio' : ''} (minutos)</label>
+					<label for="add-duration">{addType === 'series' ? t('home.durationPerEpisodeLabel') : t('home.durationLabel')}</label>
 					<input id="add-duration" class="text" type="number" bind:value={addDuration} min="0" />
 				</div>
 				{#if addType === 'series'}
 					<div class="row">
 						<div class="field" style="flex:1;">
-							<label for="add-seasons">Temporadas</label>
+							<label for="add-seasons">{t('home.seasonsLabel')}</label>
 							<input id="add-seasons" class="text" type="number" bind:value={addSeasons} min="0" />
 						</div>
 						<div class="field" style="flex:1;">
-							<label for="add-episodes">Episodios totales</label>
+							<label for="add-episodes">{t('home.totalEpisodesLabel')}</label>
 							<input id="add-episodes" class="text" type="number" bind:value={addEpisodeCount} min="0" />
 						</div>
 					</div>
 					{#if addDuration > 0 && addEpisodeCount > 0}
 						<p class="muted" style="font-size:13px; margin-top:-4px;">
-							Duración total estimada: ~{formatDuration(addDuration * addEpisodeCount)}
+							{t('home.estimatedTotalDuration', { duration: formatDuration(addDuration * addEpisodeCount) })}
 						</p>
 					{/if}
 					{#if addNextEpisodeDate}
 						<p class="muted" style="font-size:12px; margin-top:-4px;">
-							🟢 Próximo ep: {new Date(addNextEpisodeDate + 'T00:00:00').toLocaleDateString('es', {day:'numeric',month:'long',year:'numeric'})}
+							{t('home.nextEpPrefix', { date: fmtDateI18n(new Date(addNextEpisodeDate + 'T00:00:00'), {day:'numeric',month:'long',year:'numeric'}) })}
 						</p>
 					{/if}
 				{/if}
 				{#if addType === 'book'}
 					<div class="field">
-						<label for="add-book-format">Formato</label>
+						<label for="add-book-format">{t('home.formatLabel')}</label>
 						<select id="add-book-format" class="text" bind:value={addBookFormat} onchange={() => {
 							if (addBookFormat === 'manga') addWordsPerPage = 50;
 							else addWordsPerPage = readingWordsPerPage;
 						}}>
-							<option value="book">Libro</option>
-							<option value="manga">Manga / Comic</option>
+							<option value="book">{t('home.formatBook')}</option>
+							<option value="manga">{t('home.formatManga')}</option>
 						</select>
 					</div>
 					<div class="field">
-						<label for="add-words-per-page">Palabras por página</label>
+						<label for="add-words-per-page">{t('home.wordsPerPageLabel')}</label>
 						<input id="add-words-per-page" class="text" type="number" bind:value={addWordsPerPage} min="1" />
 					</div>
 					<div class="field">
-						<label for="add-pages">Páginas</label>
+						<label for="add-pages">{t('home.pagesLabel')}</label>
 						<input id="add-pages" class="text" type="number" bind:value={addPageCount} min="0" />
 					</div>
 				{/if}
 				<div class="field">
-					<label for="add-collection">Colección</label>
-					<input id="add-collection" class="text" bind:value={addCollection} list="collections-list-add" placeholder="Sin colección" />
+					<label for="add-collection">{t('home.collectionLabel')}</label>
+					<input id="add-collection" class="text" bind:value={addCollection} list="collections-list-add" placeholder={t('home.noCollection')} />
 					<datalist id="collections-list-add">
 						{#each collections as col}
 							<option value={col}></option>
@@ -1484,7 +1484,7 @@ $effect(() => {
 					</datalist>
 				</div>
 				<div class="field">
-					<label for="add-notes">Notas</label>
+					<label for="add-notes">{t('wishlist.notes')}</label>
 					<textarea id="add-notes" class="text" bind:value={addNotes}></textarea>
 				</div>
 				<!-- Toggles: prioritario + ya consumido -->
@@ -1496,7 +1496,7 @@ $effect(() => {
 						type="button"
 					>
 						<span class="toggle-ico">📌</span>
-						<span>Prioritario</span>
+						<span>{t('home.priorityToggle')}</span>
 					</button>
 					<button
 						class="toggle-btn toggle-btn-consume"
@@ -1505,13 +1505,13 @@ $effect(() => {
 						type="button"
 					>
 						<span class="toggle-ico">✅</span>
-						<span>Ya consumido</span>
+						<span>{t('home.alreadyConsumedToggle')}</span>
 					</button>
 				</div>
 				{#if addError}<p class="error-msg">{addError}</p>{/if}
 				<div class="row mt16">
-					<button class="btn btn-primary btn-lg" onclick={submitAdd} style="flex:1; justify-content:center;">Guardar</button>
-					<button class="btn btn-lg" onclick={() => { showAdd = false; resetForm(); }} style="flex:1; justify-content:center;">Cancelar</button>
+					<button class="btn btn-primary btn-lg" onclick={submitAdd} style="flex:1; justify-content:center;">{t('wishlist.save')}</button>
+					<button class="btn btn-lg" onclick={() => { showAdd = false; resetForm(); }} style="flex:1; justify-content:center;">{t('wishlist.cancel')}</button>
 				</div>
 			</div>
 		</div>
@@ -1522,14 +1522,14 @@ $effect(() => {
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div class="modal glass-strong" onclick={e => e.stopPropagation()} role="dialog" tabindex="-1">
 				<div class="modal-handle"></div>
-				<h2>Ajustes</h2>
+				<h2>{t('settings.title')}</h2>
 				<div class="field">
-					<label for="reading-wpm">Velocidad de lectura (palabras/minuto)</label>
+					<label for="reading-wpm">{t('home.readingSpeedLabel')}</label>
 					<input id="reading-wpm" class="text" type="number" bind:value={readingWpm} min="50" max="2000" />
 				</div>
 				<div class="row mt16">
-					<button class="btn btn-primary btn-lg" onclick={saveSettings} style="flex:1; justify-content:center;">Guardar</button>
-					<button class="btn btn-lg" onclick={() => { showSettings = false; }} style="flex:1; justify-content:center;">Cancelar</button>
+					<button class="btn btn-primary btn-lg" onclick={saveSettings} style="flex:1; justify-content:center;">{t('wishlist.save')}</button>
+					<button class="btn btn-lg" onclick={() => { showSettings = false; }} style="flex:1; justify-content:center;">{t('wishlist.cancel')}</button>
 				</div>
 			</div>
 		</div>

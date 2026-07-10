@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { distractionsApi } from '$lib/api';
+	import { t, tc } from '$lib/i18n/index.svelte';
 	import type { DistractionStats } from '$lib/types';
 
 	let stats = $state<DistractionStats | null>(null);
@@ -85,16 +86,19 @@
 			return { label, good, bad: badSecs, ratio: total >= MIN_MEANINGFUL_SECONDS ? good / total : null };
 		};
 		return [
-			mk('Hoy', stats.good_today_minutes, stats.today_seconds),
-			mk('7 días', stats.good_week_minutes, stats.week_seconds),
-			mk('30 días', stats.good_month_minutes, stats.month_seconds),
-			mk('Total', stats.good_total_minutes, stats.total_seconds)
+			mk(t('wasted.today'), stats.good_today_minutes, stats.today_seconds),
+			mk(t('wasted.period7days'), stats.good_week_minutes, stats.week_seconds),
+			mk(t('wasted.period30days'), stats.good_month_minutes, stats.month_seconds),
+			mk(t('wasted.periodTotal'), stats.good_total_minutes, stats.total_seconds)
 		];
 	});
 
 	// Por día de la semana (suma de los últimos 30 días)
 	let weekdayData = $derived.by(() => {
-		const labels = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+		const labels = [
+			t('wasted.weekday.mon'), t('wasted.weekday.tue'), t('wasted.weekday.wed'),
+			t('wasted.weekday.thu'), t('wasted.weekday.fri'), t('wasted.weekday.sat'), t('wasted.weekday.sun')
+		];
 		const bad = Array(7).fill(0);
 		const good = Array(7).fill(0);
 		for (const d of dailyPairs) {
@@ -115,7 +119,7 @@
 		try {
 			stats = await distractionsApi.stats(30);
 		} catch (e: any) {
-			error = e.message ?? 'Error al cargar';
+			error = e.message ?? t('wasted.loadError');
 		} finally {
 			loading = false;
 		}
@@ -125,51 +129,51 @@
 </script>
 
 <div class="page">
-	<h1 class="page-title">Bóveda de lo Perdido</h1>
+	<h1 class="page-title">{t('wasted.title')}</h1>
 
 	{#if error}
 		<div class="error-banner">{error} <button onclick={() => (error = null)}>×</button></div>
 	{/if}
 
 	{#if loading}
-		<div class="empty-state">Cargando…</div>
+		<div class="empty-state">{t('wasted.loading')}</div>
 	{:else if stats}
 		<!-- Hero + side panel -->
 		<div class="top-grid">
 			<div class="hero-card">
-				<div class="hero-label">Tiempo perdido</div>
+				<div class="hero-label">{t('wasted.lostTime')}</div>
 				<div class="hero-value">{fmtDur(stats.total_seconds)}</div>
 				<div class="hero-caption">
-					{fmtDur(stats.total_seconds)} perdidas para siempre{#if stats.total_items > 0}
-						· {stats.total_items} vídeos basura{/if}
+					{t('wasted.lostForeverPrefix', { time: fmtDur(stats.total_seconds) })}{#if stats.total_items > 0}
+						{' '}{tc('wasted.trashVideoCount', stats.total_items)}{/if}
 				</div>
 				<div class="hero-vs">
-					vs <strong>{fmtMins(stats.good_total_minutes)}</strong> de contenido bueno
+					vs <strong>{fmtMins(stats.good_total_minutes)}</strong> {t('wasted.vsGoodContent')}
 				</div>
 
 				<div class="stats-row">
 					<div class="stat-card">
-						<div class="stat-label">Hoy</div>
+						<div class="stat-label">{t('wasted.today')}</div>
 						<div class="stat-value">{fmtDur(stats.today_seconds)}</div>
-						<div class="stat-sub">vs {fmtMins(stats.good_today_minutes)} de bueno</div>
+						<div class="stat-sub">{t('wasted.vsGood', { mins: fmtMins(stats.good_today_minutes) })}</div>
 					</div>
 					<div class="stat-card">
-						<div class="stat-label">Últimos 7 días</div>
+						<div class="stat-label">{t('wasted.last7days')}</div>
 						<div class="stat-value">{fmtDur(stats.week_seconds)}</div>
-						<div class="stat-sub">vs {fmtMins(stats.good_week_minutes)} de bueno</div>
+						<div class="stat-sub">{t('wasted.vsGood', { mins: fmtMins(stats.good_week_minutes) })}</div>
 					</div>
 					<div class="stat-card">
-						<div class="stat-label">Últimos 30 días</div>
+						<div class="stat-label">{t('wasted.last30days')}</div>
 						<div class="stat-value">{fmtDur(stats.month_seconds)}</div>
-						<div class="stat-sub">vs {fmtMins(stats.good_month_minutes)} de bueno</div>
+						<div class="stat-sub">{t('wasted.vsGood', { mins: fmtMins(stats.good_month_minutes) })}</div>
 					</div>
 				</div>
 			</div>
 
 			<aside class="side-card">
-				<div class="side-title">De dónde viene la fuga</div>
+				<div class="side-title">{t('wasted.leakSource')}</div>
 				{#if stats.platforms.length === 0}
-					<div class="side-empty">Sin fugas registradas aún</div>
+					<div class="side-empty">{t('wasted.noLeaksYet')}</div>
 				{:else}
 					<div class="platform-list">
 						{#each stats.platforms as p (p.platform)}
@@ -181,7 +185,7 @@
 										<span class="platform-time">
 											{fmtDur(p.seconds)}
 											{#if p.items_count > 0}
-												· {p.items_count} vídeos
+												{tc('wasted.videosCount', p.items_count)}
 											{/if}
 										</span>
 									</div>
@@ -202,14 +206,13 @@
 		{#if stats.total_seconds === 0}
 			<div class="empty-state">
 				<div class="empty-icon">🕳️</div>
-				Nada perdido todavía. La extensión registrará automáticamente el tiempo que pases en
-				Shorts, TikTok, Twitter y Reels.
+				{t('wasted.nothingLostYet')}
 			</div>
 		{:else}
 			<div class="mid-grid">
 				<!-- Señal vs ruido por periodo -->
 				<section class="panel">
-					<h2 class="panel-title">Señal vs ruido <span class="panel-sub">% de tiempo bien invertido</span></h2>
+					<h2 class="panel-title">{t('wasted.signalVsNoise')} <span class="panel-sub">{t('wasted.pctWellSpent')}</span></h2>
 					<div class="period-list">
 						{#each periods as p (p.label)}
 							<div class="period-row">
@@ -217,7 +220,7 @@
 								<div
 									class="period-track"
 									class:empty={p.ratio === null}
-									title="{p.label}: {fmtDur(p.good)} bueno vs {fmtDur(p.bad)} basura"
+									title="{p.label}: {fmtDur(p.good)} {t('wasted.good')} vs {fmtDur(p.bad)} {t('wasted.trash')}"
 								>
 									{#if p.ratio !== null}
 										<div class="period-good" style="width:{p.ratio * 100}%"></div>
@@ -228,17 +231,17 @@
 						{/each}
 					</div>
 					<div class="legend">
-						<span class="dot good"></span> Contenido bueno
-						<span class="dot bad-dot"></span> Basura
+						<span class="dot good"></span> {t('wasted.goodContent')}
+						<span class="dot bad-dot"></span> {t('wasted.trash')}
 					</div>
 				</section>
 
 				<!-- Por día de la semana -->
 				<section class="panel">
-					<h2 class="panel-title">Por día de la semana <span class="panel-sub">últimos 30 días</span></h2>
+					<h2 class="panel-title">{t('wasted.byWeekday')} <span class="panel-sub">{t('wasted.last30daysLower')}</span></h2>
 					<div class="wchart">
 						{#each weekdayData as w (w.label)}
-							<div class="wcol" title="{w.label}: {fmtDur(w.good)} bueno · {fmtDur(w.bad)} basura">
+							<div class="wcol" title="{w.label}: {fmtDur(w.good)} {t('wasted.good')} · {fmtDur(w.bad)} {t('wasted.trash')}">
 								<div class="wbars">
 									<div class="wbar good" style="height:{Math.max(w.good > 0 ? 3 : 1, (w.good / maxWeekday) * 100)}%"></div>
 									<div class="wbar bad"  style="height:{Math.max(w.bad  > 0 ? 3 : 1, (w.bad  / maxWeekday) * 100)}%"></div>
@@ -248,8 +251,8 @@
 						{/each}
 					</div>
 					<div class="legend">
-						<span class="dot good"></span> Bueno
-						<span class="dot bad-dot"></span> Basura
+						<span class="dot good"></span> {t('wasted.good')}
+						<span class="dot bad-dot"></span> {t('wasted.trash')}
 					</div>
 				</section>
 			</div>
@@ -257,13 +260,13 @@
 			<!-- Bueno vs basura, últimos 30 días -->
 			<section class="panel">
 				<h2 class="panel-title">
-					Bueno vs basura <span class="panel-sub">últimos 30 días · bueno arriba, basura abajo</span>
+					{t('wasted.goodVsTrash')} <span class="panel-sub">{t('wasted.goodVsTrashSub')}</span>
 				</h2>
 				<div class="dchart">
 					{#each dailyPairs as day (day.date)}
 						<div
 							class="dcol"
-							title="{day.label} · bueno: {fmtDur(day.goodSeconds)} · basura: {fmtDur(day.seconds)}"
+							title="{day.label} · {t('wasted.good')}: {fmtDur(day.goodSeconds)} · {t('wasted.trash')}: {fmtDur(day.seconds)}"
 						>
 							<div class="dcol-top">
 								<div
@@ -282,7 +285,7 @@
 				</div>
 				<div class="chart-labels">
 					<span>{dailyPairs[0]?.label}</span>
-					<span>hoy</span>
+					<span>{t('wasted.todayLower')}</span>
 				</div>
 			</section>
 		{/if}

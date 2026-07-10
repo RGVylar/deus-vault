@@ -3,7 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration, TYPE_ICONS, TYPE_LABELS, buildConsumeUrl } from '$lib/utils';
+	import { formatDuration, TYPE_ICONS, typeLabel, buildConsumeUrl } from '$lib/utils';
+	import { t, tc, fmtDate } from '$lib/i18n/index.svelte';
 	import type { Content, ContentType, VaultStats, TypeStats, AbandonedTopItem, PaginatedContents } from '$lib/types';
 
 	const LIMIT = 20;
@@ -48,7 +49,7 @@
 			contents = p.items;
 			total = p.total;
 		} catch (e: any) {
-			loadError = e?.message ?? 'Error desconocido';
+			loadError = e?.message ?? t('consumed.unknownError');
 		} finally { loading = false; }
 	}
 
@@ -120,18 +121,18 @@
 </script>
 
 {#if !auth.isLoggedIn}
-	<p class="muted center">Redirigiendo…</p>
+	<p class="muted center">{t('common.redirecting')}</p>
 {:else}
 
 	<!-- Desktop topbar -->
 	<div class="desk-topbar desk-only">
-		<h1 class="desk-title">{tab === 'consumed' ? 'Consumido' : 'Abandonado'}</h1>
+		<h1 class="desk-title">{tab === 'consumed' ? t('consumed.consumedTab') : t('consumed.abandonedTab')}</h1>
 	</div>
 
 	{#if loadError}
 		<div class="load-error">
-			⚠️ Error al cargar: <code>{loadError}</code>
-			<button onclick={load}>Reintentar</button>
+			⚠️ {t('consumed.loadErrorPrefix')} <code>{loadError}</code>
+			<button onclick={load}>{t('consumed.retry')}</button>
 		</div>
 	{/if}
 
@@ -140,40 +141,40 @@
 		<div class="desk-hero-grid">
 			<div class="hero" style="padding:16px 12px;">
 				{#if tab === 'consumed'}
-					<div class="kicker">TOTAL CONSUMIDO</div>
+					<div class="kicker">{t('consumed.totalConsumed')}</div>
 					<div class="number" style="font-size:clamp(40px,14vw,80px); background:linear-gradient(180deg,#fff,oklch(0.84 0.17 150)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 0 30px oklch(0.80 0.18 150 / 0.4));">{formatDuration(stats.total_consumed_minutes)}</div>
-					<div class="unit">{stats.consumed_count} ítems completados</div>
+					<div class="unit">{tc('consumed.itemsCompleted', stats.consumed_count)}</div>
 				{:else}
-					<div class="kicker">ABANDONADO</div>
+					<div class="kicker">{t('consumed.abandonedKicker')}</div>
 					<div class="number" style="font-size:clamp(40px,14vw,80px); background:linear-gradient(180deg,#fff,oklch(0.70 0.18 25)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 0 30px oklch(0.65 0.20 25 / 0.4));">{stats.abandoned_count}</div>
-					<div class="unit">{stats.abandoned_count === 1 ? 'ítem abandonado' : 'ítems abandonados'}</div>
+					<div class="unit">{tc('consumed.itemAbandoned', stats.abandoned_count)}</div>
 				{/if}
 			</div>
 
 			<!-- Stats card: desktop only -->
 			<div class="desk-quick desk-only">
 				{#if tab === 'consumed'}
-					<h3>Logros</h3>
+					<h3>{t('consumed.achievements')}</h3>
 					<div class="dq-row">
-						<span class="lbl">✅ Total consumido</span>
+						<span class="lbl">{t('consumed.totalConsumedLbl')}</span>
 						<span class="val">{stats.consumed_count}</span>
 					</div>
 					<div class="dq-row">
-						<span class="lbl">⏱ Tiempo total</span>
+						<span class="lbl">{t('consumed.totalTime')}</span>
 						<span class="val" style="font-size:13px;">{formatDuration(stats.total_consumed_minutes)}</span>
 					</div>
 					{#if stats.consumed_count > 0}
 						<div class="dq-row">
-							<span class="lbl">📊 Media por ítem</span>
+							<span class="lbl">{t('consumed.avgPerItem')}</span>
 							<span class="val" style="font-size:13px;">{formatDuration(Math.round(stats.total_consumed_minutes / stats.consumed_count))}</span>
 						</div>
 					{/if}
 					<div class="dq-row">
-						<span class="lbl">📦 Aún pendientes</span>
+						<span class="lbl">{t('consumed.stillPending')}</span>
 						<span class="val">{stats.pending_count}</span>
 					</div>
 					<div class="dq-row" style="border-bottom:none;">
-						<span class="lbl">🚫 Abandonados</span>
+						<span class="lbl">{t('consumed.abandonedLbl')}</span>
 						<span class="val">{stats.abandoned_count}</span>
 					</div>
 
@@ -181,16 +182,16 @@
 						{@const byTypeSorted = Object.entries(stats.consumed_by_type)
 							.sort((a, b) => b[1].minutes - a[1].minutes)}
 						<div class="type-breakdown">
-							<div class="tb-header">Por tipo</div>
+							<div class="tb-header">{t('consumed.byType')}</div>
 							{#each byTypeSorted as [type, ts]}
 								{@const avgMin = ts.count > 0 ? Math.round(ts.minutes / ts.count) : 0}
 								<div class="tb-row" style="--tc:{TYPE_COLOR[type] ?? 'var(--primary)'}">
 									<span class="tb-icon">{TYPE_ICONS[type] ?? '📄'}</span>
-									<span class="tb-label">{TYPE_LABELS[type] ?? type}</span>
+									<span class="tb-label">{typeLabel(type)}</span>
 									<span class="tb-count">{ts.count}</span>
 									<span class="tb-time">{formatDuration(ts.minutes)}</span>
 									{#if avgMin > 0}
-										<span class="tb-avg">~{formatDuration(avgMin)}/ítem</span>
+										<span class="tb-avg">{t('consumed.perItemApprox', { time: formatDuration(avgMin) })}</span>
 									{/if}
 								</div>
 							{/each}
@@ -202,7 +203,7 @@
 					{@const circ = 2 * Math.PI * 36}
 					{@const dashConsumed = circ * rPct / 100}
 					{@const dashAbandoned = circ * (100 - rPct) / 100}
-					<h3>Ratio finalización</h3>
+					<h3>{t('consumed.completionRatio')}</h3>
 					<div class="dq-donut-wrap">
 						<svg width="96" height="96" viewBox="0 0 96 96" style="transform:rotate(-90deg)">
 							<circle cx="48" cy="48" r="36" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="11"/>
@@ -223,19 +224,19 @@
 						</svg>
 						<div class="dq-donut-center">
 							<span class="dq-donut-pct" style="color:oklch(0.72 0.20 150)">{rPct}%</span>
-							<span class="dq-donut-sub">éxito</span>
+							<span class="dq-donut-sub">{t('consumed.success')}</span>
 						</div>
 					</div>
 					<div class="dq-row" style="margin-top:4px">
-						<span class="lbl"><span style="color:oklch(0.72 0.20 150)">●</span> Completados</span>
+						<span class="lbl"><span style="color:oklch(0.72 0.20 150)">●</span> {t('consumed.completed')}</span>
 						<span class="val">{stats.consumed_count}</span>
 					</div>
 					<div class="dq-row">
-						<span class="lbl"><span style="color:oklch(0.65 0.20 25)">●</span> Abandonados</span>
+						<span class="lbl"><span style="color:oklch(0.65 0.20 25)">●</span> {t('consumed.abandonedDot')}</span>
 						<span class="val">{stats.abandoned_count}</span>
 					</div>
 					<div class="dq-row" style="border-bottom:none;">
-						<span class="lbl">📦 Pendientes</span>
+						<span class="lbl">{t('consumed.pending')}</span>
 						<span class="val">{stats.pending_count}</span>
 					</div>
 				{/if}
@@ -255,31 +256,31 @@
 				<div class="ab-stat glass-card">
 					<div class="ab-stat-ico">⏱</div>
 					<div class="ab-stat-val" style="color:var(--red)">{formatDuration(stats.abandoned_minutes)}</div>
-					<div class="ab-stat-lbl">Tiempo invertido en abandonos</div>
-					<div class="ab-stat-sub">que nunca volverás a ver</div>
+					<div class="ab-stat-lbl">{t('consumed.timeInvestedAbandoned')}</div>
+					<div class="ab-stat-sub">{t('consumed.neverWatchAgain')}</div>
 				</div>
 				<div class="ab-stat glass-card">
 					<div class="ab-stat-ico">📍</div>
 					<div class="ab-stat-val" style="color:var(--red)">{stats.abandoned_avg_pct != null ? `${stats.abandoned_avg_pct}%` : '—'}</div>
-					<div class="ab-stat-lbl">Punto medio de abandono</div>
-					<div class="ab-stat-sub">{stats.abandoned_avg_pct != null && stats.abandoned_avg_pct < 30 ? 'Sueles rendirte muy pronto' : stats.abandoned_avg_pct != null && stats.abandoned_avg_pct < 60 ? 'Te quedas a mitad de camino' : 'Abandonas casi al final 😬'}</div>
+					<div class="ab-stat-lbl">{t('consumed.abandonPoint')}</div>
+					<div class="ab-stat-sub">{stats.abandoned_avg_pct != null && stats.abandoned_avg_pct < 30 ? t('consumed.giveUpEarly') : stats.abandoned_avg_pct != null && stats.abandoned_avg_pct < 60 ? t('consumed.giveUpMiddle') : t('consumed.giveUpLate')}</div>
 				</div>
 				<div class="ab-stat glass-card">
 					<div class="ab-stat-ico">😬</div>
 					{#if stats.abandoned_top_items.length > 0}
 						<div class="ab-stat-val" style="color:oklch(0.70 0.18 25)">{stats.abandoned_top_items[0].progress}%</div>
-						<div class="ab-stat-lbl">El que más cerca estuvo</div>
+						<div class="ab-stat-lbl">{t('consumed.closestOne')}</div>
 						<div class="ab-stat-sub">{stats.abandoned_top_items[0].title}</div>
 					{:else}
 						<div class="ab-stat-val" style="color:var(--text-dim)">—</div>
-						<div class="ab-stat-lbl">El que más cerca estuvo</div>
+						<div class="ab-stat-lbl">{t('consumed.closestOne')}</div>
 					{/if}
 				</div>
 				<div class="ab-stat glass-card">
 					<div class="ab-stat-ico">⚖️</div>
 					<div class="ab-stat-val" style="color:{ratio != null && ratio >= 70 ? 'var(--green)' : 'oklch(0.70 0.18 25)'}">{ratio != null ? `${ratio}%` : '—'}</div>
-					<div class="ab-stat-lbl">Tasa de finalización</div>
-					<div class="ab-stat-sub">{stats.consumed_count} completados · {stats.abandoned_count} abandonados</div>
+					<div class="ab-stat-lbl">{t('consumed.completionRate')}</div>
+					<div class="ab-stat-sub">{t('consumed.completedVsAbandoned', { completed: stats.consumed_count, abandoned: stats.abandoned_count })}</div>
 				</div>
 			</div>
 
@@ -289,7 +290,7 @@
 				<!-- Cementerio top 5 -->
 				{#if (stats.abandoned_top_items ?? []).length > 0}
 				<div class="glass-card ab-cemetery">
-					<div class="ab-section-title">⚰️ El cementerio — más cerca de terminar</div>
+					<div class="ab-section-title">{t('consumed.cemetery')}</div>
 					{#each (stats.abandoned_top_items ?? []) as item}
 						<div class="ab-grave">
 							<div class="ab-grave-thumb">
@@ -301,7 +302,7 @@
 							</div>
 							<div class="ab-grave-info">
 								<div class="ab-grave-title">{item.title}</div>
-								<div class="ab-grave-meta">{TYPE_LABELS[item.content_type as ContentType] ?? item.content_type}{item.duration_minutes > 0 ? ` · ${formatDuration(item.duration_minutes)}` : ''}</div>
+								<div class="ab-grave-meta">{typeLabel(item.content_type)}{item.duration_minutes > 0 ? ` · ${formatDuration(item.duration_minutes)}` : ''}</div>
 								<div class="ab-grave-bar-row">
 									<div class="ab-grave-track">
 										<div class="ab-grave-fill" style="width:{item.progress}%"></div>
@@ -319,11 +320,11 @@
 					<!-- Tasa de abandono por tipo -->
 					{#if typeRateSorted.length > 0}
 					<div class="glass-card ab-type-rates">
-						<div class="ab-section-title">🎯 Tasa de abandono por tipo</div>
+						<div class="ab-section-title">{t('consumed.abandonRateByType')}</div>
 						{#each typeRateSorted as [type, rate]}
 							<div class="ab-bar-row">
 								<span class="ab-bar-label" style="color:{TYPE_COLOR[type] ?? 'var(--text-muted)'}">
-									{TYPE_ICONS[type as ContentType] ?? '📄'} {TYPE_LABELS[type as ContentType] ?? type}
+									{TYPE_ICONS[type as ContentType] ?? '📄'} {typeLabel(type)}
 								</span>
 								<div class="ab-bar-track">
 									<div class="ab-bar-fill" style="width:{rate}%; background:{TYPE_COLOR[type] ?? 'var(--primary)'}"></div>
@@ -337,10 +338,10 @@
 					<!-- En el limbo -->
 					{#if stats.abandoned_stale_count > 0}
 					<div class="glass-card ab-limbo">
-						<div class="ab-section-title">⏳ En el limbo
+						<div class="ab-section-title">{t('consumed.limbo')}
 							<span class="ab-limbo-badge">{stats.abandoned_stale_count}</span>
 						</div>
-						<div class="ab-limbo-sub">Abandonados hace más de 6 meses sin que los toques</div>
+						<div class="ab-limbo-sub">{t('consumed.limboSub')}</div>
 						{#each contents.filter(c => {
 							if (!c.abandoned_at) return false;
 							const d = new Date(c.abandoned_at);
@@ -351,7 +352,7 @@
 								<span class="ab-limbo-age" style="color:{
 									(Date.now() - new Date(c.abandoned_at!).getTime()) > 365 * 24 * 60 * 60 * 1000
 										? 'var(--red)' : 'oklch(0.70 0.18 55)'}">
-									{Math.round((Date.now() - new Date(c.abandoned_at!).getTime()) / (30 * 24 * 60 * 60 * 1000))} meses
+									{t('consumed.monthsAgo', { months: Math.round((Date.now() - new Date(c.abandoned_at!).getTime()) / (30 * 24 * 60 * 60 * 1000)) })}
 								</span>
 							</div>
 						{/each}
@@ -366,11 +367,11 @@
 				<div class="glass-card ab-quote">
 					<span class="ab-quote-ico">💀</span>
 					<div class="ab-quote-text">
-						Si hubieras terminado todo lo que abandonaste, habrías consumido
-						<strong style="color:oklch(0.70 0.18 25)">{formatDuration(stats.abandoned_minutes)} más</strong>
-						de contenido
+						{t('consumed.quoteText')}
+						<strong style="color:oklch(0.70 0.18 25)">{t('consumed.quoteMore', { time: formatDuration(stats.abandoned_minutes) })}</strong>
+						{t('consumed.quoteContent')}
 					</div>
-					<div class="ab-quote-sub">El cementerio cobra su precio — memento mori</div>
+					<div class="ab-quote-sub">{t('consumed.quoteSub')}</div>
 				</div>
 			{/if}
 		{/if}
@@ -379,11 +380,11 @@
 		<div class="pill-row mobile-only">
 			{#if tab === 'consumed'}
 				<div class="pill">
-					<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">completados</span>
+					<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">{t('consumed.completedPill')}</span>
 				</div>
 			{:else}
 				<div class="pill">
-					<span>🚫</span> <span class="val">{stats.abandoned_count}</span> <span class="lbl">abandonados</span>
+					<span>🚫</span> <span class="val">{stats.abandoned_count}</span> <span class="lbl">{t('consumed.abandonedPill')}</span>
 				</div>
 			{/if}
 		</div>
@@ -391,13 +392,13 @@
 
 	<!-- Tab switcher: Consumido / Abandonado -->
 	<div class="seg" style="margin-bottom: 12px;">
-		<button class:active={tab === 'consumed'} onclick={() => tab = 'consumed'}>✅ Completado</button>
-		<button class:active={tab === 'abandoned'} onclick={() => tab = 'abandoned'}>🚫 Abandonado</button>
+		<button class:active={tab === 'consumed'} onclick={() => tab = 'consumed'}>{t('consumed.completedTab')}</button>
+		<button class:active={tab === 'abandoned'} onclick={() => tab = 'abandoned'}>{t('consumed.abandonedTabBtn')}</button>
 	</div>
 
 	<!-- Type filter -->
 	<div class="tabs desk-tabs">
-		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>Todos</button>
+		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>{t('consumed.all')}</button>
 		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️</button>
 		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬</button>
 		<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺</button>
@@ -407,11 +408,11 @@
 	</div>
 
 	{#if loading}
-		<p class="muted center">Cargando…</p>
+		<p class="muted center">{t('consumed.loading')}</p>
 	{:else if contents.length === 0}
 		<div class="empty">
 			<span class="icon">{tab === 'consumed' ? '✅' : '🚫'}</span>
-			<p>{tab === 'consumed' ? '¡Aún no has consumido nada. A ello!' : 'Ningún ítem abandonado.'}</p>
+			<p>{tab === 'consumed' ? t('consumed.emptyConsumed') : t('consumed.emptyAbandoned')}</p>
 		</div>
 	{:else}
 		<div class="content-grid">
@@ -445,11 +446,11 @@
 						<div class="title">
 						{c.title}
 						{#if c.times_consumed && c.times_consumed > 1}
-							<span class="times-badge" title="{c.times_consumed} veces consumido">×{c.times_consumed}</span>
+							<span class="times-badge" title={t('consumed.timesConsumed', { count: c.times_consumed })}>×{c.times_consumed}</span>
 						{/if}
 					</div>
 						<div class="meta">
-							<span class="badge">{TYPE_LABELS[c.content_type]}</span>
+							<span class="badge">{typeLabel(c.content_type)}</span>
 							{#if c.rating}
 								<span class="rating-badge">★ {c.rating.toFixed(1)}</span>
 							{/if}
@@ -479,16 +480,16 @@
 										<button class="btn" onclick={() => saveDate(c)}>✓</button>
 									</span>
 								{:else if c.consumed_at}
-									<button class="date-btn" onclick={() => startEditDate(c)} title="Editar fecha">
-										📅 {new Date(c.consumed_at).toLocaleDateString('es')}
+									<button class="date-btn" onclick={() => startEditDate(c)} title={t('consumed.editDate')}>
+										📅 {fmtDate(new Date(c.consumed_at))}
 									</button>
 								{:else}
-									<button class="date-btn date-btn-empty" onclick={() => startEditDate(c)} title="Añadir fecha">
-										📅 Sin fecha
+									<button class="date-btn date-btn-empty" onclick={() => startEditDate(c)} title={t('consumed.addDate')}>
+										{t('consumed.noDate')}
 									</button>
 								{/if}
 							{:else if c.abandoned_at}
-								<span class="date-btn" style="cursor:default;">🚫 {new Date(c.abandoned_at).toLocaleDateString('es')}</span>
+								<span class="date-btn" style="cursor:default;">🚫 {fmtDate(new Date(c.abandoned_at))}</span>
 							{/if}
 						</div>
 						{#if tab === 'abandoned' && c.progress != null && c.progress > 0}
@@ -502,14 +503,14 @@
 						<div class="actions">
 							{#if link}
 								<a href={link} target="_blank" rel="noopener">
-									<button class="btn">Abrir</button>
+									<button class="btn">{t('consumed.open')}</button>
 								</a>
 							{/if}
 							{#if tab === 'consumed'}
-								<button class="btn" onclick={() => unconsume(c.id)}>↩ Devolver</button>
+								<button class="btn" onclick={() => unconsume(c.id)}>{t('consumed.giveBack')}</button>
 							{:else}
-								<button class="btn btn-consume" onclick={() => consume(c.id)} title="Marcar como completado">✓ Completar</button>
-								<button class="btn" onclick={() => restore(c.id)} title="Retomar">↩ Retomar</button>
+								<button class="btn btn-consume" onclick={() => consume(c.id)} title={t('consumed.markComplete')}>{t('consumed.complete')}</button>
+								<button class="btn" onclick={() => restore(c.id)} title={t('consumed.resume')}>{t('consumed.resumeBtn')}</button>
 							{/if}
 						</div>
 					</div>
@@ -520,7 +521,7 @@
 		{#if contents.length < total}
 			<div class="center mt16">
 				<button class="btn btn-lg" onclick={loadMore} disabled={loadingMore}>
-					{loadingMore ? 'Cargando…' : `Cargar más (${total - contents.length} restantes)`}
+					{loadingMore ? t('consumed.loading') : t('consumed.loadMore', { remaining: total - contents.length })}
 				</button>
 			</div>
 		{/if}

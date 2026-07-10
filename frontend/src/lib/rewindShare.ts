@@ -1,5 +1,6 @@
 import type { RewindStats } from '$lib/types';
 import { formatDuration } from '$lib/utils';
+import { t, tc } from '$lib/i18n/index.svelte';
 
 const TYPE_PALETTE: Record<string, string> = {
 	youtube: '#e0556b',
@@ -14,7 +15,7 @@ function minutesToDays(minutes: number): string {
 	const d = Math.floor(minutes / (60 * 24));
 	const h = Math.floor((minutes % (60 * 24)) / 60);
 	if (d === 0) return `${h}h`;
-	if (h === 0) return `${d} día${d !== 1 ? 's' : ''}`;
+	if (h === 0) return tc('rewind.share.days', d);
 	return `${d}d ${h}h`;
 }
 
@@ -76,16 +77,16 @@ export function exportShareImage(stats: RewindStats): void {
 	ctx.fillText(formatDuration(stats.total_consumed_minutes), W / 2, 540);
 	ctx.fillStyle = 'rgba(255,255,255,0.7)';
 	ctx.font = '600 34px system-ui, sans-serif';
-	ctx.fillText(`${stats.total_consumed_count} ítems · ${minutesToDays(stats.total_consumed_minutes)} de tu vida`, W / 2, 600);
+	ctx.fillText(tc('rewind.share.summary', stats.total_consumed_count, { days: minutesToDays(stats.total_consumed_minutes) }), W / 2, 600);
 
 	// 4 bloques de stats
 	const topCh = stats.top_youtube_channels[0];
 	const topSeries = stats.top_items_by_type['series']?.[0] ?? stats.top_items_by_type['movie']?.[0];
 	const blocks: [string, string, string][] = [
-		['Top canal', topCh?.name ?? '—', topCh ? formatDuration(topCh.minutes) : ''],
-		['Top serie', topSeries?.title ?? '—', topSeries ? formatDuration(topSeries.minutes) : ''],
-		['Racha máx.', `${stats.streak_max} días`, 'sin parar'],
-		['Nota media', stats.avg_rating != null ? `${stats.avg_rating} / 10` : '—', stats.completion_rate != null ? `${stats.completion_rate}% completado` : ''],
+		[t('rewind.share.topChannel'), topCh?.name ?? '—', topCh ? formatDuration(topCh.minutes) : ''],
+		[t('rewind.share.topShow'), topSeries?.title ?? '—', topSeries ? formatDuration(topSeries.minutes) : ''],
+		[t('rewind.share.maxStreak'), tc('rewind.share.streakDays', stats.streak_max), t('rewind.share.nonstop')],
+		[t('rewind.share.avgRating'), stats.avg_rating != null ? `${stats.avg_rating} / 10` : '—', stats.completion_rate != null ? t('rewind.share.completedPct', { pct: stats.completion_rate }) : ''],
 	];
 	const bx = 80, bw = (W - 160 - 40) / 2, bh = 220, gap = 40;
 	blocks.forEach((b, i) => {
@@ -115,7 +116,7 @@ export function exportShareImage(stats: RewindStats): void {
 	ctx.fillStyle = 'rgba(255,255,255,0.5)';
 	ctx.font = '700 24px system-ui, sans-serif';
 	ctx.textAlign = 'left';
-	ctx.fillText('REPARTO POR TIPO', bx, dy);
+	ctx.fillText(t('rewind.share.typeBreakdown'), bx, dy);
 	const typeTotal = Object.values(stats.by_type).reduce((a, t) => a + t.minutes, 0) || 1;
 	const typeSorted = Object.entries(stats.by_type).sort((a, b) => b[1].minutes - a[1].minutes);
 	let dx = bx; const dbw = W - 160;
@@ -130,10 +131,10 @@ export function exportShareImage(stats: RewindStats): void {
 	ctx.textAlign = 'center';
 	ctx.fillStyle = '#fff';
 	ctx.font = '900 56px system-ui, sans-serif';
-	ctx.fillText(`${stats.percentage_of_year.toFixed(2)}% de ${stats.year}`, W / 2, 1640);
+	ctx.fillText(t('rewind.share.percentOfYear', { pct: stats.percentage_of_year.toFixed(2), year: stats.year }), W / 2, 1640);
 	ctx.fillStyle = 'rgba(255,255,255,0.45)';
 	ctx.font = 'italic 28px system-ui, sans-serif';
-	ctx.fillText('¿valió la pena cada minuto?', W / 2, 1690);
+	ctx.fillText(t('rewind.share.worthIt'), W / 2, 1690);
 	ctx.fillStyle = 'rgba(255,255,255,0.3)';
 	ctx.font = '600 24px system-ui, sans-serif';
 	ctx.fillText('deus-vault', W / 2, 1840);

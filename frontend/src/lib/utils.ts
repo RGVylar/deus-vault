@@ -1,3 +1,5 @@
+import { t, type TKey } from './i18n/index.svelte';
+
 export function isLookupCandidate(url: string): boolean {
 	try {
 		const h = new URL(url).hostname.toLowerCase();
@@ -29,14 +31,19 @@ export const TYPE_ICONS: Record<string, string> = {
 	game: '🎮'
 };
 
-export const TYPE_LABELS: Record<string, string> = {
-	youtube: 'YouTube',
-	movie: 'Películas',
-	series: 'Series',
-	music: 'Música',
-	book: 'Libro',
-	game: 'Juego'
+const TYPE_LABEL_KEYS: Record<string, TKey> = {
+	youtube: 'types.youtube',
+	movie: 'types.movie',
+	series: 'types.series',
+	music: 'types.music',
+	book: 'types.book',
+	game: 'types.game'
 };
+
+export function typeLabel(type: string): string {
+	const key = TYPE_LABEL_KEYS[type];
+	return key ? t(key) : type;
+}
 
 function isStremioUrl(url: string): boolean {
 	return url.startsWith('stremio://') || url.includes('strem.io') || url.includes('stremio.com');

@@ -6,24 +6,25 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { t, type TKey } from '$lib/i18n/index.svelte';
 
 	let { children } = $props();
 
-	const navMain = [
-		{ href: '/',         label: 'Bóveda',   icon: '🏛️' },
-		{ href: '/consumed', label: 'Consumido', icon: '✓'  },
-		{ href: '/random',   label: 'Azar',      icon: '🎲' },
-		{ href: '/rewind',   label: 'Rewind',    icon: '📊' },
-		{ href: '/wishlist', label: 'Deseos',    icon: '⭐' },
-		{ href: '/wasted',   label: 'Perdido',   icon: '💀' },
+	const navMain: { href: string; labelKey: TKey; icon: string }[] = [
+		{ href: '/',         labelKey: 'nav.vault',    icon: '🏛️' },
+		{ href: '/consumed', labelKey: 'nav.consumed', icon: '✓'  },
+		{ href: '/random',   labelKey: 'nav.random',   icon: '🎲' },
+		{ href: '/rewind',   labelKey: 'nav.rewind',   icon: '📊' },
+		{ href: '/wishlist', labelKey: 'nav.wishlist', icon: '⭐' },
+		{ href: '/wasted',   labelKey: 'nav.wasted',   icon: '💀' },
 	];
 
-	const navBottom = [
-		{ href: '/',         label: 'Bóveda',   icon: '🏛️' },
-		{ href: '/consumed', label: 'Consumido', icon: '✅' },
-		{ href: '/wishlist', label: 'Deseos',    icon: '⭐' },
-		{ href: '/random',   label: 'Azar',      icon: '🎲' },
-		{ href: '/settings', label: 'Ajustes',   icon: '⚙️' },
+	const navBottom: { href: string; labelKey: TKey; icon: string }[] = [
+		{ href: '/',         labelKey: 'nav.vault',    icon: '🏛️' },
+		{ href: '/consumed', labelKey: 'nav.consumed', icon: '✅' },
+		{ href: '/wishlist', labelKey: 'nav.wishlist', icon: '⭐' },
+		{ href: '/random',   labelKey: 'nav.random',   icon: '🎲' },
+		{ href: '/settings', labelKey: 'nav.settings', icon: '⚙️' },
 	];
 
 	function applyPrefs() {
@@ -97,20 +98,20 @@
 				</div>
 			</div>
 
-			<div class="sb-section">Tu bóveda</div>
+			<div class="sb-section">{t('layout.yourVault')}</div>
 			{#each navMain as item}
 				<a href={item.href} class="sb-item" class:active={page.url.pathname === item.href}>
 					<span class="sbi-ico">{item.icon}</span>
-					<span>{item.label}</span>
+					<span>{t(item.labelKey)}</span>
 				</a>
 			{/each}
 
-			<div class="sb-section">Cuenta</div>
+			<div class="sb-section">{t('layout.account')}</div>
 			<a href="/settings" class="sb-item" class:active={page.url.pathname === '/settings'}>
-				<span class="sbi-ico">⚙️</span><span>Ajustes</span>
+				<span class="sbi-ico">⚙️</span><span>{t('nav.settings')}</span>
 			</a>
 			<button class="sb-item" onclick={logout}>
-				<span class="sbi-ico">↪</span><span>Cerrar sesión</span>
+				<span class="sbi-ico">↪</span><span>{t('nav.logout')}</span>
 			</button>
 
 			<div class="sb-spacer"></div>
@@ -130,18 +131,18 @@
 				<div class="ext-banner">
 					<span class="ext-banner-ico">🧩</span>
 					<div class="ext-banner-text">
-						<strong>Extensión para Chrome disponible</strong>
-						<span>Rastrea YouTube automáticamente sin abrir la bóveda.</span>
+						<strong>{t('layout.extBanner.title')}</strong>
+						<span>{t('layout.extBanner.text')}</span>
 					</div>
 					<a
 						href="https://github.com/RGVylar/deus-vault/tree/main/browser-extension"
 						target="_blank"
 						rel="noopener"
 						class="ext-banner-btn"
-					>Instalar</a>
+					>{t('layout.extBanner.install')}</a>
 					<button
 						class="ext-banner-close"
-						aria-label="Cerrar"
+						aria-label={t('layout.extBanner.close')}
 						onclick={() => { showExtBanner = false; localStorage.setItem('dv_ext_banner_dismissed', '1'); }}
 					>×</button>
 				</div>
@@ -156,7 +157,7 @@
 			{#each navBottom as item}
 				<a href={item.href} class="tab-item" class:active={page.url.pathname === item.href}>
 					<span class="ti-ico">{item.icon}</span>
-					{item.label}
+					{t(item.labelKey)}
 				</a>
 			{/each}
 		</nav>

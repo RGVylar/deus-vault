@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { wishlistApi } from '$lib/api';
+	import { t, tc, fmtCurrency } from '$lib/i18n/index.svelte';
 	import type { WishlistItem, WishlistStats, ProductLookupResult } from '$lib/types';
 
 	// ── State ──────────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@
 
 	function fmtPrice(p: number | null): string {
 		if (p == null) return '—';
-		return p.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+		return fmtCurrency(p, 'EUR');
 	}
 
 	function storeColor(store: string | null): string {
@@ -69,7 +70,7 @@
 		try {
 			[items, stats] = await Promise.all([wishlistApi.list(), wishlistApi.stats()]);
 		} catch (e: any) {
-			error = e.message ?? 'Error al cargar';
+			error = e.message ?? t('wishlist.loadError');
 		} finally {
 			loading = false;
 		}
@@ -94,7 +95,7 @@
 			if (r.price)  modalPrice = String(r.price);
 			if (r.store)  modalStore = r.store;
 		} catch (e: any) {
-			modalLookupError = 'No se pudo obtener info del producto. Rellena los campos manualmente.';
+			modalLookupError = t('wishlist.lookupError');
 		} finally {
 			modalLooking = false;
 		}
@@ -189,7 +190,7 @@
 	}
 
 	async function deleteItem(item: WishlistItem) {
-		if (!confirm(`¿Eliminar "${item.title}"?`)) return;
+		if (!confirm(t('wishlist.confirmDelete', { title: item.title }))) return;
 		try {
 			await wishlistApi.delete(item.id);
 			await load();
@@ -203,24 +204,24 @@
 	<div class="page-header">
 		<div class="page-header-top">
 			<div>
-				<h1 class="page-title">Bóveda de Deseos</h1>
+				<h1 class="page-title">{t('wishlist.title')}</h1>
 				{#if stats}
-					<p class="page-sub">{stats.total_items} artículos · {fmtPrice(stats.total_cost)}</p>
+					<p class="page-sub">{tc('wishlist.summary', stats.total_items, { price: fmtPrice(stats.total_cost) })}</p>
 				{/if}
 			</div>
-			<button class="btn btn-primary" onclick={openModal}>+ Añadir</button>
+			<button class="btn btn-primary" onclick={openModal}>{t('wishlist.add')}</button>
 		</div>
 
 		<!-- Stats -->
 		{#if stats}
 		<div class="stats-row">
 			<div class="stat-card">
-				<div class="stat-label">Pendiente</div>
+				<div class="stat-label">{t('wishlist.pending')}</div>
 				<div class="stat-value">{fmtPrice(stats.pending_cost)}</div>
-				<div class="stat-sub">{stats.pending_items} artículos</div>
+				<div class="stat-sub">{tc('wishlist.itemsSuffix', stats.pending_items)}</div>
 			</div>
 			<div class="stat-card accent-amber">
-				<div class="stat-label">A trabajar</div>
+				<div class="stat-label">{t('wishlist.toWork')}</div>
 				<div class="stat-value">
 					{#if hourlyRate && stats.pending_cost}
 						{hoursForPrice(stats.pending_cost)}
@@ -230,26 +231,26 @@
 				</div>
 				<div class="stat-sub">
 					{#if hourlyRate}
-						a {fmtPrice(hourlyRate)}/h
+						{t('wishlist.atRate', { rate: fmtPrice(hourlyRate) })}
 					{:else}
-						<a href="/settings#salary" class="stat-link">Configura tu sueldo</a>
+						<a href="/settings#salary" class="stat-link">{t('wishlist.configureSalary')}</a>
 					{/if}
 				</div>
 			</div>
 			<div class="stat-card accent-green">
-				<div class="stat-label">Gastado</div>
+				<div class="stat-label">{t('wishlist.spent')}</div>
 				<div class="stat-value">{fmtPrice(stats.purchased_cost)}</div>
-				<div class="stat-sub">{stats.purchased_items} comprados</div>
+				<div class="stat-sub">{t('wishlist.purchasedSuffix', { count: stats.purchased_items })}</div>
 			</div>
 		</div>
 		{/if}
 
 		<!-- Tabs -->
 		<div class="tabs">
-			<button class="tab" class:active={tab === 'pending'}   onclick={() => tab = 'pending'}>Pendientes</button>
-			<button class="tab" class:active={tab === 'purchased'} onclick={() => tab = 'purchased'}>Comprados</button>
-			<button class="tab" class:active={tab === 'gifted'}    onclick={() => tab = 'gifted'}>Regalados</button>
-			<button class="tab" class:active={tab === 'all'}       onclick={() => tab = 'all'}>Todo</button>
+			<button class="tab" class:active={tab === 'pending'}   onclick={() => tab = 'pending'}>{t('wishlist.tabs.pending')}</button>
+			<button class="tab" class:active={tab === 'purchased'} onclick={() => tab = 'purchased'}>{t('wishlist.tabs.purchased')}</button>
+			<button class="tab" class:active={tab === 'gifted'}    onclick={() => tab = 'gifted'}>{t('wishlist.tabs.gifted')}</button>
+			<button class="tab" class:active={tab === 'all'}       onclick={() => tab = 'all'}>{t('wishlist.tabs.all')}</button>
 		</div>
 	</div>
 
@@ -260,15 +261,15 @@
 
 	<!-- List -->
 	{#if loading}
-		<div class="empty-state">Cargando…</div>
+		<div class="empty-state">{t('wishlist.loading')}</div>
 	{:else if displayed.length === 0}
 		<div class="empty-state">
-			{tab === 'pending'   ? 'No tienes artículos pendientes.' :
-			 tab === 'purchased' ? 'Aún no has comprado nada.' :
-			 tab === 'gifted'    ? 'Aún no tienes artículos regalados.' :
-			 'Tu lista de deseos está vacía.'}
+			{tab === 'pending'   ? t('wishlist.emptyPending') :
+			 tab === 'purchased' ? t('wishlist.emptyPurchased') :
+			 tab === 'gifted'    ? t('wishlist.emptyGifted') :
+			 t('wishlist.emptyAll')}
 			{#if tab !== 'purchased'}
-				<br><button class="btn btn-primary" style="margin-top:12px" onclick={openModal}>Añadir el primero</button>
+				<br><button class="btn btn-primary" style="margin-top:12px" onclick={openModal}>{t('wishlist.addFirst')}</button>
 			{/if}
 		</div>
 	{:else}
@@ -296,7 +297,7 @@
 							</div>
 						{/if}
 						{#if item.price && hourlyRate && !item.purchased}
-							<div class="item-work">⏱ {hoursForPrice(item.price)} de trabajo</div>
+							<div class="item-work">{t('wishlist.workTime', { time: hoursForPrice(item.price) })}</div>
 						{/if}
 						{#if item.notes}
 							<div class="item-notes">{item.notes}</div>
@@ -307,21 +308,21 @@
 						<div class="item-price" class:muted={item.purchased || item.gifted}>{fmtPrice(item.price)}</div>
 						<div class="item-actions">
 							{#if item.gifted}
-								<span class="badge-gifted">🎁 Regalado</span>
-								<button class="icon-btn" title="Deshacer regalo" onclick={() => toggleGift(item)}>↩</button>
+								<span class="badge-gifted">{t('wishlist.gifted')}</span>
+								<button class="icon-btn" title={t('wishlist.undoGift')} onclick={() => toggleGift(item)}>↩</button>
 							{:else if item.purchased}
 								{#if item.source_id && item.store === 'Steam'}
-									<span class="badge-vault">🎮 En la Bóveda</span>
+									<span class="badge-vault">{t('wishlist.inVault')}</span>
 								{:else}
-									<span class="badge-bought">✓ Comprado</span>
+									<span class="badge-bought">{t('wishlist.bought')}</span>
 								{/if}
-								<button class="icon-btn" title="Deshacer compra" onclick={() => togglePurchase(item)}>↩</button>
+								<button class="icon-btn" title={t('wishlist.undoPurchase')} onclick={() => togglePurchase(item)}>↩</button>
 							{:else}
-								<button class="icon-btn icon-btn-edit" title="Editar" onclick={() => openEdit(item)}>✎</button>
-								<button class="icon-btn icon-btn-buy"  title="Marcar como comprado" onclick={() => togglePurchase(item)}>✓</button>
-								<button class="icon-btn icon-btn-gift" title="Me lo han regalado"  onclick={() => toggleGift(item)}>🎁</button>
+								<button class="icon-btn icon-btn-edit" title={t('wishlist.edit')} onclick={() => openEdit(item)}>✎</button>
+								<button class="icon-btn icon-btn-buy"  title={t('wishlist.markPurchased')} onclick={() => togglePurchase(item)}>✓</button>
+								<button class="icon-btn icon-btn-gift" title={t('wishlist.giftedToMe')}  onclick={() => toggleGift(item)}>🎁</button>
 							{/if}
-							<button class="icon-btn icon-btn-del" title="Eliminar" onclick={() => deleteItem(item)}>✕</button>
+							<button class="icon-btn icon-btn-del" title={t('wishlist.delete')} onclick={() => deleteItem(item)}>✕</button>
 						</div>
 					</div>
 				</div>
@@ -336,12 +337,12 @@
 	<div class="overlay" onclick={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
 		<div class="modal">
 			<div class="modal-header">
-				<span class="modal-title">Añadir artículo</span>
+				<span class="modal-title">{t('wishlist.addItem')}</span>
 				<button class="modal-close" onclick={closeModal}>×</button>
 			</div>
 
 			<div class="field">
-				<label class="field-label">URL del producto</label>
+				<label class="field-label">{t('wishlist.productUrl')}</label>
 				<div class="url-row">
 					<input
 						class="text"
@@ -373,40 +374,40 @@
 			{/if}
 
 			<div class="field">
-				<label class="field-label">Nombre *</label>
-				<input class="text" type="text" placeholder="Nombre del producto" bind:value={modalTitle} />
+				<label class="field-label">{t('wishlist.name')}</label>
+				<input class="text" type="text" placeholder={t('wishlist.namePlaceholder')} bind:value={modalTitle} />
 			</div>
 
 			<div class="fields-row">
 				<div class="field">
-					<label class="field-label">Precio (€)</label>
+					<label class="field-label">{t('wishlist.price')}</label>
 					<input class="text" type="text" placeholder="0,00" bind:value={modalPrice} />
 				</div>
 				<div class="field">
-					<label class="field-label">Tienda</label>
-					<input class="text" type="text" placeholder="Amazon, Fnac…" bind:value={modalStore} />
+					<label class="field-label">{t('wishlist.store')}</label>
+					<input class="text" type="text" placeholder={t('wishlist.storePlaceholder')} bind:value={modalStore} />
 				</div>
 			</div>
 
 			<div class="field">
-				<label class="field-label">Notas</label>
-				<textarea class="text" rows="2" placeholder="Talla, color, variante…" bind:value={modalNotes}></textarea>
+				<label class="field-label">{t('wishlist.notes')}</label>
+				<textarea class="text" rows="2" placeholder={t('wishlist.notesPlaceholder')} bind:value={modalNotes}></textarea>
 			</div>
 
 			{#if modalLookupResult?.content_type_hint === 'game'}
-				<div class="steam-hint">🎮 Al marcarlo como comprado se añadirá automáticamente a tu bóveda principal sin empezar.</div>
+				<div class="steam-hint">{t('wishlist.steamHint')}</div>
 			{/if}
 
 			{#if modalTitle.trim() && modalPrice && hourlyRate}
 				<div class="hours-hint">
-					≈ {hoursForPrice(parseFloat(modalPrice.replace(',', '.')))} de trabajo a {fmtPrice(hourlyRate)}/h
+					{t('wishlist.hoursHint', { hours: hoursForPrice(parseFloat(modalPrice.replace(',', '.'))), rate: fmtPrice(hourlyRate) })}
 				</div>
 			{/if}
 
 			<div class="modal-actions">
-				<button class="btn" onclick={closeModal}>Cancelar</button>
+				<button class="btn" onclick={closeModal}>{t('wishlist.cancel')}</button>
 				<button class="btn btn-primary" onclick={saveItem} disabled={saving || !modalTitle.trim()}>
-					{saving ? 'Guardando…' : 'Guardar'}
+					{saving ? t('wishlist.saving') : t('wishlist.save')}
 				</button>
 			</div>
 		</div>
@@ -419,35 +420,35 @@
 	<div class="overlay" onclick={(e) => { if (e.target === e.currentTarget) closeEdit(); }}>
 		<div class="modal">
 			<div class="modal-header">
-				<span class="modal-title">Editar artículo</span>
+				<span class="modal-title">{t('wishlist.editItem')}</span>
 				<button class="modal-close" onclick={closeEdit}>×</button>
 			</div>
 
 			<div class="field">
-				<label class="field-label">Nombre *</label>
+				<label class="field-label">{t('wishlist.name')}</label>
 				<input class="text" type="text" bind:value={editTitle} />
 			</div>
 
 			<div class="fields-row">
 				<div class="field">
-					<label class="field-label">Precio (€)</label>
+					<label class="field-label">{t('wishlist.price')}</label>
 					<input class="text" type="text" bind:value={editPrice} />
 				</div>
 				<div class="field">
-					<label class="field-label">Tienda</label>
+					<label class="field-label">{t('wishlist.store')}</label>
 					<input class="text" type="text" bind:value={editStore} />
 				</div>
 			</div>
 
 			<div class="field">
-				<label class="field-label">Notas</label>
+				<label class="field-label">{t('wishlist.notes')}</label>
 				<textarea class="text" rows="2" bind:value={editNotes}></textarea>
 			</div>
 
 			<div class="modal-actions">
-				<button class="btn" onclick={closeEdit}>Cancelar</button>
+				<button class="btn" onclick={closeEdit}>{t('wishlist.cancel')}</button>
 				<button class="btn btn-primary" onclick={saveEdit} disabled={editSaving || !editTitle.trim()}>
-					{editSaving ? 'Guardando…' : 'Guardar'}
+					{editSaving ? t('wishlist.saving') : t('wishlist.save')}
 				</button>
 			</div>
 		</div>

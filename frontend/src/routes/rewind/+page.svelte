@@ -3,15 +3,26 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration, TYPE_LABELS } from '$lib/utils';
+	import { formatDuration, typeLabel } from '$lib/utils';
+	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
 	import type { RewindStats } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import Chapter from '$lib/components/Chapter.svelte';
 	import { exportShareImage } from '$lib/rewindShare';
 
-	const MONTHS_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-	const DAYS_ES = ['L','M','X','J','V','S','D'];
-	const DAYS_FULL = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+	const MONTHS = $derived([
+		t('common.month.jan'), t('common.month.feb'), t('common.month.mar'), t('common.month.apr'),
+		t('common.month.may'), t('common.month.jun'), t('common.month.jul'), t('common.month.aug'),
+		t('common.month.sep'), t('common.month.oct'), t('common.month.nov'), t('common.month.dec'),
+	]);
+	const DAYS = $derived([
+		t('wasted.weekday.mon'), t('wasted.weekday.tue'), t('wasted.weekday.wed'), t('wasted.weekday.thu'),
+		t('wasted.weekday.fri'), t('wasted.weekday.sat'), t('wasted.weekday.sun'),
+	]);
+	const DAYS_FULL = $derived([
+		t('common.weekdayFull.mon'), t('common.weekdayFull.tue'), t('common.weekdayFull.wed'), t('common.weekdayFull.thu'),
+		t('common.weekdayFull.fri'), t('common.weekdayFull.sat'), t('common.weekdayFull.sun'),
+	]);
 
 	// Icono de línea por tipo de contenido (sustituye TYPE_ICONS emoji)
 	const TYPE_ICON: Record<string, string> = {
@@ -63,7 +74,7 @@
 						.catch(() => {});
 				}
 			})
-			.catch(e => { loadError = e?.message ?? 'Error cargando Rewind'; })
+			.catch(e => { loadError = e?.message ?? t('rewind.loadError'); })
 			.finally(() => { loading = false; });
 	});
 
@@ -114,7 +125,7 @@
 			const m = firstInYear.date.getMonth();
 			if (!seen.has(m) && firstInYear.date.getDate() <= 7) {
 				seen.add(m);
-				result.push({ label: MONTHS_ES[m], col });
+				result.push({ label: MONTHS[m], col });
 			}
 		});
 		return result;
@@ -124,7 +135,7 @@
 		const d = Math.floor(minutes / (60 * 24));
 		const h = Math.floor((minutes % (60 * 24)) / 60);
 		if (d === 0) return `${h}h`;
-		if (h === 0) return `${d} día${d !== 1 ? 's' : ''}`;
+		if (h === 0) return tc('rewind.daysCount', d);
 		return `${d}d ${h}h`;
 	}
 
@@ -176,10 +187,10 @@
 		const evening = h.slice(18, 21).reduce((a, b) => a + b, 0);
 		const afternoon = h.slice(12, 18).reduce((a, b) => a + b, 0);
 		const max = Math.max(night, morning, evening, afternoon);
-		if (max === night)   return { label: 'Búho nocturno',     sub: `El ${Math.round(night/total*100)}% de tu consumo es entre las 21h y las 4h` };
-		if (max === morning) return { label: 'Madrugador',        sub: `El ${Math.round(morning/total*100)}% de tu consumo es por la mañana` };
-		if (max === evening) return { label: 'Fan del prime time', sub: `El ${Math.round(evening/total*100)}% de tu consumo es entre las 18h y las 21h` };
-		return { label: 'Tarde libre', sub: `El ${Math.round(afternoon/total*100)}% de tu consumo es por la tarde` };
+		if (max === night)   return { label: t('rewind.timeProfile.nightOwl'),     sub: t('rewind.timeProfile.nightOwlSub', { pct: Math.round(night/total*100) }) };
+		if (max === morning) return { label: t('rewind.timeProfile.earlyBird'),    sub: t('rewind.timeProfile.earlyBirdSub', { pct: Math.round(morning/total*100) }) };
+		if (max === evening) return { label: t('rewind.timeProfile.primeTime'),    sub: t('rewind.timeProfile.primeTimeSub', { pct: Math.round(evening/total*100) }) };
+		return { label: t('rewind.timeProfile.freeAfternoon'), sub: t('rewind.timeProfile.freeAfternoonSub', { pct: Math.round(afternoon/total*100) }) };
 	});
 
 	const epicDay = $derived.by(() => {
@@ -191,12 +202,12 @@
 		return best.minutes > 0 ? best : null;
 	});
 
-	const REFS = [
-		{ label: 'la trilogía de El Señor de los Anillos (extendida)', minutes: 690 },
-		{ label: 'la saga completa de Star Wars (9 películas)', minutes: 1340 },
-		{ label: 'todas las temporadas de Friends', minutes: 5400 },
-		{ label: 'Elden Ring de principio a fin', minutes: 1680 },
-	];
+	const REFS = $derived([
+		{ label: t('rewind.ref.lotr'), minutes: 690 },
+		{ label: t('rewind.ref.starwars'), minutes: 1340 },
+		{ label: t('rewind.ref.friends'), minutes: 5400 },
+		{ label: t('rewind.ref.eldenring'), minutes: 1680 },
+	]);
 	const equivalences = $derived.by(() => {
 		if (!stats) return [];
 		return REFS.map(r => ({ ...r, times: +(stats!.total_consumed_minutes / r.minutes).toFixed(1) }))
@@ -209,21 +220,21 @@
 		if (!stats) return [];
 		const ms: Milestone[] = [];
 		if (stats.streak_max >= 7)
-			ms.push({ icon: 'flame', tt: `Racha de ${stats.streak_max} días`, ss: 'Sin parar ni un día', color: 'oklch(0.78 0.18 50)' });
+			ms.push({ icon: 'flame', tt: tc('rewind.streakDays', stats.streak_max), ss: t('rewind.notAStopDay'), color: 'oklch(0.78 0.18 50)' });
 		if (stats.total_consumed_count >= 100)
-			ms.push({ icon: 'award', tt: '100+ ítems', ss: `Este año: ${stats.total_consumed_count}`, color: 'var(--primary)' });
+			ms.push({ icon: 'award', tt: t('rewind.items100'), ss: t('rewind.thisYearCount', { count: stats.total_consumed_count }), color: 'var(--primary)' });
 		else if (stats.total_consumed_count >= 50)
-			ms.push({ icon: 'award', tt: '50+ ítems', ss: `Este año: ${stats.total_consumed_count}`, color: 'var(--primary)' });
+			ms.push({ icon: 'award', tt: t('rewind.items50'), ss: t('rewind.thisYearCount', { count: stats.total_consumed_count }), color: 'var(--primary)' });
 		if (stats.total_consumed_minutes >= 60 * 24 * 7)
-			ms.push({ icon: 'calendar', tt: `${Math.floor(stats.total_consumed_minutes / (60*24))} días de contenido`, ss: 'Acumulados en el año', color: 'oklch(0.74 0.14 280)' });
+			ms.push({ icon: 'calendar', tt: t('rewind.daysOfContent', { days: Math.floor(stats.total_consumed_minutes / (60*24)) }), ss: t('rewind.accumulatedInYear'), color: 'oklch(0.74 0.14 280)' });
 		if (stats.completion_rate !== null && stats.completion_rate >= 85)
-			ms.push({ icon: 'check', tt: `${stats.completion_rate}% completado`, ss: 'Casi nada se te resiste', color: 'oklch(0.76 0.18 150)' });
+			ms.push({ icon: 'check', tt: t('rewind.completedPct', { pct: stats.completion_rate }), ss: t('rewind.almostNothingResists'), color: 'oklch(0.76 0.18 150)' });
 		if (stats.streaming_breakdown.length >= 3)
-			ms.push({ icon: 'tv', tt: `${stats.streaming_breakdown.length} plataformas`, ss: stats.streaming_breakdown.map(p => p.name).join(', '), color: 'oklch(0.74 0.16 210)' });
+			ms.push({ icon: 'tv', tt: t('rewind.platformCount', { count: stats.streaming_breakdown.length }), ss: stats.streaming_breakdown.map(p => p.name).join(', '), color: 'oklch(0.74 0.16 210)' });
 		if ((stats.by_type['youtube']?.count ?? 0) >= 50)
-			ms.push({ icon: 'play', tt: '50+ vídeos', ss: `Este año: ${stats.by_type['youtube'].count}`, color: 'var(--youtube)' });
+			ms.push({ icon: 'play', tt: t('rewind.videos50'), ss: t('rewind.thisYearCount', { count: stats.by_type['youtube'].count }), color: 'var(--youtube)' });
 		if ((stats.by_type['book']?.count ?? 0) >= 10)
-			ms.push({ icon: 'book', tt: '10+ libros', ss: `Este año: ${stats.by_type['book'].count}`, color: 'var(--book)' });
+			ms.push({ icon: 'book', tt: t('rewind.books10'), ss: t('rewind.thisYearCount', { count: stats.by_type['book'].count }), color: 'var(--book)' });
 		return ms;
 	});
 
@@ -252,15 +263,15 @@
 </script>
 
 {#if !auth.isLoggedIn}
-	<p class="muted center">Redirigiendo…</p>
+	<p class="muted center">{t('common.redirecting')}</p>
 {:else}
 
 <!-- Topbar -->
 <div class="desk-topbar desk-only">
 	<h1 class="desk-title">Rewind {year}</h1>
 	<div class="desk-spacer"></div>
-	<button class="btn" onclick={() => year--}>‹ Anterior</button>
-	<button class="btn" onclick={() => year++} disabled={year >= new Date().getFullYear()}>Siguiente ›</button>
+	<button class="btn" onclick={() => year--}>{t('rewind.previous')}</button>
+	<button class="btn" onclick={() => year++} disabled={year >= new Date().getFullYear()}>{t('rewind.next')}</button>
 </div>
 <div class="row mobile-only" style="justify-content:center; margin:8px 0 20px; gap:16px;">
 	<button class="btn" onclick={() => year--}>‹</button>
@@ -269,18 +280,18 @@
 </div>
 
 {#if loading}
-	<p class="muted center" style="margin-top:3rem;">Calculando tu año…</p>
+	<p class="muted center" style="margin-top:3rem;">{t('rewind.calculating')}</p>
 
 {:else if loadError}
 	<div class="glass empty">
-		<p>Error cargando Rewind</p>
+		<p>{t('rewind.loadError')}</p>
 		<p class="muted" style="font-size:13px; margin-top:6px;">{loadError}</p>
 	</div>
 
 {:else if !stats || stats.total_consumed_count === 0}
 	<div class="glass empty">
-		<p>Sin contenido consumido en {year}.</p>
-		<p class="muted" style="font-size:13px; margin-top:6px;">Marca ítems como consumidos para verlos aquí.</p>
+		<p>{t('rewind.noContent', { year })}</p>
+		<p class="muted" style="font-size:13px; margin-top:6px;">{t('rewind.noContentHint')}</p>
 	</div>
 
 {:else}
@@ -288,62 +299,62 @@
 <!-- ─── HERO ─── -->
 <div class="surface rw-hero">
 	<div class="rw-hero-main">
-		<div class="rw-hero-kicker">Tu año en contenido</div>
+		<div class="rw-hero-kicker">{t('rewind.yearInContent')}</div>
 		<div class="rw-hero-num">{formatDuration(stats.total_consumed_minutes)}</div>
-		<div class="rw-hero-unit">{stats.total_consumed_count} ítems consumidos · ≈ {minutesToDays(stats.total_consumed_minutes)} de tu vida</div>
+		<div class="rw-hero-unit">{tc('rewind.itemsConsumed', stats.total_consumed_count, { days: minutesToDays(stats.total_consumed_minutes) })}</div>
 		<div class="rw-hero-sub">
-			{#if stats.best_month !== null}{MONTHS_ES[(stats.best_month ?? 1) - 1]} fue tu mes récord{/if}
-			{#if stats.favorite_type} · favorito: {TYPE_LABELS[stats.favorite_type] ?? stats.favorite_type}{/if}
+			{#if stats.best_month !== null}{t('rewind.recordMonth', { month: MONTHS[(stats.best_month ?? 1) - 1] })}{/if}
+			{#if stats.favorite_type} {t('rewind.favoritePrefix', { type: typeLabel(stats.favorite_type) })}{/if}
 		</div>
 	</div>
 	<div class="rw-hero-pct">
 		<div class="rw-pct-num">{stats.percentage_of_year.toFixed(2)}%</div>
-		<div class="rw-pct-lbl">de todo {year} dedicado a contenido</div>
+		<div class="rw-pct-lbl">{t('rewind.dedicatedToContent', { year })}</div>
 		<div class="rw-pct-bar"><div class="rw-pct-fill" style="width:{Math.min(stats.percentage_of_year * 8, 100)}%"></div></div>
-		<div class="rw-pct-scale"><span>0%</span><span>el año tiene 8.760h</span></div>
+		<div class="rw-pct-scale"><span>0%</span><span>{t('rewind.yearHasHours')}</span></div>
 	</div>
 </div>
 
 <!-- ─── ESTATS ─── -->
 <div class="surface estats-row">
-	<div class="estat2"><div class="e-ic"><Icon name="flame" size={20} /></div><div class="e-v">{stats.streak_max}</div><div class="e-l">racha máx</div></div>
+	<div class="estat2"><div class="e-ic"><Icon name="flame" size={20} /></div><div class="e-v">{stats.streak_max}</div><div class="e-l">{t('rewind.stats.maxStreak')}</div></div>
 	{#if stats.best_month !== null}
-		<div class="estat2"><div class="e-ic"><Icon name="calendar" size={20} /></div><div class="e-v">{MONTHS_ES[(stats.best_month ?? 1) - 1]}</div><div class="e-l">mejor mes</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="calendar" size={20} /></div><div class="e-v">{MONTHS[(stats.best_month ?? 1) - 1]}</div><div class="e-l">{t('rewind.stats.bestMonth')}</div></div>
 	{/if}
 	{#if stats.favorite_type}
-		<div class="estat2"><div class="e-ic"><Icon name={TYPE_ICON[stats.favorite_type] ?? 'list'} size={20} /></div><div class="e-v">{TYPE_LABELS[stats.favorite_type] ?? stats.favorite_type}</div><div class="e-l">favorito</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name={TYPE_ICON[stats.favorite_type] ?? 'list'} size={20} /></div><div class="e-v">{typeLabel(stats.favorite_type)}</div><div class="e-l">{t('rewind.stats.favorite')}</div></div>
 	{/if}
 	{#if stats.avg_rating != null}
-		<div class="estat2"><div class="e-ic"><Icon name="star" size={20} /></div><div class="e-v">{stats.avg_rating}</div><div class="e-l">nota media</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="star" size={20} /></div><div class="e-v">{stats.avg_rating}</div><div class="e-l">{t('rewind.stats.avgRating')}</div></div>
 	{/if}
 	{#if stats.completion_rate !== null}
-		<div class="estat2"><div class="e-ic"><Icon name="check" size={20} /></div><div class="e-v">{stats.completion_rate}%</div><div class="e-l">completado</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="check" size={20} /></div><div class="e-v">{stats.completion_rate}%</div><div class="e-l">{t('rewind.stats.completed')}</div></div>
 	{/if}
 	{#if stats.abandoned_count > 0}
-		<div class="estat2"><div class="e-ic"><Icon name="ban" size={20} /></div><div class="e-v">{stats.abandoned_count}</div><div class="e-l">abandonados</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="ban" size={20} /></div><div class="e-v">{stats.abandoned_count}</div><div class="e-l">{t('rewind.stats.abandoned')}</div></div>
 	{/if}
 </div>
 
-<Chapter id="tiempo" label="TU AÑO EN EL TIEMPO" icon="calendar">
+<Chapter id="tiempo" label={t('rewind.chapter.time')} icon="calendar">
 
 <div class="surface time-surface">
 	<!-- Por mes -->
 	<div class="tcell">
-		<div class="panel-title"><Icon name="barChart" size={16} /> Por mes{#if topMonthIdx >= 0} · {MONTHS_ES[topMonthIdx]} fue el pico{/if}</div>
+		<div class="panel-title"><Icon name="barChart" size={16} /> {t('rewind.byMonth')}{#if topMonthIdx >= 0} {t('rewind.peakMonth', { month: MONTHS[topMonthIdx] })}{/if}</div>
 		<div class="month-bars2">
 			{#each stats.by_month as m, i}
 				{@const pct = Math.max(m.minutes / maxMonthMinutes * 100, m.minutes > 0 ? 4 : 0)}
 				<div class="mb2-col" class:top={i === topMonthIdx}>
 					<div class="mb2-val">{formatDuration(m.minutes)}</div>
 					<div class="mb2-bar" class:top={i === topMonthIdx} style="height:{pct}%"></div>
-					<div class="mb2-lbl">{MONTHS_ES[i]}</div>
+					<div class="mb2-lbl">{MONTHS[i]}</div>
 				</div>
 			{/each}
 		</div>
 	</div>
 	<!-- Actividad diaria -->
 	<div class="tcell">
-		<div class="panel-title"><Icon name="activity" size={16} /> Actividad diaria</div>
+		<div class="panel-title"><Icon name="activity" size={16} /> {t('rewind.dailyActivity')}</div>
 		<div class="heatwrap">
 			<div style="grid-template-columns: 18px repeat({calendarGrid.length}, 11px); display:grid; gap:2px; margin-bottom:3px;">
 				<div></div>
@@ -354,7 +365,7 @@
 			</div>
 			<div style="display:flex; gap:4px;">
 				<div style="display:flex; flex-direction:column; gap:2px;">
-					{#each DAYS_ES as d, i}
+					{#each DAYS as d, i}
 						<div style="height:9px; font-size:7px; color:var(--text-muted); line-height:9px;">{i % 2 === 0 ? d : ''}</div>
 					{/each}
 				</div>
@@ -364,7 +375,7 @@
 							{#each week as day}
 								<div class="heat {heatLevel(day.minutes, day.inYear)}"
 									style="width:9px; height:9px;{!day.inYear ? 'background:transparent; border-color:transparent;' : ''}"
-									title={day.inYear && day.count > 0 ? `${day.key}: ${day.count} ítem${day.count !== 1 ? 's' : ''} · ${formatDuration(day.minutes)}` : day.key}
+									title={day.inYear && day.count > 0 ? tc('rewind.heatTooltip', day.count, { date: day.key, duration: formatDuration(day.minutes) }) : day.key}
 								></div>
 							{/each}
 						</div>
@@ -372,20 +383,20 @@
 				</div>
 			</div>
 			<div class="heat-foot">
-				<span>menos</span>
+				<span>{t('rewind.less')}</span>
 				<div class="heat" style="width:9px;height:9px;"></div>
 				<div class="heat l1" style="width:9px;height:9px;"></div>
 				<div class="heat l2" style="width:9px;height:9px;"></div>
 				<div class="heat l3" style="width:9px;height:9px;"></div>
 				<div class="heat l4" style="width:9px;height:9px;"></div>
-				<span>más</span>
+				<span>{t('rewind.more')}</span>
 			</div>
 		</div>
 	</div>
 	<!-- Por hora -->
 	{#if stats.by_hour?.length === 24}
 		<div class="tcell">
-			<div class="panel-title"><Icon name="clock" size={16} /> Por hora del día{#if peakHour !== null} · pico a las {peakHour}h{/if}</div>
+			<div class="panel-title"><Icon name="clock" size={16} /> {t('rewind.byHour')}{#if peakHour !== null} {t('rewind.peakHour', { hour: peakHour })}{/if}</div>
 			<div class="whour-blocks">
 				{#each stats.by_hour as v, i}
 					{@const intensity = v / maxHour}
@@ -401,11 +412,11 @@
 	<!-- Por día -->
 	{#if stats.by_day?.length}
 		<div class="tcell">
-			<div class="panel-title"><Icon name="barChart" size={16} /> Por día{#if topDayIdx >= 0} · {DAYS_FULL[topDayIdx]} es tu día{/if}</div>
+			<div class="panel-title"><Icon name="barChart" size={16} /> {t('rewind.byDay')}{#if topDayIdx >= 0} {t('rewind.topDay', { day: DAYS_FULL[topDayIdx] })}{/if}</div>
 			<div class="day-bars">
 				{#each stats.by_day as v, i}
 					{@const pct = Math.max(v / maxDay * 100, 4)}
-					<div class="db-col"><div class="db-bar" class:top={i === topDayIdx} style="height:{pct}%" title={formatDuration(v)}></div><div class="db-lbl">{DAYS_ES[i]}</div></div>
+					<div class="db-col"><div class="db-bar" class:top={i === topDayIdx} style="height:{pct}%" title={formatDuration(v)}></div><div class="db-lbl">{DAYS[i]}</div></div>
 				{/each}
 			</div>
 		</div>
@@ -418,22 +429,22 @@
 		<div class="moment-card">
 			<div class="moment-icon"><Icon name="zap" size={24} /></div>
 			<div class="moment-body">
-				<div class="moment-kicker">Tu mejor semana</div>
-				<div class="moment-title">{new Date(stats.moment.week_start + 'T12:00:00').toLocaleDateString('es', {day:'numeric', month:'long'})} – {new Date(stats.moment.week_end + 'T12:00:00').toLocaleDateString('es', {day:'numeric', month:'long'})}</div>
-				<div class="moment-sub">{stats.moment.count} ítem{stats.moment.count !== 1 ? 's' : ''} en 7 días</div>
+				<div class="moment-kicker">{t('rewind.bestWeek')}</div>
+				<div class="moment-title">{fmtDateI18n(new Date(stats.moment.week_start + 'T12:00:00'), {day:'numeric', month:'long'})} – {fmtDateI18n(new Date(stats.moment.week_end + 'T12:00:00'), {day:'numeric', month:'long'})}</div>
+				<div class="moment-sub">{tc('rewind.itemsInWeek', stats.moment.count)}</div>
 			</div>
-			<div class="moment-stat"><div class="moment-val">{formatDuration(stats.moment.minutes)}</div><div class="moment-lbl">esa semana</div></div>
+			<div class="moment-stat"><div class="moment-val">{formatDuration(stats.moment.minutes)}</div><div class="moment-lbl">{t('rewind.thatWeek')}</div></div>
 		</div>
 	{/if}
 	{#if epicDay}
 		<div class="moment-card">
 			<div class="moment-icon warm"><Icon name="mountain" size={24} /></div>
 			<div class="moment-body">
-				<div class="moment-kicker">Tu día más épico</div>
-				<div class="moment-title">{new Date(epicDay.date + 'T12:00:00').toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long' })}</div>
+				<div class="moment-kicker">{t('rewind.epicDay')}</div>
+				<div class="moment-title">{fmtDateI18n(new Date(epicDay.date + 'T12:00:00'), { weekday:'long', day:'numeric', month:'long' })}</div>
 				<div class="moment-sub">{stats.epic_day_items.slice(0,2).map(i => i.title).join(' · ')}{stats.epic_day_items.length > 2 ? '…' : ''}</div>
 			</div>
-			<div class="moment-stat"><div class="moment-val warm">{formatDuration(epicDay.minutes)}</div><div class="moment-lbl">en un día</div></div>
+			<div class="moment-stat"><div class="moment-val warm">{formatDuration(epicDay.minutes)}</div><div class="moment-lbl">{t('rewind.inADay')}</div></div>
 		</div>
 	{/if}
 </div>
@@ -441,14 +452,14 @@
 </Chapter>
 
 {#if typeSorted.length > 0}
-<Chapter id="reparto" label="EN QUÉ SE TE VA EL TIEMPO" icon="layers">
+<Chapter id="reparto" label={t('rewind.chapter.breakdown')} icon="layers">
 	<div class="surface type-overview">
 		<div class="div-bar">
 			{#each typeSorted as [type, s]}<div class="div-seg" style="flex:{s.minutes}; background:{TYPE_COLORS[type] ?? 'var(--primary)'}"></div>{/each}
 		</div>
 		<div class="to-legend">
 			{#each typeSorted as [type, s]}
-				<div class="to-item"><span class="to-dot" style="background:{TYPE_COLORS[type] ?? 'var(--primary)'}"></span><span class="to-ic"><Icon name={TYPE_ICON[type] ?? 'list'} size={14} /></span><span class="to-nm">{TYPE_LABELS[type] ?? type}</span><span class="to-pct">{Math.round(s.minutes / typeTotal * 100)}%</span></div>
+				<div class="to-item"><span class="to-dot" style="background:{TYPE_COLORS[type] ?? 'var(--primary)'}"></span><span class="to-ic"><Icon name={TYPE_ICON[type] ?? 'list'} size={14} /></span><span class="to-nm">{typeLabel(type)}</span><span class="to-pct">{Math.round(s.minutes / typeTotal * 100)}%</span></div>
 			{/each}
 		</div>
 	</div>
@@ -458,7 +469,7 @@
 <!-- ─── YOUTUBE ─── -->
 {#if stats.top_youtube_channels.length > 0}
 	{@const topCh = stats.top_youtube_channels[0]}
-	<Chapter id="youtube" label="YOUTUBE" icon="play">
+	<Chapter id="youtube" label={t('rewind.chapter.youtube')} icon="play">
 
 	<!-- Hero de creador -->
 	<div class="surface yt-hero">
@@ -468,14 +479,14 @@
 			<div class="yt-creator-avatar yt-creator-ph" style="--yt-glow:{channelColor(topCh.name)}; background:{channelColor(topCh.name)}">{topCh.name[0]?.toUpperCase() ?? '?'}</div>
 		{/if}
 		<div class="yt-creator-body">
-			<div class="yt-kicker"><Icon name="play" size={12} /> Tu creador del año</div>
+			<div class="yt-kicker"><Icon name="play" size={12} /> {t('rewind.creatorOfYear')}</div>
 			<div class="yt-name">{topCh.name}</div>
-			<div class="yt-stat-line">{topCh.count} vídeo{topCh.count !== 1 ? 's' : ''} · {formatDuration(topCh.minutes)}</div>
+			<div class="yt-stat-line">{tc('rewind.videoCount', topCh.count, { duration: formatDuration(topCh.minutes) })}</div>
 			<div class="yt-hook">
 				{#if maxMovieMinutes > 0}
-					Le dedicaste más horas que a cualquier película de tu año — la más larga apenas duró {formatDuration(maxMovieMinutes)}.
+					{t('rewind.ytHookWithMovie', { duration: formatDuration(maxMovieMinutes) })}
 				{:else}
-					{formatDuration(topCh.minutes)} con una sola persona a lo largo del año.
+					{t('rewind.ytHookNoMovie', { duration: formatDuration(topCh.minutes) })}
 				{/if}
 			</div>
 		</div>
@@ -499,17 +510,17 @@
 	<!-- Mini-stats solo YouTube -->
 	{#if ytStats}
 		<div class="surface yt-stats">
-			<div class="estat2"><div class="e-ic"><Icon name="play" size={20} /></div><div class="e-v">{ytStats.count}</div><div class="e-l">vídeos</div></div>
-			<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(ytStats.minutes)}</div><div class="e-l">en total</div></div>
-			<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(ytAvg)}</div><div class="e-l">media/vídeo</div></div>
-			<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{ytPct}%</div><div class="e-l">de tu consumo</div></div>
+			<div class="estat2"><div class="e-ic"><Icon name="play" size={20} /></div><div class="e-v">{ytStats.count}</div><div class="e-l">{t('rewind.labels.videos')}</div></div>
+			<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(ytStats.minutes)}</div><div class="e-l">{t('rewind.labels.inTotal')}</div></div>
+			<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(ytAvg)}</div><div class="e-l">{t('rewind.labels.avgPerVideo')}</div></div>
+			<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{ytPct}%</div><div class="e-l">{t('rewind.labels.ofYourConsumption')}</div></div>
 		</div>
 	{/if}
 
 	<!-- Categorías de YouTube -->
 	{#if (stats.top_youtube_genres?.length ?? 0) > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name="layers" size={15} /></span> Qué tipo de contenido</h2>
+			<h2><span class="hico"><Icon name="layers" size={15} /></span> {t('rewind.whatContentType')}</h2>
 			<div class="surface yt-genres">
 				{#each stats.top_youtube_genres as g}
 					{@const pct = Math.round(g.minutes / maxYtGenreMinutes * 100)}
@@ -518,7 +529,7 @@
 						<div class="ytg-bar-wrap">
 							<div class="ytg-bar" style="width:{pct}%"></div>
 						</div>
-						<div class="ytg-meta">{g.count} vídeo{g.count !== 1 ? 's' : ''} · {formatDuration(g.minutes)}</div>
+						<div class="ytg-meta">{tc('rewind.videoCount', g.count, { duration: formatDuration(g.minutes) })}</div>
 					</div>
 				{/each}
 			</div>
@@ -527,30 +538,30 @@
 
 	<!-- Canales más vistos -->
 	<section class="rewind-section">
-		<h2><span class="hico"><Icon name="play" size={15} /></span> Canales más vistos</h2>
+		<h2><span class="hico"><Icon name="play" size={15} /></span> {t('rewind.mostWatchedChannels')}</h2>
 		<div class="channels-dual">
 			<div class="channels-col">
-				<div class="channels-col-head"><Icon name="clock" size={13} /> Por tiempo</div>
+				<div class="channels-col-head"><Icon name="clock" size={13} /> {t('rewind.byTime')}</div>
 				<div class="surface channel-grid">
 					{#each stats.top_youtube_channels as ch, i}
 						<div class="channel-card" style="--ch-color:{channelColor(ch.name)}">
 							<div class="ch-rank">#{i + 1}</div>
 							{#if ch.thumbnail}<img class="ch-avatar" src={ch.thumbnail} alt={ch.name} />{:else}<div class="ch-avatar">{ch.name[0]?.toUpperCase() ?? '?'}</div>{/if}
-							<div class="ch-info"><div class="ch-name">{ch.name}</div><div class="ch-meta">{ch.count} vídeo{ch.count !== 1 ? 's' : ''}</div></div>
+							<div class="ch-info"><div class="ch-name">{ch.name}</div><div class="ch-meta">{tc('rewind.videosSuffix', ch.count)}</div></div>
 							<div class="ch-time">{formatDuration(ch.minutes)}</div>
 						</div>
 					{/each}
 				</div>
 			</div>
 			<div class="channels-col">
-				<div class="channels-col-head"><Icon name="list" size={13} /> Por nº de vídeos</div>
+				<div class="channels-col-head"><Icon name="list" size={13} /> {t('rewind.byVideoCount')}</div>
 				<div class="surface channel-grid">
 					{#each stats.top_youtube_channels_by_count as ch, i}
 						<div class="channel-card" style="--ch-color:{channelColor(ch.name)}">
 							<div class="ch-rank">#{i + 1}</div>
 							{#if ch.thumbnail}<img class="ch-avatar" src={ch.thumbnail} alt={ch.name} />{:else}<div class="ch-avatar">{ch.name[0]?.toUpperCase() ?? '?'}</div>{/if}
-							<div class="ch-info"><div class="ch-name">{ch.name}</div><div class="ch-meta">{formatDuration(ch.minutes)} totales</div></div>
-							<div class="ch-time">{ch.count} vídeos</div>
+							<div class="ch-info"><div class="ch-name">{ch.name}</div><div class="ch-meta">{t('rewind.videosTotal', { duration: formatDuration(ch.minutes) })}</div></div>
+							<div class="ch-time">{tc('rewind.videosSuffix', ch.count)}</div>
 						</div>
 					{/each}
 				</div>
@@ -561,7 +572,7 @@
 	<!-- Vídeos más largos -->
 	{#if (stats.top_items_by_type['youtube']?.length ?? 0) > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name="play" size={15} /></span> Vídeos más largos</h2>
+			<h2><span class="hico"><Icon name="play" size={15} /></span> {t('rewind.longestVideos')}</h2>
 			<div class="surface podium-grid">
 				{#each (stats.top_items_by_type['youtube'] ?? []) as item, i}
 					<div class="podium-card" style="--accent:var(--youtube)">
@@ -578,20 +589,20 @@
 
 <!-- ─── SECCIONES POR TIPO ─── -->
 {#if stats.by_type['series']}
-<Chapter id="series" label="SERIES" icon="tv">
+<Chapter id="series" label={t('rewind.chapter.series')} icon="tv">
 	{#if (stats.top_items_by_type['series']?.length ?? 0) > 0}
 		{@const top = stats.top_items_by_type['series'][0]}
-		<div class="tb-hook">Maratoneaste <strong>{top.title}</strong> — {formatDuration(top.minutes)} tú solo.</div>
+		<div class="tb-hook">{@html t('rewind.seriesHook', { title: top.title, duration: formatDuration(top.minutes) })}</div>
 	{/if}
 	<div class="surface kpi-strip" style="--accent:var(--series)">
-		<div class="estat2"><div class="e-ic"><Icon name="tv" size={20} /></div><div class="e-v">{stats.by_type['series'].count}</div><div class="e-l">series</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['series'].minutes)}</div><div class="e-l">en total</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('series'))}</div><div class="e-l">media/u</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('series')}%</div><div class="e-l">de tu consumo</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="tv" size={20} /></div><div class="e-v">{stats.by_type['series'].count}</div><div class="e-l">{t('rewind.series')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['series'].minutes)}</div><div class="e-l">{t('rewind.labels.inTotal')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('series'))}</div><div class="e-l">{t('rewind.labels.avgPerItem')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('series')}%</div><div class="e-l">{t('rewind.labels.ofYourConsumption')}</div></div>
 	</div>
 	{#if (stats.top_items_by_type['series']?.length ?? 0) > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name="tv" size={15} /></span> Series más largas</h2>
+			<h2><span class="hico"><Icon name="tv" size={15} /></span> {t('rewind.longestSeries')}</h2>
 			<div class="surface podium-grid">
 				{#each (stats.top_items_by_type['series'] ?? []) as item, i}
 					<div class="podium-card" style="--accent:var(--series)">
@@ -605,7 +616,7 @@
 	{/if}
 	{#if stats.streaming_breakdown.length > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name="film" size={15} /></span> Plataformas de streaming</h2>
+			<h2><span class="hico"><Icon name="film" size={15} /></span> {t('rewind.streamingPlatforms')}</h2>
 			<div class="surface streaming-grid" style="grid-template-columns:repeat({stats.streaming_breakdown.length}, 1fr)">
 				{#each stats.streaming_breakdown as plat, i}
 					{@const ppct = Math.round(plat.minutes / maxStreamingMins * 100)}
@@ -615,7 +626,7 @@
 						<div class="plat-header"><span class="plat-name">{plat.name}</span><span class="plat-rank">#{i + 1}</span></div>
 						<div class="plat-time">{formatDuration(plat.minutes)}</div>
 						<div class="plat-bar-wrap"><div class="plat-bar" style="width:{ppct}%;"></div></div>
-						<div class="plat-footer"><span class="plat-count">{plat.count} título{plat.count !== 1 ? 's' : ''}</span>{#if avgMin > 0}<span class="plat-avg">~{formatDuration(avgMin)}/u</span>{/if}</div>
+						<div class="plat-footer"><span class="plat-count">{tc('rewind.titleCount', plat.count)}</span>{#if avgMin > 0}<span class="plat-avg">~{formatDuration(avgMin)}/u</span>{/if}</div>
 					</div>
 				{/each}
 			</div>
@@ -625,25 +636,25 @@
 {/if}
 
 {#if stats.by_type['game']}
-<Chapter id="game" label="JUEGOS" icon="game">
+<Chapter id="game" label={t('rewind.chapter.game')} icon="game">
 	{#if (stats.top_items_by_type['game']?.length ?? 0) > 0}
 		{@const top = stats.top_items_by_type['game'][0]}
-		<div class="tb-hook"><strong>{top.title}</strong> se llevó {formatDuration(top.minutes)} de tu año.</div>
+		<div class="tb-hook">{@html t('rewind.gameHook', { title: top.title, duration: formatDuration(top.minutes) })}</div>
 	{/if}
 	<div class="surface kpi-strip" style="--accent:var(--game)">
-		<div class="estat2"><div class="e-ic"><Icon name="game" size={20} /></div><div class="e-v">{stats.by_type['game'].count}</div><div class="e-l">juegos</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['game'].minutes)}</div><div class="e-l">en total</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('game'))}</div><div class="e-l">media/u</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('game')}%</div><div class="e-l">de tu consumo</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="game" size={20} /></div><div class="e-v">{stats.by_type['game'].count}</div><div class="e-l">{t('rewind.games')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['game'].minutes)}</div><div class="e-l">{t('rewind.labels.inTotal')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('game'))}</div><div class="e-l">{t('rewind.labels.avgPerItem')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('game')}%</div><div class="e-l">{t('rewind.labels.ofYourConsumption')}</div></div>
 	</div>
 	{#if gameTimeline.length > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name="activity" size={15} /></span> Línea de tiempo</h2>
+			<h2><span class="hico"><Icon name="activity" size={15} /></span> {t('rewind.timeline')}</h2>
 			<div class="surface gtl-surface">
 				<div class="gtl-header">
 					<div></div>
 					<div class="gtl-months">
-						{#each MONTHS_ES as m}<span>{m}</span>{/each}
+						{#each MONTHS as m}<span>{m}</span>{/each}
 					</div>
 				</div>
 				<div class="gtl-rows">
@@ -668,26 +679,28 @@
 								{#if barWidth > 0.5}
 									<div class="gtl-bar" class:before={addedBefore}
 										style="left:{barLeft}%; width:{barWidth}%"
-										title={addedBefore ? `En backlog desde antes de ${year}` : `Añadido: ${game.created_at.slice(0,10)}`}
+										title={addedBefore ? t('rewind.inBacklogSince', { year }) : t('rewind.added', { date: game.created_at.slice(0,10) })}
 									></div>
 								{/if}
 								{#if !addedBefore && Math.abs(donePct - addPct) > 0.5}
 									{@const startDate2 = game.started_at ?? game.created_at}
 									<div class="gtl-dot add" style="left:{addPct}%"
-										title={`${game.started_at ? 'Inicio' : 'Añadido'}: ${new Date(startDate2.length === 10 ? startDate2 + 'T12:00:00' : startDate2).toLocaleDateString('es', {day:'numeric', month:'short', year:'numeric'})}`}
+										title={game.started_at
+											? t('rewind.start', { date: fmtDateI18n(new Date(startDate2.length === 10 ? startDate2 + 'T12:00:00' : startDate2), {day:'numeric', month:'short', year:'numeric'}) })
+											: t('rewind.added', { date: fmtDateI18n(new Date(startDate2.length === 10 ? startDate2 + 'T12:00:00' : startDate2), {day:'numeric', month:'short', year:'numeric'}) })}
 									></div>
 								{/if}
 								<div class="gtl-dot done" style="left:{donePct}%"
-									title={`Completado: ${new Date(game.consumed_at!.length === 10 ? game.consumed_at! + 'T12:00:00' : game.consumed_at!).toLocaleDateString('es', {day:'numeric', month:'short'})}`}
+									title={t('rewind.completed', { date: fmtDateI18n(new Date(game.consumed_at!.length === 10 ? game.consumed_at! + 'T12:00:00' : game.consumed_at!), {day:'numeric', month:'short'}) })}
 								></div>
 							</div>
 						</div>
 					{/each}
 				</div>
 				<div class="gtl-legend">
-					<span class="gtl-leg-item"><span class="gtl-leg-dot add"></span>Inicio / Añadido</span>
-					<span class="gtl-leg-item"><span class="gtl-leg-dot done"></span>Completado</span>
-					<span class="gtl-leg-item"><span class="gtl-leg-line-dash"></span>Desde backlog anterior</span>
+					<span class="gtl-leg-item"><span class="gtl-leg-dot add"></span>{t('rewind.legendAdded')}</span>
+					<span class="gtl-leg-item"><span class="gtl-leg-dot done"></span>{t('rewind.legendCompleted')}</span>
+					<span class="gtl-leg-item"><span class="gtl-leg-line-dash"></span>{t('rewind.legendBacklog')}</span>
 				</div>
 			</div>
 		</section>
@@ -695,7 +708,7 @@
 
 	{#if (stats.top_items_by_type['game']?.length ?? 0) > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name="game" size={15} /></span> Juegos más largos</h2>
+			<h2><span class="hico"><Icon name="game" size={15} /></span> {t('rewind.longestGames')}</h2>
 			<div class="surface podium-grid">
 				{#each (stats.top_items_by_type['game'] ?? []) as item, i}
 					<div class="podium-card" style="--accent:var(--game)">
@@ -712,20 +725,20 @@
 {/if}
 
 {#if stats.by_type['movie']}
-<Chapter id="movie" label="PELÍCULAS" icon="film">
+<Chapter id="movie" label={t('rewind.chapter.movie')} icon="film">
 	{#if (stats.top_items_by_type['movie']?.length ?? 0) > 0}
 		{@const top = stats.top_items_by_type['movie'][0]}
-		<div class="tb-hook">Tu sesión más larga fue <strong>{top.title}</strong> ({formatDuration(top.minutes)}).</div>
+		<div class="tb-hook">{@html t('rewind.movieHook', { title: top.title, duration: formatDuration(top.minutes) })}</div>
 	{/if}
 	<div class="surface kpi-strip" style="--accent:var(--movie)">
-		<div class="estat2"><div class="e-ic"><Icon name="film" size={20} /></div><div class="e-v">{stats.by_type['movie'].count}</div><div class="e-l">películas</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['movie'].minutes)}</div><div class="e-l">en total</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('movie'))}</div><div class="e-l">media/u</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('movie')}%</div><div class="e-l">de tu consumo</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="film" size={20} /></div><div class="e-v">{stats.by_type['movie'].count}</div><div class="e-l">{t('rewind.movies')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['movie'].minutes)}</div><div class="e-l">{t('rewind.labels.inTotal')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('movie'))}</div><div class="e-l">{t('rewind.labels.avgPerItem')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('movie')}%</div><div class="e-l">{t('rewind.labels.ofYourConsumption')}</div></div>
 	</div>
 	{#if (stats.top_items_by_type['movie']?.length ?? 0) > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name="film" size={15} /></span> Películas más largas</h2>
+			<h2><span class="hico"><Icon name="film" size={15} /></span> {t('rewind.longestMovies')}</h2>
 			<div class="surface podium-grid">
 				{#each (stats.top_items_by_type['movie'] ?? []) as item, i}
 					<div class="podium-card" style="--accent:var(--movie)">
@@ -742,26 +755,26 @@
 {/if}
 
 {#if stats.by_type['book']}
-<Chapter id="book" label="LIBROS" icon="book">
+<Chapter id="book" label={t('rewind.chapter.book')} icon="book">
 	{#if (stats.top_items_by_type['book']?.length ?? 0) > 0}
 		{@const top = stats.top_items_by_type['book'][0]}
-		<div class="tb-hook">{#if stats.top_book_authors.length > 0}<strong>{stats.top_book_authors[0].name}</strong> fue tu autor más leído.{/if}</div>
+		<div class="tb-hook">{#if stats.top_book_authors.length > 0}{@html t('rewind.bookHook', { author: stats.top_book_authors[0].name })}{/if}</div>
 	{/if}
 	<div class="surface kpi-strip" style="--accent:var(--book)">
-		<div class="estat2"><div class="e-ic"><Icon name="book" size={20} /></div><div class="e-v">{stats.by_type['book'].count}</div><div class="e-l">libros</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['book'].minutes)}</div><div class="e-l">en total</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('book'))}</div><div class="e-l">media/u</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('book')}%</div><div class="e-l">de tu consumo</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="book" size={20} /></div><div class="e-v">{stats.by_type['book'].count}</div><div class="e-l">{t('rewind.books')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['book'].minutes)}</div><div class="e-l">{t('rewind.labels.inTotal')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('book'))}</div><div class="e-l">{t('rewind.labels.avgPerItem')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('book')}%</div><div class="e-l">{t('rewind.labels.ofYourConsumption')}</div></div>
 	</div>
 	{#if stats.top_book_authors.length > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name="book" size={15} /></span> Autores más leídos</h2>
+			<h2><span class="hico"><Icon name="book" size={15} /></span> {t('rewind.mostReadAuthors')}</h2>
 			<div class="surface channel-grid channel-grid-multi">
 				{#each stats.top_book_authors as author, i}
 					<div class="channel-card" style="--ch-color:var(--book)">
 						<div class="ch-rank">#{i + 1}</div>
 						<div class="ch-avatar" style="background:var(--book)">{author.name[0]?.toUpperCase() ?? '?'}</div>
-						<div class="ch-info"><div class="ch-name">{author.name}</div><div class="ch-meta">{author.count} libro{author.count !== 1 ? 's' : ''}</div></div>
+						<div class="ch-info"><div class="ch-name">{author.name}</div><div class="ch-meta">{tc('rewind.bookCount', author.count)}</div></div>
 						<div class="ch-time" style="color:var(--book)">{formatDuration(author.minutes)}</div>
 					</div>
 				{/each}
@@ -770,7 +783,7 @@
 	{/if}
 	{#if (stats.top_items_by_type['book']?.length ?? 0) > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name="book" size={15} /></span> Libros más largos</h2>
+			<h2><span class="hico"><Icon name="book" size={15} /></span> {t('rewind.longestBooks')}</h2>
 			<div class="surface podium-grid">
 				{#each (stats.top_items_by_type['book'] ?? []) as item, i}
 					<div class="podium-card" style="--accent:var(--book)">
@@ -786,25 +799,25 @@
 {/if}
 
 {#if stats.by_type['music']}
-<Chapter id="music" label="MÚSICA" icon="music">
+<Chapter id="music" label={t('rewind.chapter.music')} icon="music">
 	{#if musicArtists.length > 0}
-		<div class="tb-hook"><strong>{musicArtists[0].name}</strong> sonó más que nadie.</div>
+		<div class="tb-hook">{@html t('rewind.musicHook', { artist: musicArtists[0].name })}</div>
 	{/if}
 	<div class="surface kpi-strip" style="--accent:var(--music)">
-		<div class="estat2"><div class="e-ic"><Icon name="music" size={20} /></div><div class="e-v">{stats.by_type['music'].count}</div><div class="e-l">temas</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['music'].minutes)}</div><div class="e-l">en total</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('music'))}</div><div class="e-l">media/u</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('music')}%</div><div class="e-l">de tu consumo</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="music" size={20} /></div><div class="e-v">{stats.by_type['music'].count}</div><div class="e-l">{t('rewind.tracks')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['music'].minutes)}</div><div class="e-l">{t('rewind.labels.inTotal')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('music'))}</div><div class="e-l">{t('rewind.labels.avgPerItem')}</div></div>
+		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('music')}%</div><div class="e-l">{t('rewind.labels.ofYourConsumption')}</div></div>
 	</div>
 	{#if musicArtists.length > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name="music" size={15} /></span> Artistas más escuchados</h2>
+			<h2><span class="hico"><Icon name="music" size={15} /></span> {t('rewind.mostListenedArtists')}</h2>
 			<div class="surface channel-grid channel-grid-multi">
 				{#each musicArtists as artist, i}
 					<div class="channel-card" style="--ch-color:var(--music)">
 						<div class="ch-rank">#{i + 1}</div>
 						<div class="ch-avatar" style="background:var(--music)">{artist.name[0]?.toUpperCase() ?? '?'}</div>
-						<div class="ch-info"><div class="ch-name">{artist.name}</div><div class="ch-meta">{artist.count} tema{artist.count !== 1 ? 's' : ''}</div></div>
+						<div class="ch-info"><div class="ch-name">{artist.name}</div><div class="ch-meta">{tc('rewind.trackCount', artist.count)}</div></div>
 						<div class="ch-time" style="color:var(--music)">{formatDuration(artist.minutes)}</div>
 					</div>
 				{/each}
@@ -813,7 +826,7 @@
 	{/if}
 	{#if (stats.top_items_by_type['music']?.length ?? 0) > 0}
 		<section class="rewind-section">
-			<h2><span class="hico"><Icon name="music" size={15} /></span> Más escuchado</h2>
+			<h2><span class="hico"><Icon name="music" size={15} /></span> {t('rewind.mostListened')}</h2>
 			<div class="surface podium-grid">
 				{#each (stats.top_items_by_type['music'] ?? []) as item, i}
 					<div class="podium-card" style="--accent:var(--music)">
@@ -829,28 +842,28 @@
 {/if}
 
 <!-- ─── TU PERFIL ─── -->
-<Chapter id="perfil" label="TU PERFIL" icon="sparkles">
+<Chapter id="perfil" label={t('rewind.chapter.profile')} icon="sparkles">
 <div class="surface profile-grid">
 	<!-- Racha -->
 	{#if stats.streak_max > 0}
 		<div class="pcard">
 			<div class="pcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.82 0.18 85 / 0.8),transparent)"></div>
 			<div class="streak-flame"><Icon name="flame" size={90} /></div>
-			<div class="pcard-kicker"><Icon name="flame" size={12} /> Racha más larga</div>
+			<div class="pcard-kicker"><Icon name="flame" size={12} /> {t('rewind.longestStreak')}</div>
 			<div class="streak-num">{stats.streak_max}</div>
-			<div style="font-size:15px; font-weight:700; color:var(--text-muted)">días seguidos</div>
-			{#if stats.streak_current > 0}<div class="pcard-sub">Racha actual: {stats.streak_current} días</div>{/if}
+			<div style="font-size:15px; font-weight:700; color:var(--text-muted)">{t('rewind.daysInARow')}</div>
+			{#if stats.streak_current > 0}<div class="pcard-sub">{t('rewind.currentStreak', { count: stats.streak_current })}</div>{/if}
 		</div>
 	{/if}
 	<!-- Patrón -->
 	{#if timeProfile}
 		<div class="pcard">
 			<div class="pcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.68 0.18 240 / 0.7),transparent)"></div>
-			<div class="pcard-kicker"><Icon name="clock" size={12} /> Tu patrón</div>
+			<div class="pcard-kicker"><Icon name="clock" size={12} /> {t('rewind.yourPattern')}</div>
 			<div class="pcard-big" style="font-size:28px">{timeProfile.label}</div>
 			<div class="pcard-sub">{timeProfile.sub}</div>
 			<div class="day-pills">
-				{#each DAYS_ES as d, i}
+				{#each DAYS as d, i}
 					<div class="day-pill" class:active={(stats.by_day?.[i] ?? 0) >= maxDay * 0.7}>{d}</div>
 				{/each}
 			</div>
@@ -864,17 +877,17 @@
 		{@const delta = Math.round((cur - prev) / prev * 100)}
 		<div class="pcard">
 			<div class="pcard-accent" style="background:linear-gradient(90deg,transparent,var(--primary),transparent)"></div>
-			<div class="pcard-kicker"><Icon name="trendingUp" size={12} /> vs {year - 1}</div>
+			<div class="pcard-kicker"><Icon name="trendingUp" size={12} /> {t('rewind.vsYear', { year: year - 1 })}</div>
 			<div class="cmp-row"><span class="cmp-year" style="color:var(--primary); font-weight:800">{year}</span><div class="cmp-track"><div class="cmp-fill" style="width:{cur/mx*100}%; background:var(--primary)"></div></div><span class="cmp-val" style="color:var(--primary)">{formatDuration(cur)}</span></div>
 			<div class="cmp-row"><span class="cmp-year">{year - 1}</span><div class="cmp-track"><div class="cmp-fill" style="width:{prev/mx*100}%; background:rgba(255,255,255,0.2)"></div></div><span class="cmp-val">{formatDuration(prev)}</span></div>
-			<div class="cmp-delta" class:up={delta >= 0} class:down={delta < 0}><Icon name="trendingUp" size={12} /> {delta >= 0 ? '+' : ''}{delta}% vs {year - 1}</div>
+			<div class="cmp-delta" class:up={delta >= 0} class:down={delta < 0}><Icon name="trendingUp" size={12} /> {delta >= 0 ? '+' : ''}{delta}% {t('rewind.vsYear', { year: year - 1 })}</div>
 		</div>
 	{/if}
 	<!-- Equivalencias -->
 	{#if equivalences.length > 0}
 		<div class="pcard">
 			<div class="pcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.82 0.18 85 / 0.7),transparent)"></div>
-			<div class="pcard-kicker"><Icon name="sparkles" size={12} /> En perspectiva</div>
+			<div class="pcard-kicker"><Icon name="sparkles" size={12} /> {t('rewind.perspective')}</div>
 			{#each equivalences.slice(0, 3) as eq}
 				<div class="equiv-row"><span class="equiv-times">{eq.times}×</span><span class="equiv-label">{eq.label}</span></div>
 			{/each}
@@ -884,7 +897,7 @@
 	{#if stats.avg_rating != null}
 		<div class="pcard">
 			<div class="pcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.82 0.18 85 / 0.7),transparent)"></div>
-			<div class="pcard-kicker"><Icon name="star" size={12} /> Calidad media</div>
+			<div class="pcard-kicker"><Icon name="star" size={12} /> {t('rewind.avgQuality')}</div>
 			<div style="display:flex; align-items:baseline; gap:6px;"><span class="pcard-big" style="color:oklch(0.84 0.16 85)">{stats.avg_rating}</span><span style="font-size:16px; color:var(--text-dim)">/10</span></div>
 			{#if stats.best_rated_item}<div class="rating-row"><span class="rating-star" style="color:oklch(0.84 0.16 85)"><Icon name="star" size={12} /> {stats.best_rated_item.rating}</span><span class="rating-title">{stats.best_rated_item.title}</span></div>{/if}
 			{#if stats.worst_rated_item}<div class="rating-row"><span class="rating-star" style="color:oklch(0.66 0.2 25)"><Icon name="star" size={12} /> {stats.worst_rated_item.rating}</span><span class="rating-title" style="color:var(--text-dim)">{stats.worst_rated_item.title}</span></div>{/if}
@@ -894,7 +907,7 @@
 	{#if epicDay && stats.epic_day_items.length > 0}
 		<div class="pcard">
 			<div class="pcard-accent" style="background:linear-gradient(90deg,transparent,oklch(0.66 0.2 25 / 0.7),transparent)"></div>
-			<div class="pcard-kicker"><Icon name="mountain" size={12} /> Tu día épico al detalle</div>
+			<div class="pcard-kicker"><Icon name="mountain" size={12} /> {t('rewind.epicDayDetail')}</div>
 			<div class="pcard-big" style="font-size:30px; color:oklch(0.72 0.18 30)">{formatDuration(epicDay.minutes)}</div>
 			<div class="epic-list">
 				{#each stats.epic_day_items as it}
@@ -908,7 +921,7 @@
 <!-- Logros -->
 {#if milestones.length > 0}
 	<section class="rewind-section">
-		<h2><span class="hico"><Icon name="award" size={15} /></span> Logros del año</h2>
+		<h2><span class="hico"><Icon name="award" size={15} /></span> {t('rewind.achievementsOfYear')}</h2>
 		<div class="surface ms-grid" style="grid-template-columns:repeat({Math.min(milestones.length, 4)}, 1fr)">
 			{#each milestones as m}
 				<div class="ms-card" style="--ms-color:{m.color}">
@@ -923,7 +936,7 @@
 </Chapter>
 
 <!-- ─── COMPARTIR ─── -->
-<Chapter id="compartir" label="COMPARTIR" icon="share">
+<Chapter id="compartir" label={t('rewind.chapter.share')} icon="share">
 <section class="rewind-section">
 	<div class="share-card">
 		<div class="share-head">
@@ -931,13 +944,13 @@
 			<div class="share-yr">REWIND {stats.year}</div>
 		</div>
 		<div class="share-grid">
-			<div class="share-block"><div class="share-lbl">Tu año</div><div class="share-val big">{formatDuration(stats.total_consumed_minutes)}</div><div class="share-sub">{stats.total_consumed_count} ítems</div></div>
-			{#if stats.top_youtube_channels.length > 0}<div class="share-block"><div class="share-lbl">Top canal</div><div class="share-val">{stats.top_youtube_channels[0].name}</div><div class="share-sub">{formatDuration(stats.top_youtube_channels[0].minutes)}</div></div>{/if}
-			{#if stats.top_items_by_type['series']?.length > 0}<div class="share-block"><div class="share-lbl">Top serie</div><div class="share-val">{stats.top_items_by_type['series'][0].title}</div><div class="share-sub">{formatDuration(stats.top_items_by_type['series'][0].minutes)}</div></div>{:else if stats.top_items_by_type['movie']?.length > 0}<div class="share-block"><div class="share-lbl">Top película</div><div class="share-val">{stats.top_items_by_type['movie'][0].title}</div><div class="share-sub">{formatDuration(stats.top_items_by_type['movie'][0].minutes)}</div></div>{/if}
-			{#if stats.streak_max > 0}<div class="share-block"><div class="share-lbl">Racha máx.</div><div class="share-val">{stats.streak_max} días</div><div class="share-sub">sin parar</div></div>{/if}
+			<div class="share-block"><div class="share-lbl">{t('rewind.yourYear')}</div><div class="share-val big">{formatDuration(stats.total_consumed_minutes)}</div><div class="share-sub">{tc('rewind.itemsLabel', stats.total_consumed_count)}</div></div>
+			{#if stats.top_youtube_channels.length > 0}<div class="share-block"><div class="share-lbl">{t('rewind.topChannel')}</div><div class="share-val">{stats.top_youtube_channels[0].name}</div><div class="share-sub">{formatDuration(stats.top_youtube_channels[0].minutes)}</div></div>{/if}
+			{#if stats.top_items_by_type['series']?.length > 0}<div class="share-block"><div class="share-lbl">{t('rewind.topSeries')}</div><div class="share-val">{stats.top_items_by_type['series'][0].title}</div><div class="share-sub">{formatDuration(stats.top_items_by_type['series'][0].minutes)}</div></div>{:else if stats.top_items_by_type['movie']?.length > 0}<div class="share-block"><div class="share-lbl">{t('rewind.topMovie')}</div><div class="share-val">{stats.top_items_by_type['movie'][0].title}</div><div class="share-sub">{formatDuration(stats.top_items_by_type['movie'][0].minutes)}</div></div>{/if}
+			{#if stats.streak_max > 0}<div class="share-block"><div class="share-lbl">{t('rewind.maxStreakLabel')}</div><div class="share-val">{tc('rewind.daysCount', stats.streak_max)}</div><div class="share-sub">{t('rewind.nonstop')}</div></div>{/if}
 		</div>
 		<div class="share-actions">
-			<button class="btn share-btn-primary" onclick={() => stats && exportShareImage(stats)}><Icon name="share" size={16} /> Descargar imagen</button>
+			<button class="btn share-btn-primary" onclick={() => stats && exportShareImage(stats)}><Icon name="share" size={16} /> {t('rewind.downloadImage')}</button>
 		</div>
 	</div>
 </section>
@@ -948,15 +961,15 @@
 <div class="glass quote-card">
 	<Icon name="sparkles" size={36} />
 	<div>
-		<div class="quote-text">En {year} consumiste <strong style="color:var(--primary)">{formatDuration(stats.total_consumed_minutes)}</strong> de contenido. Son <strong style="color:oklch(0.84 0.16 85)">{minutesToDays(stats.total_consumed_minutes)}</strong> de tu vida.</div>
-		<div class="quote-sub">Memento mori — ¿valió la pena cada uno?</div>
+		<div class="quote-text">{@html t('rewind.quoteText', { year, duration: formatDuration(stats.total_consumed_minutes), days: minutesToDays(stats.total_consumed_minutes) })}</div>
+		<div class="quote-sub">{t('rewind.quoteSub')}</div>
 	</div>
 </div>
 
 <!-- Todo lo consumido -->
 {#if stats.items.length > 0}
 	<section class="rewind-section">
-		<h2><span class="hico"><Icon name="list" size={15} /></span> Todo lo consumido <span class="h2-count">({stats.items.length})</span></h2>
+		<h2><span class="hico"><Icon name="list" size={15} /></span> {t('rewind.allConsumed')} <span class="h2-count">({stats.items.length})</span></h2>
 		<div class="content-grid">
 			{#each stats.items.slice(0, itemsVisible) as c (c.id)}
 				{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series' || c.content_type === 'game'}
@@ -969,7 +982,7 @@
 					<div class="info">
 						<div class="title">{c.title}</div>
 						<div class="meta">
-							<span class="badge">{TYPE_LABELS[c.content_type]}</span>
+							<span class="badge">{typeLabel(c.content_type)}</span>
 							{#if c.duration_minutes > 0}<span>{formatDuration(c.duration_minutes)}</span>{/if}
 							{#if c.author}<span>{c.author}</span>{/if}
 						</div>
@@ -979,7 +992,7 @@
 		</div>
 		{#if itemsVisible < stats.items.length}
 			<div class="show-more">
-				<button class="btn btn-lg" onclick={() => itemsVisible += ITEMS_PAGE}>Ver más ({stats.items.length - itemsVisible} restantes)</button>
+				<button class="btn btn-lg" onclick={() => itemsVisible += ITEMS_PAGE}>{t('rewind.seeMore', { remaining: stats.items.length - itemsVisible })}</button>
 			</div>
 		{/if}
 	</section>

@@ -3,6 +3,9 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';
 	import { onMount } from 'svelte';
+	import { t, tc, i18n, setLocale, fmtCurrency, type Locale, type TKey } from '$lib/i18n/index.svelte';
+
+	const LANGUAGES: [Locale, string][] = [['es', '🇪🇸 Español'], ['en', '🇬🇧 English'], ['pt', '🇧🇷 Português']];
 
 	let readingWpm = $state(200);
 	let readingWordsPerPage = $state(300);
@@ -28,8 +31,8 @@
 	});
 
 	// Reading speed test
-	const TEST_TEXT = `El hábito de la lectura es una de las mejores costumbres que puede cultivar una persona. A través de los libros descubrimos mundos que jamás podríamos visitar, conocemos personas que nunca existieron pero que nos enseñan verdades eternas, y exploramos ideas que transforman nuestra manera de ver la realidad. Leer con regularidad mejora la concentración, amplía el vocabulario y desarrolla la capacidad de pensar con claridad. No importa el género ni el tema: cada libro abre una puerta hacia algo nuevo. Algunos prefieren la ficción porque les permite escapar de la rutina diaria; otros se inclinan por el ensayo o la divulgación científica porque satisface su curiosidad sobre el mundo. Lo que importa es encontrar aquello que te haga querer seguir leyendo, página tras página, sin importar la hora ni el lugar. La lectura nos hace más empáticos, porque nos obliga a ponernos en el lugar de otros, a entender sus miedos, sus alegrías y sus contradicciones. Un buen libro puede cambiar la perspectiva de una persona para siempre.`;
-	const TEST_WORD_COUNT = TEST_TEXT.trim().split(/\s+/).length;
+	const testText = $derived(t('settings.reading.testText'));
+	const testWordCount = $derived(testText.trim().split(/\s+/).length);
 
 	let testPhase = $state<'idle' | 'reading' | 'result'>('idle');
 	let testStartTime = $state<number | null>(null);
@@ -45,7 +48,7 @@
 		if (!testStartTime) return;
 		const elapsed = (Date.now() - testStartTime) / 1000;
 		testElapsedSec = Math.round(elapsed);
-		testResultWpm = Math.round(TEST_WORD_COUNT / (elapsed / 60));
+		testResultWpm = Math.round(testWordCount / (elapsed / 60));
 		testPhase = 'result';
 	}
 
@@ -210,24 +213,24 @@
 	const spotifyOk = $derived(!!spotifyClientId.trim() && !!spotifyClientSecret.trim());
 	const initial   = $derived((auth.user?.name?.charAt(0) ?? '?').toUpperCase());
 
-	const wallpapers = [
-		{ id: 'aurora',    label: 'Aurora',    colors: ['#9b5de5','#00b4d8','#ff006e','#38b000'] },
-		{ id: 'atardecer', label: 'Atardecer', colors: ['#ff6b35','#f7c59f','#e63946','#ff9f1c'] },
-		{ id: 'oceano',    label: 'Océano',    colors: ['#0077b6','#00b4d8','#90e0ef','#48cae4'] },
-		{ id: 'bosque',    label: 'Bosque',    colors: ['#2d6a4f','#52b788','#95d5b2','#1b4332'] },
-	] as const;
+	const wallpapers: { id: string; labelKey: TKey; colors: string[] }[] = [
+		{ id: 'aurora',    labelKey: 'settings.appearance.wallpaper.aurora',    colors: ['#9b5de5','#00b4d8','#ff006e','#38b000'] },
+		{ id: 'atardecer', labelKey: 'settings.appearance.wallpaper.atardecer', colors: ['#ff6b35','#f7c59f','#e63946','#ff9f1c'] },
+		{ id: 'oceano',    labelKey: 'settings.appearance.wallpaper.oceano',    colors: ['#0077b6','#00b4d8','#90e0ef','#48cae4'] },
+		{ id: 'bosque',    labelKey: 'settings.appearance.wallpaper.bosque',    colors: ['#2d6a4f','#52b788','#95d5b2','#1b4332'] },
+	];
 </script>
 
 {#if auth.isLoggedIn}
 
 	<!-- Mobile title -->
-	<h1 class="cx-mtitle mobile-only">Ajustes</h1>
+	<h1 class="cx-mtitle mobile-only">{t('settings.title')}</h1>
 
 	<!-- Desktop topbar -->
 	<div class="desk-topbar desk-only" style="margin-bottom:18px;">
 		<div>
-			<h1 class="desk-title">Ajustes</h1>
-			<div class="cx-toptag">Personaliza tu bóveda y conexiones</div>
+			<h1 class="desk-title">{t('settings.title')}</h1>
+			<div class="cx-toptag">{t('settings.tagline')}</div>
 		</div>
 	</div>
 
@@ -235,7 +238,7 @@
 	<div class="glass cx-head">
 		<div class="cx-av">{initial}</div>
 		<div class="cx-id">
-			<div class="cx-kicker">Tu cuenta</div>
+			<div class="cx-kicker">{t('settings.yourAccount')}</div>
 			<div class="cx-name">{auth.user?.name}</div>
 			<div class="cx-email">{auth.user?.email}</div>
 		</div>
@@ -253,39 +256,54 @@
 			<div class="cx-card-head">
 				<div class="cx-ico">🎨</div>
 				<div class="cx-htxt">
-					<div class="cx-title">Apariencia</div>
-					<div class="cx-sub">Tema, fondo animado y nivel de cristal</div>
+					<div class="cx-title">{t('settings.appearance.title')}</div>
+					<div class="cx-sub">{t('settings.appearance.subtitle')}</div>
 				</div>
 			</div>
 			<div class="cx-body">
 				<!-- Tema -->
 				<div>
-					<span class="cx-label">Tema</span>
+					<span class="cx-label">{t('settings.appearance.theme')}</span>
 					<div class="cx-theme-row">
 						<button class="cx-theme dark" class:on={theme === 'dark'} onclick={() => { theme = 'dark'; applyAppearance(); }}>
 							<div class="cx-theme-prev"><div class="swatch"></div><div class="lines"><i></i><i></i><i></i></div></div>
-							<div class="cx-theme-tag"><span>🌙 Oscuro</span><span class="chk">✓</span></div>
+							<div class="cx-theme-tag"><span>{t('settings.appearance.dark')}</span><span class="chk">✓</span></div>
 						</button>
 						<button class="cx-theme light" class:on={theme === 'light'} onclick={() => { theme = 'light'; applyAppearance(); }}>
 							<div class="cx-theme-prev"><div class="swatch"></div><div class="lines"><i></i><i></i><i></i></div></div>
-							<div class="cx-theme-tag"><span>☀️ Claro</span><span class="chk">✓</span></div>
+							<div class="cx-theme-tag"><span>{t('settings.appearance.light')}</span><span class="chk">✓</span></div>
 						</button>
+					</div>
+				</div>
+
+				<!-- Idioma -->
+				<div>
+					<span class="cx-label">{t('settings.appearance.language')}</span>
+					<div style="display:flex; gap:8px;">
+						{#each LANGUAGES as [code, label]}
+							<button
+								class="btn"
+								class:btn-primary={i18n.locale === code}
+								onclick={() => setLocale(code)}
+								style="flex:1; justify-content:center; font-size:13px;"
+							>{label}</button>
+						{/each}
 					</div>
 				</div>
 
 				<!-- Fondo -->
 				<div>
-					<span class="cx-label">Fondo</span>
+					<span class="cx-label">{t('settings.appearance.background')}</span>
 					<div class="cx-wp-grid">
 						{#each wallpapers as wp}
-							<button class="cx-wp" class:on={wallpaper === wp.id} onclick={() => { wallpaper = wp.id as any; applyAppearance(); }} title={wp.label}>
+							<button class="cx-wp" class:on={wallpaper === wp.id} onclick={() => { wallpaper = wp.id as any; applyAppearance(); }} title={t(wp.labelKey)}>
 								<div class="cx-wp-sw">
 									{#each wp.colors as c}
 										<i style="background:{c};"></i>
 									{/each}
 									<span class="chk">✓</span>
 								</div>
-								<span>{wp.label}</span>
+								<span>{t(wp.labelKey)}</span>
 							</button>
 						{/each}
 					</div>
@@ -293,7 +311,7 @@
 
 				<!-- Blur -->
 				<div>
-					<span class="cx-label">Desenfoque del cristal · <span class="cx-blur-val">{blur}px</span></span>
+					<span class="cx-label">{t('settings.appearance.blur')} · <span class="cx-blur-val">{blur}px</span></span>
 					<div class="cx-blur">
 						<input class="cx-range" type="range" min="8" max="48" step="4" bind:value={blur} oninput={applyAppearance} />
 						<div class="cx-blur-demo"><div class="panel">glass</div></div>
@@ -307,21 +325,21 @@
 			<div class="cx-card-head">
 				<div class="cx-ico">📖</div>
 				<div class="cx-htxt">
-					<div class="cx-title">Lectura</div>
-					<div class="cx-sub">Para estimar la duración de libros</div>
+					<div class="cx-title">{t('settings.reading.title')}</div>
+					<div class="cx-sub">{t('settings.reading.subtitle')}</div>
 				</div>
 			</div>
 			<div class="cx-body">
 				<div class="cx-two">
 					<div class="cx-field">
-						<label for="cx-wpm">Velocidad</label>
+						<label for="cx-wpm">{t('settings.reading.speed')}</label>
 						<div class="cx-input-unit">
 							<input id="cx-wpm" class="text" type="number" bind:value={readingWpm} min="50" max="2000" />
 							<span class="u">ppm</span>
 						</div>
 					</div>
 					<div class="cx-field">
-						<label for="cx-pages">Palabras/página</label>
+						<label for="cx-pages">{t('settings.reading.wordsPerPage')}</label>
 						<div class="cx-input-unit">
 							<input id="cx-pages" class="text" type="number" bind:value={readingWordsPerPage} min="50" max="1000" />
 						</div>
@@ -329,32 +347,32 @@
 				</div>
 				<!-- Prueba de velocidad -->
 				<div class="cx-field">
-					<span class="cx-label">Prueba de velocidad lectora</span>
+					<span class="cx-label">{t('settings.reading.speedTest')}</span>
 					{#if testPhase === 'idle'}
-						<p class="cx-hint">Lee el texto a tu ritmo habitual y pulsa «Listo» al terminar.</p>
-						<button class="btn" onclick={startSpeedTest} style="margin-top:4px;">▶ Iniciar prueba</button>
+						<p class="cx-hint">{t('settings.reading.speedTestHint')}</p>
+						<button class="btn" onclick={startSpeedTest} style="margin-top:4px;">{t('settings.reading.startTest')}</button>
 					{:else if testPhase === 'reading'}
-						<div class="cx-test-text">{TEST_TEXT}</div>
-						<button class="btn btn-primary" onclick={stopSpeedTest} style="justify-content:center;">✓ Listo, terminé de leer</button>
+						<div class="cx-test-text">{testText}</div>
+						<button class="btn btn-primary" onclick={stopSpeedTest} style="justify-content:center;">{t('settings.reading.doneReading')}</button>
 					{:else if testPhase === 'result'}
 						<div class="cx-test-result">
 							<span class="cx-test-wpm">{testResultWpm}</span>
 							<span class="cx-test-unit">ppm</span>
 							<span class="cx-test-meta">
-								{TEST_WORD_COUNT} palabras · {testElapsedSec}s ·
-								{#if testResultWpm && testResultWpm < 100}lento
-								{:else if testResultWpm && testResultWpm < 200}medio
-								{:else if testResultWpm && testResultWpm < 350}rápido
-								{:else}muy rápido{/if}
+								{t('settings.reading.wordsCount', { count: testWordCount })} · {testElapsedSec}s ·
+								{#if testResultWpm && testResultWpm < 100}{t('settings.reading.slow')}
+								{:else if testResultWpm && testResultWpm < 200}{t('settings.reading.medium')}
+								{:else if testResultWpm && testResultWpm < 350}{t('settings.reading.fast')}
+								{:else}{t('settings.reading.veryFast')}{/if}
 							</span>
 						</div>
 						<div style="display:flex; gap:8px;">
-							<button class="btn btn-primary" onclick={applyTestWpm} style="flex:1; justify-content:center;">Aplicar velocidad</button>
-							<button class="btn" onclick={resetSpeedTest}>Repetir</button>
+							<button class="btn btn-primary" onclick={applyTestWpm} style="flex:1; justify-content:center;">{t('settings.reading.applySpeed')}</button>
+							<button class="btn" onclick={resetSpeedTest}>{t('settings.reading.repeat')}</button>
 						</div>
 					{/if}
 				</div>
-				<p class="cx-hint">Se guardan localmente en tu dispositivo.</p>
+				<p class="cx-hint">{t('settings.reading.localOnly')}</p>
 			</div>
 		</div>
 
@@ -363,21 +381,21 @@
 			<div class="cx-card-head">
 				<div class="cx-ico">⭐</div>
 				<div class="cx-htxt">
-					<div class="cx-title">Bóveda de Deseos</div>
-					<div class="cx-sub">Calcula cuánto tiempo tienes que trabajar</div>
+					<div class="cx-title">{t('settings.wishlist.title')}</div>
+					<div class="cx-sub">{t('settings.wishlist.subtitle')}</div>
 				</div>
 			</div>
 			<div class="cx-body">
 				<div class="cx-two">
 					<div class="cx-field">
-						<label for="cx-salary">Sueldo anual bruto</label>
+						<label for="cx-salary">{t('settings.wishlist.annualSalary')}</label>
 						<div class="cx-input-unit">
 							<input id="cx-salary" class="text" type="text" placeholder="28000" bind:value={salaryAnnual} />
 							<span class="u">{salaryCurrency === 'EUR' ? '€' : salaryCurrency === 'USD' ? '$' : '£'}</span>
 						</div>
 					</div>
 					<div class="cx-field">
-						<label for="cx-hours">Horas semanales</label>
+						<label for="cx-hours">{t('settings.wishlist.weeklyHours')}</label>
 						<div class="cx-input-unit">
 							<input id="cx-hours" class="text" type="number" min="1" max="80" bind:value={salaryWeeklyHours} />
 							<span class="u">h</span>
@@ -385,7 +403,7 @@
 					</div>
 				</div>
 				<div class="cx-field">
-					<label>Moneda</label>
+					<label>{t('settings.wishlist.currency')}</label>
 					<div style="display:flex; gap:8px;">
 						{#each [['EUR','€ Euro'], ['USD','$ USD'], ['GBP','£ GBP']] as [code, label]}
 							<button
@@ -400,12 +418,12 @@
 				{#if derivedHourlyRate()}
 					<div class="cx-salary-result">
 						<span class="cx-salary-rate">
-							{derivedHourlyRate()!.toLocaleString('es-ES', { style: 'currency', currency: salaryCurrency, maximumFractionDigits: 2 })}/h
+							{fmtCurrency(derivedHourlyRate()!, salaryCurrency, { maximumFractionDigits: 2 })}/h
 						</span>
-						<span class="cx-salary-label">· basado en {salaryWeeklyHours}h/semana · 48 semanas/año</span>
+						<span class="cx-salary-label">{t('settings.wishlist.basedOn', { hours: salaryWeeklyHours })}</span>
 					</div>
 				{/if}
-				<p class="cx-hint">Tu sueldo se guarda solo en este dispositivo y nunca se envía al servidor.</p>
+				<p class="cx-hint">{t('settings.wishlist.privacyHint')}</p>
 			</div>
 		</div>
 
@@ -414,8 +432,8 @@
 			<div class="cx-card-head">
 				<div class="cx-ico">🔌</div>
 				<div class="cx-htxt">
-					<div class="cx-title">APIs externas</div>
-					<div class="cx-sub">Mejoran la detección de contenido</div>
+					<div class="cx-title">{t('settings.apis.title')}</div>
+					<div class="cx-sub">{t('settings.apis.subtitle')}</div>
 				</div>
 			</div>
 			<div class="cx-body">
@@ -423,26 +441,26 @@
 					<div class="cx-api-top">
 						<div class="cx-api-glyph">T</div>
 						<div class="cx-api-name">TMDb</div>
-						<span class="cx-dot" class:ok={tmdbOk}>{tmdbOk ? 'Configurada' : 'Sin configurar'}</span>
+						<span class="cx-dot" class:ok={tmdbOk}>{tmdbOk ? t('settings.apis.configured') : t('settings.apis.notConfigured')}</span>
 					</div>
-					<input class="text" type="password" bind:value={tmdbApiKey} placeholder="API key de themoviedb.org" autocomplete="off" />
+					<input class="text" type="password" bind:value={tmdbApiKey} placeholder={t('settings.apis.tmdbPlaceholder')} autocomplete="off" />
 				</div>
 				<div class="cx-api" style="--g: var(--music);">
 					<div class="cx-api-top">
 						<div class="cx-api-glyph">S</div>
 						<div class="cx-api-name">Spotify</div>
-						<span class="cx-dot" class:ok={spotifyOk}>{spotifyOk ? 'Configurada' : 'Sin configurar'}</span>
+						<span class="cx-dot" class:ok={spotifyOk}>{spotifyOk ? t('settings.apis.configured') : t('settings.apis.notConfigured')}</span>
 					</div>
-					<input class="text" type="text" bind:value={spotifyClientId} placeholder="Client ID" autocomplete="off" />
+					<input class="text" type="text" bind:value={spotifyClientId} placeholder={t('settings.apis.spotifyClientId')} autocomplete="off" />
 					<div class="cx-pwrow">
 						{#if showSpotifySecret}
-							<input class="text" type="text" bind:value={spotifyClientSecret} placeholder="Client Secret" autocomplete="off" />
+							<input class="text" type="text" bind:value={spotifyClientSecret} placeholder={t('settings.apis.spotifyClientSecret')} autocomplete="off" />
 						{:else}
-							<input class="text" type="password" bind:value={spotifyClientSecret} placeholder="Client Secret" autocomplete="off" />
+							<input class="text" type="password" bind:value={spotifyClientSecret} placeholder={t('settings.apis.spotifyClientSecret')} autocomplete="off" />
 						{/if}
 						<button class="btn" type="button" onclick={() => showSpotifySecret = !showSpotifySecret}>{showSpotifySecret ? '🙈' : '👁'}</button>
 					</div>
-					<p class="cx-hint">Necesario para detectar canciones de Spotify. Crea una app gratis en <strong>developer.spotify.com</strong>.</p>
+					<p class="cx-hint">{@html t('settings.apis.spotifyHint')}</p>
 				</div>
 			</div>
 		</div>
@@ -453,42 +471,42 @@
 				<div class="cx-ico">🎮</div>
 				<div class="cx-htxt">
 					<div class="cx-title">Steam</div>
-					<div class="cx-sub">Sincroniza tu tiempo real de juego</div>
+					<div class="cx-sub">{t('settings.steam.subtitle')}</div>
 				</div>
-				<span class="cx-dot" class:ok={!!auth.user?.steam_id}>{auth.user?.steam_id ? 'Conectado' : 'Sin conectar'}</span>
+				<span class="cx-dot" class:ok={!!auth.user?.steam_id}>{auth.user?.steam_id ? t('settings.steam.connected') : t('settings.steam.notConnected')}</span>
 			</div>
 			<div class="cx-body">
 				<div class="cx-field">
-					<label for="cx-steam">Steam API Key</label>
-					<input id="cx-steam" class="text" type="password" bind:value={steamApiKey} placeholder="API key de steamcommunity.com/dev/apikey" autocomplete="off" />
-					<p class="cx-hint">Se guarda localmente. Consíguela gratis en <strong>steamcommunity.com/dev/apikey</strong>.</p>
+					<label for="cx-steam">{t('settings.steam.apiKeyLabel')}</label>
+					<input id="cx-steam" class="text" type="password" bind:value={steamApiKey} placeholder={t('settings.steam.apiKeyPlaceholder')} autocomplete="off" />
+					<p class="cx-hint">{@html t('settings.steam.apiKeyHint')}</p>
 				</div>
 
 				{#if auth.user?.steam_id}
 					<div class="cx-steam-connect">
 						<div class="settings-row" style="border:none; padding:0;">
-							<span class="k">Steam ID</span>
+							<span class="k">{t('settings.steam.steamId')}</span>
 							<span class="v steam-id">{auth.user.steam_id}</span>
 						</div>
 						<div style="display:flex; gap:8px; flex-wrap:wrap;">
 							<button class="btn cx-btn-steam" onclick={steamSync} disabled={steamSyncState === 'syncing'} style="flex:1; justify-content:center;">
-								{steamSyncState === 'syncing' ? '⏳ Sincronizando…' : '🎮 Sincronizar tiempo jugado'}
+								{steamSyncState === 'syncing' ? t('settings.steam.syncing') : t('settings.steam.syncButton')}
 							</button>
-							<button class="btn" onclick={steamDisconnect} style="opacity:0.6; font-size:12px;">Desconectar</button>
+							<button class="btn" onclick={steamDisconnect} style="opacity:0.6; font-size:12px;">{t('settings.steam.disconnect')}</button>
 						</div>
 						{#if steamSyncState === 'done' && steamSyncResult}
-							<p class="cx-hint" style="color:var(--game);">✅ {steamSyncResult.synced} juego{steamSyncResult.synced !== 1 ? 's' : ''} sincronizado{steamSyncResult.synced !== 1 ? 's' : ''} de {steamSyncResult.total_steam_games} en tu biblioteca.</p>
+							<p class="cx-hint" style="color:var(--game);">{tc('settings.steam.synced', steamSyncResult.synced, { total: steamSyncResult.total_steam_games })}</p>
 						{:else if steamSyncState === 'error'}
-							<p class="cx-hint" style="color:var(--red, var(--danger));">⚠ Error al sincronizar</p>
+							<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.steam.syncError')}</p>
 						{/if}
 					</div>
 				{:else}
 					<div class="cx-steam-connect">
-						<p>Conecta tu cuenta para volcar las horas reales jugadas en los juegos de tu bóveda.</p>
+						<p>{t('settings.steam.connectPrompt')}</p>
 						<button class="btn cx-btn-steam" onclick={() => window.location.href = `/api/auth/steam/login?token=${auth.token}${steamApiKey ? '&steam_api_key=' + encodeURIComponent(steamApiKey) : ''}`}>
-							🎮 Conectar con Steam
+							{t('settings.steam.connectButton')}
 						</button>
-						<p class="cx-hint">Requiere <code>STEAM_API_KEY</code> en el servidor y perfil de Steam público.</p>
+						<p class="cx-hint">{@html t('settings.steam.connectHint')}</p>
 					</div>
 				{/if}
 			</div>
@@ -498,9 +516,9 @@
 
 	<!-- Save bar -->
 	<div class="glass-strong cx-savebar">
-		<button class="btn btn-primary" onclick={saveLocalSettings}>Guardar ajustes</button>
-		<button class="btn" onclick={resetLocalSettings}>Restablecer lectura</button>
-		{#if saved}<span class="cx-saved">Guardado ✓</span>{/if}
+		<button class="btn btn-primary" onclick={saveLocalSettings}>{t('settings.save')}</button>
+		<button class="btn" onclick={resetLocalSettings}>{t('settings.resetReading')}</button>
+		{#if saved}<span class="cx-saved">{t('settings.saved')}</span>{/if}
 	</div>
 
 	<!-- Sesión -->
@@ -508,39 +526,38 @@
 		<div class="cx-card-head">
 			<div class="cx-ico">🔐</div>
 			<div class="cx-htxt">
-				<div class="cx-title">Sesión</div>
-				<div class="cx-sub">Conectado como {auth.user?.name}</div>
+				<div class="cx-title">{t('settings.session.title')}</div>
+				<div class="cx-sub">{t('settings.session.connectedAs', { name: auth.user?.name ?? '' })}</div>
 			</div>
-			<button class="btn btn-danger" onclick={logout} style="padding:9px 18px;">Cerrar sesión</button>
+			<button class="btn btn-danger" onclick={logout} style="padding:9px 18px;">{t('nav.logout')}</button>
 		</div>
 	</div>
 
 	<!-- Mantenimiento -->
 	<details class="glass cx-card cx-maint" style="margin-top:14px;">
 		<summary>
-			<span>🛠️</span><span>Mantenimiento</span><span class="chev">›</span>
+			<span>🛠️</span><span>{t('settings.maintenance.title')}</span><span class="chev">›</span>
 		</summary>
 		<div class="cx-body" style="padding-top:0;">
 			<p class="cx-hint" style="color:var(--text-muted); line-height:1.5;">
-				Actualiza plataformas, trailer, géneros y fecha de estreno de las películas y series con ID de TMDB.
-				Solo toca los que aún no tienen datos (sin <code>?force</code>).
+				{@html t('settings.maintenance.hint')}
 			</p>
 			<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
 				<button class="btn" onclick={() => runTmdbBackfill(false)} disabled={backfillState === 'running'}>
-					{backfillState === 'running' ? '⏳ Actualizando…' : '🔄 Actualizar metadatos TMDB'}
+					{backfillState === 'running' ? t('settings.maintenance.updating') : t('settings.maintenance.updateButton')}
 				</button>
-				<button class="btn" onclick={() => runTmdbBackfill(true)} disabled={backfillState === 'running'} style="opacity:0.6; font-size:11px;">Forzar todo</button>
+				<button class="btn" onclick={() => runTmdbBackfill(true)} disabled={backfillState === 'running'} style="opacity:0.6; font-size:11px;">{t('settings.maintenance.forceAll')}</button>
 			</div>
 			{#if backfillState === 'done'}
-				<p class="cx-hint" style="color:var(--game);">✅ Backfill iniciado en segundo plano — tardará ~30-60s. Recarga la bóveda cuando acabe.</p>
+				<p class="cx-hint" style="color:var(--game);">{t('settings.maintenance.backfillStarted')}</p>
 			{:else if backfillState === 'error'}
-				<p class="cx-hint" style="color:var(--red, var(--danger));">⚠ Error al ejecutar el backfill</p>
+				<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.maintenance.backfillError')}</p>
 			{/if}
 		</div>
 	</details>
 
 	<div class="cx-footer">
-		<a href="https://ko-fi.com/Z8Z81OW7UV" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:12px;">☕ Invítame una</a>
+		<a href="https://ko-fi.com/Z8Z81OW7UV" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:12px;">{t('settings.kofi')}</a>
 	</div>
 {/if}
 
