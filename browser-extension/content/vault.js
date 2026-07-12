@@ -4,4 +4,7 @@
 // extension is installed so it can hide the install banner.
 // ================================================================
 
-document.documentElement.setAttribute('data-dv-ext', '1');
+if (!window.__dvVaultInjected) {
+  window.__dvVaultInjected = true;
+  document.documentElement.setAttribute('data-dv-ext', '1');
+}

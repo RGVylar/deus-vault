@@ -11,6 +11,8 @@ chrome.runtime.onMessage.addListener(handleMessage);
 chrome.notifications.onButtonClicked.addListener(handleNotifButton);
 chrome.notifications.onClicked.addListener(handleNotifClick);
 chrome.notifications.onClosed.addListener((notifId) => pendingNotifs.delete(notifId));
+chrome.runtime.onStartup.addListener(reinjectContentScripts);
+chrome.runtime.onInstalled.addListener(reinjectContentScripts);
 
 // --- In-memory state (reset when SW suspends, that's OK) ---
 const pendingNotifs = new Map(); // notifId → { videoId, url, existingId, senderTabId }
@@ -18,6 +20,73 @@ let distFlushing = false;        // prevents concurrent distraction flushes
 
 // --- Constants ---
 const DEFAULT_API = 'https://content.mugrelore.com/api';
+
+// Mirrors manifest.json's "content_scripts" — kept in sync manually.
+// Needed because declarative content_scripts only fire on fresh navigations;
+// tabs that finished loading before this service worker was ready (e.g. right
+// after a PC/browser restart) never get the script and stay inert until refresh.
+const CONTENT_SCRIPT_GROUPS = [
+  {
+    matches: ['https://www.youtube.com/*'],
+    js: ['content/youtube.js'],
+    css: ['content/youtube.css'],
+  },
+  {
+    matches: [
+      'https://www.youtube.com/*',
+      'https://*.tiktok.com/*',
+      'https://x.com/*',
+      'https://twitter.com/*',
+      'https://*.instagram.com/*',
+    ],
+    js: ['content/distraction.js'],
+  },
+  {
+    matches: ['https://content.mugrelore.com/*'],
+    js: ['content/vault.js'],
+  },
+  {
+    matches: [
+      'https://*.amazon.es/*', 'https://*.amazon.com/*', 'https://*.amazon.co.uk/*',
+      'https://*.amazon.de/*', 'https://*.amazon.fr/*', 'https://*.fnac.es/*',
+      'https://*.pccomponentes.com/*', 'https://*.mediamarkt.es/*',
+      'https://*.elcorteingles.es/*', 'https://*.apple.com/*',
+      'https://*.ebay.es/*', 'https://*.ebay.com/*',
+      'https://*.zalando.es/*', 'https://*.zara.com/*',
+    ],
+    js: ['content/product.js'],
+  },
+];
+
+function matchPatternToRegExp(pattern) {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  return new RegExp(`^${escaped}$`);
+}
+
+async function reinjectContentScripts() {
+  let tabs;
+  try {
+    tabs = await chrome.tabs.query({});
+  } catch (_) {
+    return;
+  }
+
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url) continue;
+    for (const group of CONTENT_SCRIPT_GROUPS) {
+      const matches = group.matches.some((p) => matchPatternToRegExp(p).test(tab.url));
+      if (!matches) continue;
+      try {
+        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: group.js });
+        if (group.css) {
+          await chrome.scripting.insertCSS({ target: { tabId: tab.id }, files: group.css });
+        }
+      } catch (_) {
+        // Tab doesn't allow injection (chrome://, PDF viewer, etc.) — ignore
+      }
+    }
+  }
+}
 
 // ================================================================
 // Config helpers

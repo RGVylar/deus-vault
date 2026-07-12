@@ -166,9 +166,12 @@ function extractProduct() {
   };
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type === 'GET_PRODUCT') {
-    sendResponse(extractProduct());
-  }
-  return false;
-});
+if (!window.__dvProductInjected) {
+  window.__dvProductInjected = true;
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg.type === 'GET_PRODUCT') {
+      sendResponse(extractProduct());
+    }
+    return false;
+  });
+}

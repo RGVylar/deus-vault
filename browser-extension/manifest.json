@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Rastrea tu consumo de YouTube y otros medios en Deus Vault",
 
-  "permissions": ["storage", "notifications", "activeTab", "tabs"],
+  "permissions": ["storage", "notifications", "activeTab", "tabs", "scripting"],
   "host_permissions": [
     "https://www.youtube.com/*",
     "https://*.tiktok.com/*",
@@ -35,7 +35,7 @@
 
   "content_scripts": [
     {
-      "matches": ["https://www.youtube.com/watch*"],
+      "matches": ["https://www.youtube.com/*"],
       "js": ["content/youtube.js"],
       "css": ["content/youtube.css"],
       "run_at": "document_idle"
