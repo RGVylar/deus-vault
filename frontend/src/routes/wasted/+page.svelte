@@ -94,11 +94,10 @@
 	});
 
 	// Por día de la semana (suma de los últimos 30 días)
+	// Las abreviaturas traducidas se repiten en varios idiomas (en: M T W T F S S;
+	// pt: S T Q Q S S D), así que el {#each} se keyea por `id`, no por `label`.
+	const WEEKDAY_IDS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 	let weekdayData = $derived.by(() => {
-		const labels = [
-			t('wasted.weekday.mon'), t('wasted.weekday.tue'), t('wasted.weekday.wed'),
-			t('wasted.weekday.thu'), t('wasted.weekday.fri'), t('wasted.weekday.sat'), t('wasted.weekday.sun')
-		];
 		const bad = Array(7).fill(0);
 		const good = Array(7).fill(0);
 		for (const d of dailyPairs) {
@@ -106,7 +105,12 @@
 			bad[dow] += d.seconds;
 			good[dow] += d.goodSeconds;
 		}
-		return labels.map((label, i) => ({ label, bad: bad[i], good: good[i] }));
+		return WEEKDAY_IDS.map((id, i) => ({
+			id,
+			label: t(`wasted.weekday.${id}`),
+			bad: bad[i],
+			good: good[i]
+		}));
 	});
 
 	let maxWeekday = $derived(
@@ -240,7 +244,7 @@
 				<section class="panel">
 					<h2 class="panel-title">{t('wasted.byWeekday')} <span class="panel-sub">{t('wasted.last30daysLower')}</span></h2>
 					<div class="wchart">
-						{#each weekdayData as w (w.label)}
+						{#each weekdayData as w (w.id)}
 							<div class="wcol" title="{w.label}: {fmtDur(w.good)} {t('wasted.good')} · {fmtDur(w.bad)} {t('wasted.trash')}">
 								<div class="wbars">
 									<div class="wbar good" style="height:{Math.max(w.good > 0 ? 3 : 1, (w.good / maxWeekday) * 100)}%"></div>
