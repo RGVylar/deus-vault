@@ -356,17 +356,17 @@
 	<div class="tcell">
 		<div class="panel-title"><Icon name="activity" size={16} /> {t('rewind.dailyActivity')}</div>
 		<div class="heatwrap">
-			<div style="grid-template-columns: 18px repeat({calendarGrid.length}, 11px); display:grid; gap:2px; margin-bottom:3px;">
+			<div style="grid-template-columns: 16px repeat({calendarGrid.length}, 9px); display:grid; gap:2px; margin-bottom:3px;">
 				<div></div>
 				{#each calendarGrid as _, col}
 					{@const label = calMonthLabels.find(m => m.col === col)}
-					<div style="font-size:8px; color:var(--text-muted);">{label ? label.label : ''}</div>
+					<div style="font-size:8px; color:var(--text-muted); white-space:nowrap;">{label ? label.label : ''}</div>
 				{/each}
 			</div>
 			<div style="display:flex; gap:4px;">
 				<div style="display:flex; flex-direction:column; gap:2px;">
 					{#each DAYS as d, i}
-						<div style="height:9px; font-size:7px; color:var(--text-muted); line-height:9px;">{i % 2 === 0 ? d : ''}</div>
+						<div style="width:14px; height:9px; font-size:7px; color:var(--text-muted); line-height:9px;">{i % 2 === 0 ? d : ''}</div>
 					{/each}
 				</div>
 				<div style="display:flex; gap:2px;">
