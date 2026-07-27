@@ -5,7 +5,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, typeLabel } from '$lib/utils';
 	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
-	import type { RewindStats } from '$lib/types';
+	import type { Content, RewindStats } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import Chapter from '$lib/components/Chapter.svelte';
 	import { exportShareImage } from '$lib/rewindShare';
@@ -163,7 +163,11 @@
 
 	// ── Zona YouTube ──────────────────────────────────────────────
 	const ytStats = $derived(stats?.by_type['youtube'] ?? null);
-	const ytAvg = $derived(ytStats && ytStats.count > 0 ? Math.round(ytStats.minutes / ytStats.count) : 0);
+	// Solo los vídeos con duración conocida: los de 0min hundirían la media
+	const ytTimedCount = $derived(
+		stats ? (stats.items as Content[]).filter(i => i.content_type === 'youtube' && i.duration_minutes > 0).length : 0
+	);
+	const ytAvg = $derived(ytStats && ytTimedCount > 0 ? Math.round(ytStats.minutes / ytTimedCount) : 0);
 	const ytPct = $derived(ytStats && stats ? Math.round(ytStats.minutes / stats.total_consumed_minutes * 100) : 0);
 	const maxMovieMinutes = $derived(
 		stats?.top_items_by_type['movie']?.length ? Math.max(...stats.top_items_by_type['movie'].map(m => m.minutes)) : 0
@@ -525,7 +529,7 @@
 				{#each stats.top_youtube_genres as g}
 					{@const pct = Math.round(g.minutes / maxYtGenreMinutes * 100)}
 					<div class="ytg-row">
-						<div class="ytg-name">{g.genre}</div>
+						<div class="ytg-name">{g.genre === '__uncategorized__' ? t('rewind.uncategorized') : g.genre}</div>
 						<div class="ytg-bar-wrap">
 							<div class="ytg-bar" style="width:{pct}%"></div>
 						</div>
@@ -851,8 +855,8 @@
 			<div class="streak-flame"><Icon name="flame" size={90} /></div>
 			<div class="pcard-kicker"><Icon name="flame" size={12} /> {t('rewind.longestStreak')}</div>
 			<div class="streak-num">{stats.streak_max}</div>
-			<div style="font-size:15px; font-weight:700; color:var(--text-muted)">{t('rewind.daysInARow')}</div>
-			{#if stats.streak_current > 0}<div class="pcard-sub">{t('rewind.currentStreak', { count: stats.streak_current })}</div>{/if}
+			<div style="font-size:15px; font-weight:700; color:var(--text-muted)">{tc('rewind.daysInARow', stats.streak_max)}</div>
+			{#if stats.streak_current > 0}<div class="pcard-sub">{tc('rewind.currentStreak', stats.streak_current)}</div>{/if}
 		</div>
 	{/if}
 	<!-- Patrón -->
@@ -913,6 +917,9 @@
 				{#each stats.epic_day_items as it}
 					<div class="epic-row"><Icon name={TYPE_ICON[it.content_type] ?? 'list'} size={14} /><span class="t">{it.title}</span>{#if it.duration_minutes > 0}<span class="epic-dur">{formatDuration(it.duration_minutes)}</span>{/if}</div>
 				{/each}
+				{#if stats.epic_day_count > stats.epic_day_items.length}
+					<div class="epic-row epic-more">{t('rewind.epicDayMore', { count: stats.epic_day_count - stats.epic_day_items.length })}</div>
+				{/if}
 			</div>
 		</div>
 	{/if}
@@ -1238,6 +1245,7 @@
 	.epic-row :global(svg) { flex-shrink: 0; opacity: 0.7; }
 	.epic-row .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 	.epic-dur { font-weight: 700; color: var(--text-dim); flex-shrink: 0; }
+	.epic-more { color: var(--text-dim); font-style: italic; opacity: 0.8; }
 
 	/* Logros */
 	.ms-grid { display: grid; }
