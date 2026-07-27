@@ -697,6 +697,9 @@ def mark_consumed(
     # Clear abandoned state — consuming always wins over abandoned
     content.abandoned = False
     content.abandoned_at = None
+    # Pinned/priority only makes sense for the pending vault — clear it now,
+    # otherwise it keeps sorting first forever in the Consumed tab too.
+    content.pinned = False
     db.commit()
     db.refresh(content)
     return content
@@ -715,6 +718,7 @@ def mark_abandoned(
     content.abandoned_at = datetime.now(timezone.utc)
     content.consumed = False
     content.consumed_at = None
+    content.pinned = False
     db.commit()
     db.refresh(content)
     return content
