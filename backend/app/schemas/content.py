@@ -217,4 +217,5 @@ class RewindStats(BaseModel):
     prev_year_count: int           # total consumed items in year-1
     best_rated_item: dict | None   # {title, rating, content_type}
     worst_rated_item: dict | None  # {title, rating, content_type}
-    epic_day_items: list[dict]     # [{title, content_type, duration_minutes}] for best day
+    epic_day_items: list[dict]     # [{title, content_type, duration_minutes}] for best day, longest first
+    epic_day_count: int = 0        # total items that day (epic_day_items is capped at 4)

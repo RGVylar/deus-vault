@@ -37,6 +37,9 @@ router = APIRouter(prefix="/contents", tags=["contents"])
 
 PAGE_LIMIT = 20
 
+# Bucket for YouTube videos with no genre metadata. The frontend localizes it.
+UNCATEGORIZED_GENRE = "__uncategorized__"
+
 
 def _is_leap_year(year: int) -> bool:
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
@@ -400,18 +403,18 @@ def rewind(
         for v in sorted(book_authors.values(), key=lambda x: x["minutes"], reverse=True)[:5]
     ]
 
-    # Top YouTube genres (from the comma-separated genres field)
+    # Top YouTube genres (from the comma-separated genres field).
+    # Videos with no genre go to their own bucket instead of vanishing from the chart.
     yt_genre_data: dict[str, dict] = {}
     for c in items:
-        if c.content_type == ContentType.youtube and c.genres:
-            for g in c.genres.split(","):
-                g = g.strip()
-                if not g:
-                    continue
-                if g not in yt_genre_data:
-                    yt_genre_data[g] = {"genre": g, "count": 0, "minutes": 0}
-                yt_genre_data[g]["count"] += 1
-                yt_genre_data[g]["minutes"] += _effective_duration(c)
+        if c.content_type != ContentType.youtube:
+            continue
+        tags = [g.strip() for g in (c.genres or "").split(",") if g.strip()]
+        for g in (tags or [UNCATEGORIZED_GENRE]):
+            if g not in yt_genre_data:
+                yt_genre_data[g] = {"genre": g, "count": 0, "minutes": 0}
+            yt_genre_data[g]["count"] += 1
+            yt_genre_data[g]["minutes"] += _effective_duration(c)
     top_youtube_genres = [
         YoutubeGenreStat(**v)
         for v in sorted(yt_genre_data.values(), key=lambda x: x["minutes"], reverse=True)
@@ -458,6 +461,7 @@ def rewind(
 
     # Items consumed on the best (most minutes) day
     epic_day_items: list[dict] = []
+    epic_day_count = 0
     if calendar:
         best_day_key = max(calendar.keys(), key=lambda k: calendar[k].minutes)
         best_day_date = datetime.strptime(best_day_key, "%Y-%m-%d").date()
@@ -465,9 +469,11 @@ def rewind(
             c for c in items
             if c.consumed_at and c.consumed_at.date() == best_day_date
         ]
+        epic_day_count = len(day_items)
+        # Longest first — otherwise the 4 shown are arbitrary and never explain the day's total
         epic_day_items = [
             {"title": c.title, "content_type": c.content_type.value, "duration_minutes": _effective_duration(c)}
-            for c in day_items[:4]
+            for c in sorted(day_items, key=_effective_duration, reverse=True)[:4]
         ]
 
     prev_start = datetime(year - 1, 1, 1)
@@ -516,6 +522,7 @@ def rewind(
         best_rated_item=best_rated_item,
         worst_rated_item=worst_rated_item,
         epic_day_items=epic_day_items,
+        epic_day_count=epic_day_count,
     )
 
 
@@ -925,6 +932,62 @@ async def backfill_channel_thumbnails(
 
     db.commit()
     logger.info("backfill: done — updated=%d failed=%d total=%d", updated, failed, len(items))
+    return {"updated": updated, "failed": failed, "total": len(items)}
+
+
+@router.post("/backfill-youtube-durations")
+async def backfill_youtube_durations(
+    user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Re-fetch duration for YouTube items stored with duration_minutes = 0.
+
+    Those items count towards the item totals but contribute no minutes, which
+    skews the rewind averages. Also fills in author/genres when they're missing
+    (a failed lookup tends to leave all three empty or garbled).
+    """
+    from app.routers.lookup import _get_youtube_metadata
+
+    items = list(db.scalars(
+        select(Content).where(
+            Content.user_id == user.id,
+            Content.content_type == "youtube",
+            Content.source_id.isnot(None),
+            or_(Content.duration_minutes == 0, Content.duration_minutes.is_(None)),
+        )
+    ).all())
+
+    if not items:
+        return {"updated": 0, "failed": 0, "total": 0}
+
+    logger.info("yt-duration-backfill: found %d zero-duration items for user %s", len(items), user.id)
+
+    updated = 0
+    failed = 0
+
+    for item in items:
+        watch_url = f"https://www.youtube.com/watch?v={item.source_id}"
+        try:
+            info = await _get_youtube_metadata(watch_url, item.source_id, yt_timeout=15.0)
+            mins = (info or {}).get("duration_minutes") or 0
+            if mins > 0:
+                item.duration_minutes = mins
+                if info.get("author"):
+                    item.author = info["author"]
+                if info.get("genres") and not item.genres:
+                    item.genres = info["genres"]
+                updated += 1
+                logger.info("yt-duration-backfill: [OK]  %s — %s (%dmin)", item.source_id, item.title[:50], mins)
+            else:
+                failed += 1
+                logger.warning("yt-duration-backfill: [MISS] %s — %s", item.source_id, item.title[:50])
+        except Exception as exc:
+            failed += 1
+            logger.warning("yt-duration-backfill: [ERR]  %s — %s: %s", item.source_id, item.title[:50], exc)
+        await asyncio.sleep(0.5)
+
+    db.commit()
+    logger.info("yt-duration-backfill: done — updated=%d failed=%d total=%d", updated, failed, len(items))
     return {"updated": updated, "failed": failed, "total": len(items)}
 
 
