@@ -10,6 +10,11 @@
 
 	const LIMIT = 20;
 
+	// Contenido de "campaña": lo tienes entre manos días o semanas, así que marcar
+	// cuándo empezaste dice algo. Películas, vídeos y canciones se consumen de una
+	// sentada — ahí la fecha de inicio sería la de fin.
+	const STARTABLE: ContentType[] = ['game', 'series', 'book'];
+
 	const PROVIDER_LABELS: Record<string, string> = {
 		netflix: 'Netflix', prime: 'Prime Video', max: 'Max',
 		disney: 'Disney+', crunchyroll: 'Crunchyroll', stremio: 'Stremio',
@@ -696,7 +701,7 @@ $effect(() => {
 				patch.episode_count = editEpisodeCount ? Number(editEpisodeCount) : null;
 				patch.seasons = editSeasons ? Number(editSeasons) : null;
 			}
-			if (editingItem.content_type === 'game') {
+			if (STARTABLE.includes(editingItem.content_type)) {
 				patch.started_at = editStartedAt ? new Date(editStartedAt + 'T12:00:00').toISOString() : null;
 			}
 			const updated = await api.patch<Content>(`/contents/${editingItem.id}`, patch);
@@ -1083,8 +1088,8 @@ $effect(() => {
 							{/if}
 						{/if}
 
-						<!-- Game start date -->
-						{#if c.content_type === 'game'}
+						<!-- Fecha de inicio (juegos, series y libros) -->
+						{#if STARTABLE.includes(c.content_type)}
 							{#if editingStartedAtCardId === c.id}
 								<div class="progress-edit-wrap">
 									<span class="progress-edit-label">{t('home.startDate')}</span>
@@ -1104,7 +1109,7 @@ $effect(() => {
 							{:else if c.started_at}
 								<div class="started-row">
 									<button class="started-badge" onclick={() => startEditStartedAt(c)} title={t('home.editStartDate')}>
-										{t('home.started', { date: fmtDateI18n(new Date(c.started_at), {day:'numeric', month:'short', year:'numeric'}) })} <span class="started-edit-ico">✏️</span>
+										{TYPE_ICONS[c.content_type] ?? '▶'} {t('home.started', { date: fmtDateI18n(new Date(c.started_at), {day:'numeric', month:'short', year:'numeric'}) })} <span class="started-edit-ico">✏️</span>
 									</button>
 									<button class="started-clear" onclick={() => clearStarted(c)} title={t('home.removeStart')}>×</button>
 								</div>
@@ -1276,7 +1281,7 @@ $effect(() => {
 						</div>
 					</div>
 				{/if}
-				{#if editingItem.content_type === 'game'}
+				{#if STARTABLE.includes(editingItem.content_type)}
 					<div class="field">
 						<label for="edit-started-at">{t('home.startDate')}</label>
 						<input id="edit-started-at" class="text" type="date" bind:value={editStartedAt} />

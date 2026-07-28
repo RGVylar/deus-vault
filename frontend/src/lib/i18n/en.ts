@@ -540,7 +540,7 @@ export const en = {
 	'home.addProgressShort': '+ progress',
 	'home.startDate': 'Start date',
 	'home.editStartDate': 'Edit start date',
-	'home.started': '🎮 Started: {date}',
+	'home.started': 'Started: {date}',
 	'home.removeStart': 'Remove start',
 	'home.startPlaying': '▶ Start',
 	'home.markAsStarted': 'Mark as started',

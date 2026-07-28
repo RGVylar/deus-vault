@@ -539,7 +539,7 @@ export const es = {
 	'home.addProgressShort': '+ progreso',
 	'home.startDate': 'Fecha de inicio',
 	'home.editStartDate': 'Editar fecha de inicio',
-	'home.started': '🎮 Iniciado: {date}',
+	'home.started': 'Iniciado: {date}',
 	'home.removeStart': 'Quitar inicio',
 	'home.startPlaying': '▶ Empezar',
 	'home.markAsStarted': 'Marcar como empezado',
