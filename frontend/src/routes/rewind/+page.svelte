@@ -233,8 +233,9 @@
 			ms.push({ icon: 'calendar', tt: t('rewind.daysOfContent', { days: Math.floor(stats.total_consumed_minutes / (60*24)) }), ss: t('rewind.accumulatedInYear'), color: 'oklch(0.74 0.14 280)' });
 		if (stats.completion_rate !== null && stats.completion_rate >= 85)
 			ms.push({ icon: 'check', tt: t('rewind.completedPct', { pct: stats.completion_rate }), ss: t('rewind.almostNothingResists'), color: 'oklch(0.76 0.18 150)' });
-		if (stats.streaming_breakdown.length >= 3)
-			ms.push({ icon: 'tv', tt: t('rewind.platformCount', { count: stats.streaming_breakdown.length }), ss: stats.streaming_breakdown.map(p => p.name).join(', '), color: 'oklch(0.74 0.16 210)' });
+		const realPlatforms = stats.streaming_breakdown.filter(p => p.name !== '__unknown__');
+		if (realPlatforms.length >= 3)
+			ms.push({ icon: 'tv', tt: t('rewind.platformCount', { count: realPlatforms.length }), ss: realPlatforms.map(p => p.name).join(', '), color: 'oklch(0.74 0.16 210)' });
 		if ((stats.by_type['youtube']?.count ?? 0) >= 50)
 			ms.push({ icon: 'play', tt: t('rewind.videos50'), ss: t('rewind.thisYearCount', { count: stats.by_type['youtube'].count }), color: 'var(--youtube)' });
 		if ((stats.by_type['book']?.count ?? 0) >= 10)
@@ -623,14 +624,17 @@
 			<h2><span class="hico"><Icon name="film" size={15} /></span> {t('rewind.streamingPlatforms')}</h2>
 			<div class="surface streaming-grid" style="grid-template-columns:repeat({stats.streaming_breakdown.length}, 1fr)">
 				{#each stats.streaming_breakdown as plat, i}
+					{@const unknown = plat.name === '__unknown__'}
 					{@const ppct = Math.round(plat.minutes / maxStreamingMins * 100)}
-					{@const pc = PLATFORM_COLORS[plat.name] ?? 'var(--movie)'}
-					{@const avgMin = plat.count > 0 ? Math.round(plat.minutes / plat.count) : 0}
-					<div class="plat-card" style="--pc:{pc}">
-						<div class="plat-header"><span class="plat-name">{plat.name}</span><span class="plat-rank">#{i + 1}</span></div>
+					{@const pc = unknown ? 'var(--text-dim)' : (PLATFORM_COLORS[plat.name] ?? 'var(--movie)')}
+					<div class="plat-card" class:plat-unknown={unknown} style="--pc:{pc}">
+						<div class="plat-header">
+							<span class="plat-name">{unknown ? t('rewind.unknownPlatform') : plat.name}</span>
+							{#if !unknown}<span class="plat-rank">#{i + 1}</span>{/if}
+						</div>
 						<div class="plat-time">{formatDuration(plat.minutes)}</div>
 						<div class="plat-bar-wrap"><div class="plat-bar" style="width:{ppct}%;"></div></div>
-						<div class="plat-footer"><span class="plat-count">{tc('rewind.titleCount', plat.count)}</span>{#if avgMin > 0}<span class="plat-avg">~{formatDuration(avgMin)}/u</span>{/if}</div>
+						<div class="plat-footer"><span class="plat-count">{tc('rewind.titleCount', plat.count)}</span></div>
 					</div>
 				{/each}
 			</div>
@@ -1180,6 +1184,9 @@
 	.plat-footer { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
 	.plat-count { font-size: 10px; color: rgba(255,255,255,0.55); }
 	.plat-avg { font-size: 10px; color: rgba(255,255,255,0.38); font-style: italic; }
+	/* Cubo "sin plataforma": presente pero visiblemente secundario */
+	.plat-unknown { opacity: 0.62; }
+	.plat-unknown .plat-name { font-style: italic; }
 
 	/* Reparto por tipo */
 	.div-bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; gap: 1px; margin-bottom: 12px; }

@@ -37,8 +37,9 @@ router = APIRouter(prefix="/contents", tags=["contents"])
 
 PAGE_LIMIT = 20
 
-# Bucket for YouTube videos with no genre metadata. The frontend localizes it.
+# Buckets for missing metadata. The frontend localizes both.
 UNCATEGORIZED_GENRE = "__uncategorized__"
+UNKNOWN_PLATFORM = "__unknown__"
 
 
 def _is_leap_year(year: int) -> bool:
@@ -371,22 +372,31 @@ def rewind(
                 for c in sorted_items
             ]
 
-    # Streaming platform breakdown for movies + series
+    # Streaming platform breakdown for movies + series.
+    # provider is the real column for this; author is only a fallback for rows
+    # added before it existed (there it holds the platform for streaming items
+    # but the studio for movies, hence the name check).
     PLATFORM_NAMES = {"netflix", "prime video", "max", "disney+", "crunchyroll", "stremio", "hbo", "apple tv+", "paramount+", "peacock", "hulu"}
     platform_data: dict[str, dict] = {}
     for c in items:
-        if c.content_type in (ContentType.movie, ContentType.series) and c.author:
+        if c.content_type not in (ContentType.movie, ContentType.series):
+            continue
+        plat: str | None = None
+        if c.provider:
+            plat = _PROVIDER_TO_AUTHOR.get(c.provider, c.provider.replace("_", " ").title())
+        elif c.author and any(p in c.author.lower() for p in PLATFORM_NAMES):
             plat = c.author.strip()
-            plat_lower = plat.lower()
-            # Only count known platforms, not random author names
-            if any(p in plat_lower for p in PLATFORM_NAMES):
-                if plat not in platform_data:
-                    platform_data[plat] = {"name": plat, "count": 0, "minutes": 0}
-                platform_data[plat]["count"] += 1
-                platform_data[plat]["minutes"] += _effective_duration(c)
+        # Nothing known — bucket it instead of dropping it, or the section
+        # silently hides titles and the counts stop adding up.
+        key = plat or UNKNOWN_PLATFORM
+        if key not in platform_data:
+            platform_data[key] = {"name": key, "count": 0, "minutes": 0}
+        platform_data[key]["count"] += 1
+        platform_data[key]["minutes"] += _effective_duration(c)
     streaming_breakdown = [
         StreamingPlatform(**v)
-        for v in sorted(platform_data.values(), key=lambda x: x["minutes"], reverse=True)
+        # Known platforms by watch time; the unknown bucket always trails.
+        for v in sorted(platform_data.values(), key=lambda x: (x["name"] == UNKNOWN_PLATFORM, -x["minutes"]))
     ]
 
     # Top book authors
