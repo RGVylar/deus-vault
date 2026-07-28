@@ -118,7 +118,7 @@
 		return 'thumb';
 	}
 
-	let stats: VaultStats | null = $state(null);
+	let stats = $state<VaultStats | null>(null);
 	let contents: Content[] = $state([]);
 	let total = $state(0);
 	let offset = $state(0);

@@ -10,7 +10,7 @@
 	const LIMIT = 20;
 
 	let contents: Content[] = $state([]);
-	let stats: VaultStats | null = $state(null);
+	let stats = $state<VaultStats | null>(null);
 	let filter: ContentType | 'all' = $state('all');
 	let tab: 'consumed' | 'abandoned' = $state('consumed');
 	let loading = $state(true);

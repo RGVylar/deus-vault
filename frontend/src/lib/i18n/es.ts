@@ -436,6 +436,7 @@ export const es = {
 	'rewind.longestBooks': 'Libros más largos',
 	'rewind.tracks': 'temas',
 	'rewind.musicHook': '<strong>{artist}</strong> sonó más que nadie.',
+	'rewind.musicWhisper': 'apenas un suspiro en todo el año',
 	'rewind.mostListenedArtists': 'Artistas más escuchados',
 	'rewind.trackCount_one': '{count} tema',
 	'rewind.trackCount_other': '{count} temas',

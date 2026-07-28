@@ -437,6 +437,7 @@ export const en = {
 	'rewind.longestBooks': 'Longest books',
 	'rewind.tracks': 'tracks',
 	'rewind.musicHook': '<strong>{artist}</strong> played more than anyone else.',
+	'rewind.musicWhisper': 'barely a whisper all year',
 	'rewind.mostListenedArtists': 'Most listened artists',
 	'rewind.trackCount_one': '{count} track',
 	'rewind.trackCount_other': '{count} tracks',

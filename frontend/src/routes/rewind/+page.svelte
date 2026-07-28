@@ -48,7 +48,7 @@
 	}
 
 	let year = $state(new Date().getFullYear());
-	let stats: RewindStats | null = $state(null);
+	let stats = $state<RewindStats | null>(null);
 	let loading = $state(false);
 	let loadError = $state<string | null>(null);
 	let itemsVisible = $state(12);
@@ -245,10 +245,10 @@
 	});
 
 	// Stats por tipo (para las secciones de cada tipo)
-	function typeAvg(type: string): number { const t = stats?.by_type[type]; return t && t.count > 0 ? Math.round(t.minutes / t.count) : 0; }
-	function typePct(type: string): number { const t = stats?.by_type[type]; return t && stats ? Math.round(t.minutes / stats.total_consumed_minutes * 100) : 0; }
 	// Artistas de música (campo opcional del backend; si no existe, la sub-sección se oculta)
 	const musicArtists = $derived((((stats as unknown as { top_music_artists?: { name: string; count: number; minutes: number }[] })?.top_music_artists) ?? []));
+	/** Menos de dos horas en todo un año no da para un capítulo: se resume en una línea. */
+	const musicTrivial = $derived((stats?.by_type['music']?.minutes ?? 0) < 120);
 
 	const ITEMS_PAGE = 12;
 
@@ -525,7 +525,6 @@
 			<div class="estat2"><div class="e-ic"><Icon name="play" size={20} /></div><div class="e-v">{ytStats.count}</div><div class="e-l">{t('rewind.labels.videos')}</div></div>
 			<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(ytStats.minutes)}</div><div class="e-l">{t('rewind.labels.inTotal')}</div></div>
 			<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(ytAvg)}</div><div class="e-l">{t('rewind.labels.avgPerVideo')}</div></div>
-			<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{ytPct}%</div><div class="e-l">{t('rewind.labels.ofYourConsumption')}</div></div>
 		</div>
 	{/if}
 
@@ -609,8 +608,6 @@
 	<div class="surface kpi-strip" style="--accent:var(--series)">
 		<div class="estat2"><div class="e-ic"><Icon name="tv" size={20} /></div><div class="e-v">{stats.by_type['series'].count}</div><div class="e-l">{t('rewind.series')}</div></div>
 		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['series'].minutes)}</div><div class="e-l">{t('rewind.labels.inTotal')}</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('series'))}</div><div class="e-l">{t('rewind.labels.avgPerItem')}</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('series')}%</div><div class="e-l">{t('rewind.labels.ofYourConsumption')}</div></div>
 	</div>
 	{#if (stats.top_items_by_type['series']?.length ?? 0) > 0}
 		<section class="rewind-section">
@@ -659,8 +656,6 @@
 	<div class="surface kpi-strip" style="--accent:var(--game)">
 		<div class="estat2"><div class="e-ic"><Icon name="game" size={20} /></div><div class="e-v">{stats.by_type['game'].count}</div><div class="e-l">{t('rewind.games')}</div></div>
 		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['game'].minutes)}</div><div class="e-l">{t('rewind.labels.inTotal')}</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('game'))}</div><div class="e-l">{t('rewind.labels.avgPerItem')}</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('game')}%</div><div class="e-l">{t('rewind.labels.ofYourConsumption')}</div></div>
 	</div>
 	{#if gameTimeline.length > 0}
 		<section class="rewind-section">
@@ -748,8 +743,6 @@
 	<div class="surface kpi-strip" style="--accent:var(--movie)">
 		<div class="estat2"><div class="e-ic"><Icon name="film" size={20} /></div><div class="e-v">{stats.by_type['movie'].count}</div><div class="e-l">{t('rewind.movies')}</div></div>
 		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['movie'].minutes)}</div><div class="e-l">{t('rewind.labels.inTotal')}</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('movie'))}</div><div class="e-l">{t('rewind.labels.avgPerItem')}</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('movie')}%</div><div class="e-l">{t('rewind.labels.ofYourConsumption')}</div></div>
 	</div>
 	{#if (stats.top_items_by_type['movie']?.length ?? 0) > 0}
 		<section class="rewind-section">
@@ -778,8 +771,6 @@
 	<div class="surface kpi-strip" style="--accent:var(--book)">
 		<div class="estat2"><div class="e-ic"><Icon name="book" size={20} /></div><div class="e-v">{stats.by_type['book'].count}</div><div class="e-l">{t('rewind.books')}</div></div>
 		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['book'].minutes)}</div><div class="e-l">{t('rewind.labels.inTotal')}</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('book'))}</div><div class="e-l">{t('rewind.labels.avgPerItem')}</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('book')}%</div><div class="e-l">{t('rewind.labels.ofYourConsumption')}</div></div>
 	</div>
 	{#if stats.top_book_authors.length > 0}
 		<section class="rewind-section">
@@ -813,7 +804,15 @@
 </Chapter>
 {/if}
 
-{#if stats.by_type['music']}
+{#if stats.by_type['music'] && musicTrivial}
+	<!-- Música testimonial: una línea. Dedicarle un capítulo con la misma
+	     pinta que Juegos (172h) falsea su peso en el año. -->
+	<div class="surface whisper-row" style="--accent:var(--music)">
+		<span class="w-ic"><Icon name="music" size={16} /></span>
+		<span class="w-v">{formatDuration(stats.by_type['music'].minutes)}</span>
+		<span class="w-t">{tc('rewind.trackCount', stats.by_type['music'].count)} · {t('rewind.musicWhisper')}</span>
+	</div>
+{:else if stats.by_type['music']}
 <Chapter id="music" label={t('rewind.chapter.music')} icon="music">
 	{#if musicArtists.length > 0}
 		<div class="tb-hook">{@html t('rewind.musicHook', { artist: musicArtists[0].name })}</div>
@@ -821,8 +820,6 @@
 	<div class="surface kpi-strip" style="--accent:var(--music)">
 		<div class="estat2"><div class="e-ic"><Icon name="music" size={20} /></div><div class="e-v">{stats.by_type['music'].count}</div><div class="e-l">{t('rewind.tracks')}</div></div>
 		<div class="estat2"><div class="e-ic"><Icon name="clock" size={20} /></div><div class="e-v">{formatDuration(stats.by_type['music'].minutes)}</div><div class="e-l">{t('rewind.labels.inTotal')}</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="activity" size={20} /></div><div class="e-v">{formatDuration(typeAvg('music'))}</div><div class="e-l">{t('rewind.labels.avgPerItem')}</div></div>
-		<div class="estat2"><div class="e-ic"><Icon name="percent" size={20} /></div><div class="e-v">{typePct('music')}%</div><div class="e-l">{t('rewind.labels.ofYourConsumption')}</div></div>
 	</div>
 	{#if musicArtists.length > 0}
 		<section class="rewind-section">
@@ -1090,7 +1087,7 @@
 	.yt-runner-info { min-width: 0; }
 	.yt-runner-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
 	.yt-runner-time { font-size: 11px; color: var(--text-muted); }
-	.yt-stats { display: grid; grid-template-columns: repeat(4, 1fr); }
+	.yt-stats { display: grid; grid-template-columns: repeat(3, 1fr); }
 
 	/* Géneros YouTube */
 	.yt-genres { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; }
@@ -1210,7 +1207,12 @@
 	.to-pct { font-weight: 800; color: var(--text); }
 
 	/* KPI strip por tipo */
-	.kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); }
+	.kpi-strip { display: grid; grid-template-columns: repeat(2, 1fr); }
+	/* Resumen de una línea para tipos con peso testimonial */
+	.whisper-row { display: flex; align-items: baseline; gap: 12px; padding: 14px 18px; flex-wrap: wrap; }
+	.whisper-row .w-ic { color: var(--accent); align-self: center; display: flex; }
+	.whisper-row .w-v { font-size: 20px; font-weight: 800; color: var(--accent); }
+	.whisper-row .w-t { font-size: 12px; color: var(--text-dim); }
 	.kpi-strip .e-ic { color: var(--accent); }
 	.kpi-strip .e-v { color: var(--accent); filter: brightness(1.2); }
 
