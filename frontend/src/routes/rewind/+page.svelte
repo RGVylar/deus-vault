@@ -4,7 +4,7 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, typeLabel } from '$lib/utils';
-	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
+	import { t, tc, fmtDate as fmtDateI18n, fmtNumber } from '$lib/i18n/index.svelte';
 	import type { Content, RewindStats } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import Chapter from '$lib/components/Chapter.svelte';
@@ -250,6 +250,16 @@
 	/** Menos de dos horas en todo un año no da para un capítulo: se resume en una línea. */
 	const musicTrivial = $derived((stats?.by_type['music']?.minutes ?? 0) < 120);
 
+	/**
+	 * Semanas consumidas frente a las ~4.000 que dura una vida de 77 años.
+	 * Es la cifra que hace literal el "memento mori" de la cabecera: el % del
+	 * año dice cuánto ocupó; esto dice cuánto costó.
+	 */
+	const LIFE_WEEKS = 4000;
+	const lifeWeeks = $derived(
+		stats ? +(stats.total_consumed_minutes / (60 * 24 * 7)).toFixed(1) : 0
+	);
+
 	const ITEMS_PAGE = 12;
 
 	// Game timeline — juegos consumidos en el año con su fecha de añadido y completado
@@ -312,6 +322,12 @@
 			{#if stats.best_month !== null}{t('rewind.recordMonth', { month: MONTHS[(stats.best_month ?? 1) - 1] })}{/if}
 			{#if stats.favorite_type} {t('rewind.favoritePrefix', { type: typeLabel(stats.favorite_type) })}{/if}
 		</div>
+		{#if lifeWeeks >= 0.1}
+			<div class="rw-hero-life">
+				<span class="rw-life-v">{fmtNumber(lifeWeeks, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+				<span class="rw-life-t">{t('rewind.lifeWeeks', { total: fmtNumber(LIFE_WEEKS) })}</span>
+			</div>
+		{/if}
 	</div>
 	<div class="rw-hero-pct">
 		<div class="rw-pct-num">{stats.percentage_of_year.toFixed(2)}%</div>
@@ -1054,6 +1070,10 @@
 		background: linear-gradient(165deg, #fff 25%, var(--primary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 28px oklch(0.78 0.15 300 / 0.35)); }
 	.rw-hero-unit { font-size: 16px; font-weight: 600; color: var(--text); }
 	.rw-hero-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+	/* El único dato cálido de la cabecera: si destaca todo, no destaca nada. */
+	.rw-hero-life { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--glass-border); display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+	.rw-life-v { font-size: 22px; font-weight: 900; color: oklch(0.72 0.18 30); letter-spacing: -0.02em; }
+	.rw-life-t { font-size: 12px; color: var(--text-muted); }
 	.rw-hero-pct { padding: 20px 22px; display: flex; flex-direction: column; justify-content: center; border-left: 1px solid var(--glass-border); }
 	.rw-pct-num { text-align: center; font-size: 48px; font-weight: 900; color: var(--primary); line-height: 1; letter-spacing: -0.04em; filter: drop-shadow(0 0 24px oklch(0.78 0.15 300 / 0.5)); }
 	.rw-pct-lbl { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 6px; }

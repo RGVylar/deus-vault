@@ -345,6 +345,7 @@ export const pt = {
 	'rewind.favoritePrefix': '· favorito: {type}',
 	'rewind.dedicatedToContent': 'de todo {year} dedicado a conteúdo',
 	'rewind.yearHasHours': 'o ano tem 8.760h',
+	'rewind.lifeWeeks': 'semanas das ~{total} que dura uma vida',
 	'rewind.stats.maxStreak': 'sequência máx',
 	'rewind.stats.bestMonth': 'melhor mês',
 	'rewind.stats.favorite': 'favorito',
