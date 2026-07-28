@@ -175,24 +175,16 @@ msg "Installing systemd units…"
 install -m 644 "$APP_DIR/deploy/deus-vault-backend.service" /etc/systemd/system/deus-vault-backend.service
 
 # ---------- caddy ----------
+# Se renderiza deploy/Caddyfile sustituyendo los placeholders. Antes esta
+# config vivia duplicada aqui en un heredoc, asi que editar deploy/Caddyfile
+# no cambiaba nada en produccion.
 msg "Configuring Caddy…"
-cat > /etc/caddy/Caddyfile << EOF
-:80 {
-	encode gzip
-
-	# API — reverse proxy to backend
-	handle /api/* {
-		reverse_proxy 127.0.0.1:$BACKEND_PORT
-	}
-
-	# Static SvelteKit build
-	handle {
-		root * $APP_DIR/frontend/build
-		try_files {path} /index.html
-		file_server
-	}
-}
-EOF
+[[ -f "$APP_DIR/deploy/Caddyfile" ]] || die "Missing $APP_DIR/deploy/Caddyfile"
+sed -e "s|__BACKEND_PORT__|$BACKEND_PORT|g" \
+    -e "s|__APP_DIR__|$APP_DIR|g" \
+    "$APP_DIR/deploy/Caddyfile" > /etc/caddy/Caddyfile
+caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1 \
+    || die "Generated Caddyfile is invalid"
 
 systemctl daemon-reload
 systemctl enable --now deus-vault-backend.service >/dev/null
