@@ -8,6 +8,7 @@
 	import type { Content, RewindStats } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import Chapter from '$lib/components/Chapter.svelte';
+	import YearTimeline from '$lib/components/YearTimeline.svelte';
 	import { exportShareImage } from '$lib/rewindShare';
 
 	const MONTHS = $derived([
@@ -468,6 +469,12 @@
 			{/each}
 		</div>
 	</div>
+</Chapter>
+{/if}
+
+{#if stats.items.length > 0}
+<Chapter id="linea-tiempo" label={t('rewind.chapter.timeline')} icon="activity">
+	<YearTimeline items={stats.items as Content[]} {year} months={MONTHS} />
 </Chapter>
 {/if}
 
