@@ -29,18 +29,24 @@ APP_USER="${APP_USER:-deusvault}"
 
 DB_NAME="${DB_NAME:-deusvault}"
 DB_USER="${DB_USER:-deusvault}"
-DB_PASS="${DB_PASS:-$(openssl rand -hex 16)}"
-
 DOMAIN="${DOMAIN:-vault.mugrelore.com}"
 BACKEND_PORT="${BACKEND_PORT:-8000}"
-JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
 
-# Optional metadata providers
+# Secretos existentes: este script es idempotente y se re-ejecuta para actualizar,
+# así que NO deben regenerarse. Si se rotaran en cada pasada, un fallo entre el
+# ALTER USER y la escritura del .env deja la base y la app con contraseñas
+# distintas (backend caído), y rotar el JWT cerraría todas las sesiones abiertas.
 EXISTING_TMDB_API_KEY=""
+EXISTING_DB_PASS=""
+EXISTING_JWT_SECRET=""
 if [[ -f "$APP_DIR/backend/.env" ]]; then
     EXISTING_TMDB_API_KEY="$(grep '^TMDB_API_KEY=' "$APP_DIR/backend/.env" | cut -d '=' -f2- || true)"
+    EXISTING_JWT_SECRET="$(grep '^JWT_SECRET=' "$APP_DIR/backend/.env" | cut -d '=' -f2- || true)"
+    EXISTING_DB_PASS="$(sed -nE 's|^DATABASE_URL=.*://[^:]+:([^@]+)@.*|\1|p' "$APP_DIR/backend/.env" || true)"
 fi
 TMDB_API_KEY="${TMDB_API_KEY:-$EXISTING_TMDB_API_KEY}"
+DB_PASS="${DB_PASS:-${EXISTING_DB_PASS:-$(openssl rand -hex 16)}}"
+JWT_SECRET="${JWT_SECRET:-${EXISTING_JWT_SECRET:-$(openssl rand -hex 32)}}"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -117,8 +123,12 @@ if [[ "$USER_EXISTS" != "1" ]]; then
     sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASS';" >/dev/null
     ok "Created DB user $DB_USER"
 else
-    sudo -u postgres psql -c "ALTER USER $DB_USER WITH PASSWORD '$DB_PASS';" >/dev/null
-    warn "DB user existed; password reset"
+    # Re-afirma la contraseña que ya está en el .env (o la nueva si no había .env).
+    # Si esto falla, abortamos antes de tocar nada más: dejar la base con una
+    # contraseña y el .env con otra es lo que tira el backend.
+    sudo -u postgres psql -c "ALTER USER $DB_USER WITH PASSWORD '$DB_PASS';" >/dev/null \
+        || die "Could not set password for $DB_USER"
+    ok "DB user $DB_USER in sync"
 fi
 
 if [[ "$DB_EXISTS" != "1" ]]; then
