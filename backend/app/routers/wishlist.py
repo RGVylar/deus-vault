@@ -105,6 +105,31 @@ async def _lookup_product(url: str) -> ProductLookupResult:
             r = await client.get(url)
             html = r.text
 
+        # Amazon (y algunas otras) responden 200 con una pagina antirrobot en
+        # lugar del producto. Sin esto se acababa guardando un articulo
+        # titulado "Amazon.es" y sin precio, que es peor que no guardar nada.
+        # Verificado que no depende de las cabeceras: con User-Agent de
+        # navegador y todas las Sec-Fetch-* devuelve exactamente el mismo
+        # CAPTCHA. Para estas tiendas hay que usar la extension, que lee el
+        # DOM real en el navegador del usuario.
+        lowered = html.lower()
+        bloqueada = any(
+            marker in lowered
+            for marker in (
+                "captcha",
+                "robot check",
+                "introduzca los caracteres",
+                "api-services-support@amazon.com",
+                "enter the characters you see",
+                "<title>just a moment",      # interstitial de Cloudflare
+                "attention required! | cloudflare",
+            )
+        )
+        if bloqueada:
+            return ProductLookupResult(
+                title=None, price=None, image_url=None, store=store, url=url
+            )
+
         # --- JSON-LD (most reliable when present) ---
         for match in re.finditer(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.DOTALL | re.IGNORECASE):
             try:
@@ -158,6 +183,16 @@ async def _lookup_product(url: str) -> ProductLookupResult:
                 m = re.search(r'content=["\']([^"\']+)["\'][^>]+itemprop=["\']price["\']', html, re.IGNORECASE)
             if m:
                 price = _parse_price(m.group(1))
+
+        # Amazon no publica el precio ni en JSON-LD ni en meta: vive partido en
+        # dos spans. Son los mismos selectores que ya usa la extension.
+        if not price and "amazon." in (urlparse(url).hostname or ""):
+            entero = re.search(r'class="[^"]*a-price-whole[^"]*"[^>]*>([^<]+)', html)
+            if entero:
+                decimal = re.search(r'class="[^"]*a-price-fraction[^"]*"[^>]*>([^<]+)', html)
+                crudo = re.sub(r"[^\d]", "", entero.group(1))
+                if crudo:
+                    price = _parse_price(f"{crudo}.{re.sub(r'[^\\d]', '', decimal.group(1)) if decimal else '00'}")
 
         # Fallback: <title> tag
         if not title:
