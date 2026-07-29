@@ -316,18 +316,18 @@
 			{#if stats.best_month !== null}{t('rewind.recordMonth', { month: MONTHS[(stats.best_month ?? 1) - 1] })}{/if}
 			{#if stats.favorite_type} {t('rewind.favoritePrefix', { type: typeLabel(stats.favorite_type) })}{/if}
 		</div>
-		{#if lifeWeeks >= 0.1}
-			<div class="rw-hero-life">
-				<span class="rw-life-v">{fmtNumber(lifeWeeks, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
-				<span class="rw-life-t">{t('rewind.lifeWeeks', { total: fmtNumber(LIFE_WEEKS) })}</span>
-			</div>
-		{/if}
 	</div>
 	<div class="rw-hero-pct">
 		<div class="rw-pct-num">{stats.percentage_of_year.toFixed(2)}%</div>
 		<div class="rw-pct-lbl">{t('rewind.dedicatedToContent', { year })}</div>
 		<div class="rw-pct-bar"><div class="rw-pct-fill" style="width:{Math.min(stats.percentage_of_year * 8, 100)}%"></div></div>
 		<div class="rw-pct-scale"><span>0%</span><span>{t('rewind.yearHasHours')}</span></div>
+		{#if lifeWeeks >= 0.1}
+			<div class="rw-hero-life">
+				<span class="rw-life-v">{fmtNumber(lifeWeeks, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+				<span class="rw-life-t">{t('rewind.lifeWeeks', { total: fmtNumber(LIFE_WEEKS) })}</span>
+			</div>
+		{/if}
 	</div>
 </div>
 
@@ -356,7 +356,7 @@
 <div class="surface time-surface">
 	<!-- Por mes -->
 	<div class="tcell">
-		<div class="panel-title"><Icon name="barChart" size={16} /> {t('rewind.byMonth')}{#if topMonthIdx >= 0} {t('rewind.peakMonth', { month: MONTHS[topMonthIdx] })}{/if}</div>
+		<div class="panel-title"><Icon name="barChart" size={16} /> {t('rewind.byMonth')}{#if topMonthIdx >= 0}{' '}{t('rewind.peakMonth', { month: MONTHS[topMonthIdx] })}{/if}</div>
 		<div class="month-bars2">
 			{#each stats.by_month as m, i}
 				{@const pct = Math.max(m.minutes / maxMonthMinutes * 100, m.minutes > 0 ? 4 : 0)}
@@ -412,7 +412,7 @@
 	<!-- Por hora -->
 	{#if stats.by_hour?.length === 24}
 		<div class="tcell">
-			<div class="panel-title"><Icon name="clock" size={16} /> {t('rewind.byHour')}{#if peakHour !== null} {t('rewind.peakHour', { hour: peakHour })}{/if}</div>
+			<div class="panel-title"><Icon name="clock" size={16} /> {t('rewind.byHour')}{#if peakHour !== null}{' '}{t('rewind.peakHour', { hour: peakHour })}{/if}</div>
 			<div class="whour-blocks">
 				{#each stats.by_hour as v, i}
 					{@const intensity = v / maxHour}
@@ -428,7 +428,7 @@
 	<!-- Por día -->
 	{#if stats.by_day?.length}
 		<div class="tcell">
-			<div class="panel-title"><Icon name="barChart" size={16} /> {t('rewind.byDay')}{#if topDayIdx >= 0} {t('rewind.topDay', { day: DAYS_FULL[topDayIdx] })}{/if}</div>
+			<div class="panel-title"><Icon name="barChart" size={16} /> {t('rewind.byDay')}{#if topDayIdx >= 0}{' '}{t('rewind.topDay', { day: DAYS_FULL[topDayIdx] })}{/if}</div>
 			<div class="day-bars">
 				{#each stats.by_day as v, i}
 					{@const pct = Math.max(v / maxDay * 100, 4)}
@@ -1012,7 +1012,7 @@
 	.rw-hero-unit { font-size: 16px; font-weight: 600; color: var(--text); }
 	.rw-hero-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 	/* El único dato cálido de la cabecera: si destaca todo, no destaca nada. */
-	.rw-hero-life { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--glass-border); display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+	.rw-hero-life { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--glass-border); display: flex; align-items: baseline; justify-content: center; gap: 9px; flex-wrap: wrap; }
 	.rw-life-v { font-size: 22px; font-weight: 900; color: oklch(0.72 0.18 30); letter-spacing: -0.02em; }
 	.rw-life-t { font-size: 12px; color: var(--text-muted); }
 	.rw-hero-pct { padding: 20px 22px; display: flex; flex-direction: column; justify-content: center; border-left: 1px solid var(--glass-border); }
@@ -1081,7 +1081,9 @@
 	.whour-blocks { display: flex; gap: 3px; margin-top: 6px; }
 	.whour-block { flex: 1; aspect-ratio: 1; border-radius: 3px; }
 	.whour-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 9px; color: var(--text-dim); }
-	.day-bars { display: flex; align-items: flex-end; gap: 8px; height: 100px; }
+	/* Siete valores casi planos no justifican ser el grafico mas grande de la
+	   pagina: se bajan a la escala de la fila de horas que tienen encima. */
+	.day-bars { display: flex; align-items: flex-end; gap: 8px; height: 58px; }
 	.db-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%; }
 	.db-bar { width: 100%; border-radius: 5px 5px 0 0; background: var(--primary); opacity: 0.85; min-height: 4px; }
 	.db-bar.top { opacity: 1; background: oklch(0.82 0.16 85); }
