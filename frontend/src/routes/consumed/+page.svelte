@@ -21,6 +21,8 @@
 
 	// Editable consumed date
 	let editingDateId = $state<number | null>(null);
+	let editingStartId = $state<number | null>(null);
+	let editStartValue = $state('');
 	let editDateValue = $state('');
 
 	onMount(() => {
@@ -108,6 +110,29 @@
 		editingDateId = null;
 		contents = contents.map(x => x.id === c.id ? { ...x, consumed_at: isoDate } : x);
 		await api.patch(`/contents/${c.id}`, { consumed_at: isoDate });
+	}
+
+	// Fecha de inicio: solo tiene sentido en lo que se consume durante dias o
+	// semanas. Sin esto, una vez consumido un item ya no habia forma de ponerla,
+	// que es justo lo que necesita la linea de tiempo del rewind.
+	const STARTABLE: string[] = ['game', 'series', 'book'];
+
+	function startEditStart(c: Content) {
+		editingStartId = c.id;
+		editStartValue = c.started_at ? c.started_at.slice(0, 10) : (c.consumed_at ?? new Date().toISOString()).slice(0, 10);
+	}
+
+	async function saveStart(c: Content) {
+		editingStartId = null;
+		const iso = editStartValue ? `${editStartValue}T12:00:00Z` : null;
+		contents = contents.map(x => x.id === c.id ? { ...x, started_at: iso } : x);
+		await api.patch(`/contents/${c.id}`, { started_at: iso });
+	}
+
+	async function clearStart(c: Content) {
+		editingStartId = null;
+		contents = contents.map(x => x.id === c.id ? { ...x, started_at: null } : x);
+		await api.patch(`/contents/${c.id}`, { started_at: null });
 	}
 
 	const TYPE_COLOR: Record<string, string> = {
@@ -487,6 +512,35 @@
 									<button class="date-btn date-btn-empty" onclick={() => startEditDate(c)} title={t('consumed.addDate')}>
 										{t('consumed.noDate')}
 									</button>
+								{/if}
+
+								<!-- Fecha de inicio: alimenta la línea de tiempo del rewind -->
+								{#if STARTABLE.includes(c.content_type)}
+									{#if editingStartId === c.id}
+										<span class="date-edit-wrap">
+											<!-- svelte-ignore a11y_autofocus -->
+											<input
+												type="date"
+												bind:value={editStartValue}
+												class="text date-input"
+												onblur={() => saveStart(c)}
+												onkeydown={(e) => { if (e.key === 'Enter') saveStart(c); if (e.key === 'Escape') editingStartId = null; }}
+												autofocus
+											/>
+											<button class="btn" onclick={() => saveStart(c)}>✓</button>
+										</span>
+									{:else if c.started_at}
+										<span class="date-edit-wrap">
+											<button class="date-btn" onclick={() => startEditStart(c)} title={t('consumed.editStartDate')}>
+												▶ {fmtDate(new Date(c.started_at))}
+											</button>
+											<button class="date-btn date-btn-empty" onclick={() => clearStart(c)} title={t('consumed.removeStartDate')}>×</button>
+										</span>
+									{:else}
+										<button class="date-btn date-btn-empty" onclick={() => startEditStart(c)} title={t('consumed.addStartDate')}>
+											{t('consumed.noStartDate')}
+										</button>
+									{/if}
 								{/if}
 							{:else if c.abandoned_at}
 								<span class="date-btn" style="cursor:default;">🚫 {fmtDate(new Date(c.abandoned_at))}</span>
