@@ -1049,14 +1049,16 @@
 	.dd-label :global(svg) { color: var(--primary); opacity: 0.7; }
 
 	/* Superficie unificada */
-	/* Rewind es una pagina de solo lectura: no hay nada que pulsar, asi que las
-	   cajas de cristal no senalan nada y solo compiten con los datos. Filete de
-	   1px y fondo del documento; el peso lo llevan la tipografia y el espacio. */
+	/* El aplanado de superficies vive en app.css (tokens), para que sea igual
+	   en toda la app. Aqui solo queda lo propio del Rewind: la tipografia. */
 	.surface {
-		position: relative; background: transparent; border: 1px solid var(--glass-border);
-		border-radius: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
-		overflow: hidden; margin-bottom: 18px;
+		position: relative; background: var(--glass-bg); border: 1px solid var(--glass-border);
+		border-radius: var(--radius-sm); box-shadow: var(--glass-shadow), var(--glass-inner);
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		overflow: hidden; margin-bottom: 14px;
 	}
+	.surface::before { content: ''; position: absolute; top: 0; left: 8%; right: 8%; height: 1px; background: linear-gradient(90deg, transparent, var(--glass-shine), transparent); pointer-events: none; z-index: 2; }
 
 	/* Hero */
 	.rw-hero { display: grid; grid-template-columns: 1.35fr 1fr; }
@@ -1372,18 +1374,6 @@
 	/* ── Estilo clasico, opcional desde Ajustes ─────────────────────
 	   Restaura el cristal original. Va aqui abajo y con :global(:root[...])
 	   para ganar por especificidad sin tocar las reglas de arriba. */
-	:global(:root[data-style='legacy']) .surface {
-		background: var(--glass-bg); border-radius: 18px;
-		box-shadow: var(--glass-shadow), var(--glass-inner);
-		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-		margin-bottom: 14px;
-	}
-	:global(:root[data-style='legacy']) .surface::before {
-		content: ''; position: absolute; top: 0; left: 8%; right: 8%; height: 1px;
-		background: linear-gradient(90deg, transparent, var(--glass-shine), transparent);
-		pointer-events: none; z-index: 2;
-	}
 	:global(:root[data-style='legacy']) .rw-hero-num {
 		font-family: inherit; font-weight: 900; letter-spacing: -0.04em;
 		background: linear-gradient(165deg, #fff 25%, var(--primary));

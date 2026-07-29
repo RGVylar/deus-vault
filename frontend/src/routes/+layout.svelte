@@ -38,7 +38,9 @@
 			el.setAttribute('data-theme',     theme === 'light' ? 'light' : '');
 			el.setAttribute('data-wallpaper', wallpaper === 'aurora' ? '' : wallpaper);
 			el.setAttribute('data-style',     style === 'legacy' ? 'legacy' : '');
-			el.style.setProperty('--blur', `${blur}px`);
+			// El inline gana a la hoja de estilos, asi que el modo plano tiene que
+			// anular aqui el desenfoque; si no, --blur: 0 de app.css nunca se aplica.
+			el.style.setProperty('--blur', style === 'legacy' ? `${blur}px` : '0px');
 		} catch (e) {}
 	}
 

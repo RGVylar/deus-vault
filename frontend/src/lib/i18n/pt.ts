@@ -61,7 +61,7 @@ export const pt = {
 	'settings.appearance.blur': 'Desfoque do vidro',
 	'settings.appearance.style': 'Estilo visual',
 	'settings.appearance.legacyStyle': 'Estilo clássico (vidro)',
-	'settings.appearance.legacyStyleHint': 'O Rewind usa por padrão um estilo plano, sem vidro nem brilhos. Ative para voltar ao anterior.',
+	'settings.appearance.legacyStyleHint': 'O app usa por padrão um estilo plano: sem vidro, sem brilhos e sem fundo animado. Ative para voltar ao anterior.',
 	'settings.appearance.wallpaper.aurora': 'Aurora',
 	'settings.appearance.wallpaper.atardecer': 'Pôr do sol',
 	'settings.appearance.wallpaper.oceano': 'Oceano',

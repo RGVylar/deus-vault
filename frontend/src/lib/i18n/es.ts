@@ -60,7 +60,7 @@ export const es = {
 	'settings.appearance.blur': 'Desenfoque del cristal',
 	'settings.appearance.style': 'Estilo visual',
 	'settings.appearance.legacyStyle': 'Estilo clásico (cristal)',
-	'settings.appearance.legacyStyleHint': 'Por defecto el Rewind usa un estilo plano, sin cristal ni resplandores. Actívalo para recuperar el anterior.',
+	'settings.appearance.legacyStyleHint': 'Por defecto la app usa un estilo plano: sin cristal, sin resplandores y sin fondo animado. Actívalo para recuperar el anterior.',
 	'settings.appearance.wallpaper.aurora': 'Aurora',
 	'settings.appearance.wallpaper.atardecer': 'Atardecer',
 	'settings.appearance.wallpaper.oceano': 'Océano',

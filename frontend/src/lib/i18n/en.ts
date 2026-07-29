@@ -61,7 +61,7 @@ export const en = {
 	'settings.appearance.blur': 'Glass blur',
 	'settings.appearance.style': 'Visual style',
 	'settings.appearance.legacyStyle': 'Classic style (glass)',
-	'settings.appearance.legacyStyleHint': 'Rewind defaults to a flat style, no glass or glow. Turn this on to bring back the old one.',
+	'settings.appearance.legacyStyleHint': 'The app defaults to a flat style: no glass, no glow, no animated background. Turn this on to bring back the old one.',
 	'settings.appearance.wallpaper.aurora': 'Aurora',
 	'settings.appearance.wallpaper.atardecer': 'Sunset',
 	'settings.appearance.wallpaper.oceano': 'Ocean',
