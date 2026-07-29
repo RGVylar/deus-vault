@@ -53,23 +53,23 @@
 
 	type Bar = {
 		id: number; title: string; type: string; color: string;
-		start: number; end: number; hasSpan: boolean; minutes: number; when: string;
+		startPct: number; endPct: number; hasSpan: boolean; minutes: number; when: string;
 	};
 
 	const bars = $derived.by<Bar[]>(() => {
 		const out: Bar[] = [];
 		for (const c of items) {
 			if (!CAMPAIGN.includes(c.content_type)) continue;
-			const end = monthIdx(c.consumed_at);
+			const end = yearPct(c.consumed_at);
 			if (end === null) continue;
-			const rawStart = monthIdx(c.started_at);
-			const hasSpan = rawStart !== null && rawStart <= end;
+			const rawStart = yearPct(c.started_at);
+			const hasSpan = rawStart !== null && rawStart < end;
 			const mins = c.content_type === 'series' && c.episode_count
 				? c.duration_minutes * c.episode_count
 				: c.duration_minutes;
 			out.push({
 				id: c.id, title: c.title, type: c.content_type, color: COLORS[c.content_type],
-				start: hasSpan ? (rawStart as number) : end, end, hasSpan, minutes: mins,
+				startPct: hasSpan ? (rawStart as number) : end, endPct: end, hasSpan, minutes: mins,
 				when: c.consumed_at ? fmtDateI18n(new Date(c.consumed_at), { day: 'numeric', month: 'short' }) : '',
 			});
 		}
@@ -81,13 +81,13 @@
 		return CAMPAIGN
 			.map(type => ({
 				type,
-				rows: bars.filter(b => b.type === type).sort((a, b) => a.start - b.start || b.end - a.end),
+				rows: bars.filter(b => b.type === type).sort((a, b) => a.startPct - b.startPct || b.endPct - a.endPct),
 			}))
 			.filter(g => g.rows.length > 0);
 	});
 
 	/** Todas revueltas, en orden cronológico de inicio. */
-	const chrono = $derived([...bars].sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start)));
+	const chrono = $derived([...bars].sort((a, b) => a.startPct - b.startPct || (b.endPct - b.startPct) - (a.endPct - a.startPct)));
 
 	const movies = $derived(
 		items
@@ -143,9 +143,9 @@
 							<div class="tl-row" title="{b.title} · {formatDuration(b.minutes)} · {b.when}">
 								<span class="tl-name"><i class="tl-chip" style="background:{b.color}"></i>{b.title}</span>
 								{#if b.hasSpan}
-									<span class="tl-bar" style="grid-column:{b.start + 2}/{b.end + 3}; background:{b.color}"></span>
+									<span class="tl-track"><i class="tl-bar" style="left:{b.startPct}%; width:{Math.max(b.endPct - b.startPct, 0.4)}%; background:{b.color}"></i></span>
 								{:else}
-									<span class="tl-dot-cell" style="grid-column:{b.end + 2}"><i style="background:{b.color}"></i></span>
+									<span class="tl-track"><i class="tl-dot" style="left:{b.endPct}%; background:{b.color}"></i></span>
 								{/if}
 							</div>
 						{/each}
@@ -160,9 +160,9 @@
 								<div class="tl-row" title="{b.title} · {formatDuration(b.minutes)} · {b.when}">
 									<span class="tl-name">{b.title}</span>
 									{#if b.hasSpan}
-										<span class="tl-bar" style="grid-column:{b.start + 2}/{b.end + 3}; background:{b.color}"></span>
+										<span class="tl-track"><i class="tl-bar" style="left:{b.startPct}%; width:{Math.max(b.endPct - b.startPct, 0.4)}%; background:{b.color}"></i></span>
 									{:else}
-										<span class="tl-dot-cell" style="grid-column:{b.end + 2}"><i style="background:{b.color}"></i></span>
+										<span class="tl-track"><i class="tl-dot" style="left:{b.endPct}%; background:{b.color}"></i></span>
 									{/if}
 								</div>
 							{/each}
@@ -263,9 +263,10 @@
 	.tl-name-dim { color: var(--text-dim); font-style: italic; }
 	.tl-chip { width: 7px; height: 7px; border-radius: 2px; margin-right: 7px; flex-shrink: 0; }
 
-	.tl-bar { height: 7px; border-radius: 3px; }
-	.tl-dot-cell { display: grid; place-items: center; }
-	.tl-dot-cell i { width: 7px; height: 7px; border-radius: 50%; display: block; }
+	/* Pista continua: las barras se colocan por dia del ano, no por celda de mes */
+	.tl-track { grid-column: 2 / -1; position: relative; height: 22px; }
+	.tl-bar { position: absolute; top: 50%; height: 7px; margin-top: -3.5px; border-radius: 3px; min-width: 3px; display: block; }
+	.tl-dot { position: absolute; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; display: block; }
 
 	.tl-dots { position: relative; height: 22px; grid-column: 2 / -1; }
 	.tl-dots i { position: absolute; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; display: block; }
