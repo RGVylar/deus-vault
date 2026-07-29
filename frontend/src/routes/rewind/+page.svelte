@@ -1040,11 +1040,7 @@
 		letter-spacing: 0.18em; color: var(--text-muted); margin-bottom: 11px;
 		display: flex; align-items: center; gap: 10px;
 	}
-	.rewind-section h2 .hico {
-		width: 26px; height: 26px; border-radius: 8px; color: var(--primary);
-		background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
-		display: grid; place-items: center; flex-shrink: 0;
-	}
+	.rewind-section h2 .hico { color: var(--primary); display: grid; place-items: center; flex-shrink: 0; opacity: 0.8; }
 	.h2-count { font-size: 13px; color: var(--text-dim); font-weight: 500; letter-spacing: 0; text-transform: none; }
 
 	.deep-divider { display: flex; align-items: center; gap: 16px; margin: 30px 0 20px; }
@@ -1053,21 +1049,21 @@
 	.dd-label :global(svg) { color: var(--primary); opacity: 0.7; }
 
 	/* Superficie unificada */
+	/* Rewind es una pagina de solo lectura: no hay nada que pulsar, asi que las
+	   cajas de cristal no senalan nada y solo compiten con los datos. Filete de
+	   1px y fondo del documento; el peso lo llevan la tipografia y el espacio. */
 	.surface {
-		position: relative; background: var(--glass-bg); border: 1px solid var(--glass-border);
-		border-radius: 18px; box-shadow: var(--glass-shadow), var(--glass-inner);
-		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
-		overflow: hidden; margin-bottom: 14px;
+		position: relative; background: transparent; border: 1px solid var(--glass-border);
+		border-radius: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+		overflow: hidden; margin-bottom: 18px;
 	}
-	.surface::before { content: ''; position: absolute; top: 0; left: 8%; right: 8%; height: 1px; background: linear-gradient(90deg, transparent, var(--glass-shine), transparent); pointer-events: none; z-index: 2; }
 
 	/* Hero */
 	.rw-hero { display: grid; grid-template-columns: 1.35fr 1fr; }
 	.rw-hero-main { padding: 24px 30px; display: flex; flex-direction: column; justify-content: center; }
 	.rw-hero-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.28em; color: var(--text-muted); text-transform: uppercase; }
 	.rw-hero-num { font-weight: 900; font-size: clamp(56px, 5.5vw, 92px); line-height: 0.9; letter-spacing: -0.04em; margin: 6px 0 5px;
-		background: linear-gradient(165deg, #fff 25%, var(--primary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 28px oklch(0.78 0.15 300 / 0.35)); }
+		font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif; font-weight: 400; color: var(--text); }
 	.rw-hero-unit { font-size: 16px; font-weight: 600; color: var(--text); }
 	.rw-hero-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 	/* El único dato cálido de la cabecera: si destaca todo, no destaca nada. */
@@ -1075,7 +1071,7 @@
 	.rw-life-v { font-size: 22px; font-weight: 900; color: oklch(0.72 0.18 30); letter-spacing: -0.02em; }
 	.rw-life-t { font-size: 12px; color: var(--text-muted); }
 	.rw-hero-pct { padding: 20px 22px; display: flex; flex-direction: column; justify-content: center; border-left: 1px solid var(--glass-border); }
-	.rw-pct-num { text-align: center; font-size: 48px; font-weight: 900; color: var(--primary); line-height: 1; letter-spacing: -0.04em; filter: drop-shadow(0 0 24px oklch(0.78 0.15 300 / 0.5)); }
+	.rw-pct-num { text-align: center; font-size: 48px; font-weight: 400; font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif; color: var(--primary); line-height: 1; letter-spacing: -0.02em; }
 	.rw-pct-lbl { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 6px; }
 	.rw-pct-bar { height: 6px; border-radius: 99px; background: oklch(0.30 0.01 290 / 0.7); border: 1px solid oklch(0.50 0.02 290 / 0.2); overflow: hidden; margin: 14px 0 4px; }
 	.rw-pct-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--primary), oklch(0.86 0.12 210)); }
@@ -1092,7 +1088,7 @@
 	/* Zona YouTube */
 	.yt-hero { display: flex; align-items: center; gap: 24px; padding: 22px 26px; }
 	.yt-creator-avatar { width: 88px; height: 88px; border-radius: 50%; flex-shrink: 0; object-fit: cover;
-		box-shadow: 0 0 0 2px var(--glass-border), 0 0 32px color-mix(in srgb, var(--yt-glow, var(--youtube)) 42%, transparent); }
+		box-shadow: 0 0 0 1px var(--glass-border); }
 	.yt-creator-ph { display: grid; place-items: center; font-size: 34px; font-weight: 900; color: #fff; }
 	.yt-creator-body { flex: 1; min-width: 0; }
 	.yt-kicker { font-size: 10px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 7px; }
@@ -1127,8 +1123,8 @@
 
 	.month-bars2 { display: flex; align-items: flex-end; gap: 8px; height: 132px; padding-bottom: 24px; position: relative; }
 	.mb2-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative; }
-	.mb2-bar { width: 100%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, var(--primary), oklch(0.55 0.13 300)); }
-	.mb2-bar.top { background: linear-gradient(180deg, oklch(0.86 0.16 85), oklch(0.62 0.14 85)); box-shadow: 0 0 18px oklch(0.84 0.16 85 / 0.5); }
+	.mb2-bar { width: 100%; border-radius: 1px 1px 0 0; background: var(--primary); opacity: 0.55; }
+	.mb2-bar.top { background: oklch(0.82 0.16 85); }
 	.mb2-lbl { position: absolute; bottom: -22px; font-size: 11px; color: var(--text-muted); }
 	.mb2-col.top .mb2-lbl { color: oklch(0.86 0.16 85); font-weight: 700; }
 	.mb2-val { position: absolute; top: -16px; font-size: 9px; font-weight: 700; color: var(--text-dim); opacity: 0; transition: opacity .15s; }
@@ -1143,14 +1139,14 @@
 	.day-bars { display: flex; align-items: flex-end; gap: 8px; height: 100px; }
 	.db-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%; }
 	.db-bar { width: 100%; border-radius: 5px 5px 0 0; background: var(--primary); opacity: 0.85; min-height: 4px; }
-	.db-bar.top { opacity: 1; background: linear-gradient(180deg, oklch(0.86 0.16 85), oklch(0.6 0.14 85)); box-shadow: 0 0 14px oklch(0.84 0.16 85 / 0.4); }
+	.db-bar.top { opacity: 1; background: oklch(0.82 0.16 85); }
 	.db-lbl { font-size: 10px; color: var(--text-muted); }
 
 	/* Momento / día épico */
 	.moment-surface { display: grid; grid-template-columns: 1fr 1fr; }
 	.moment-surface .moment-card:nth-child(2) { border-left: 1px solid var(--glass-border); }
 	.moment-card { display: flex; align-items: center; gap: 14px; padding: 15px 18px; }
-	.moment-icon { width: 44px; height: 44px; border-radius: 13px; flex-shrink: 0; color: var(--primary); background: var(--glass-bg-strong); border: 1px solid var(--glass-border); display: grid; place-items: center; }
+	.moment-icon { width: 30px; flex-shrink: 0; color: var(--primary); display: grid; place-items: center; opacity: 0.85; }
 	.moment-icon.warm { color: oklch(0.72 0.18 30); }
 	.moment-body { flex: 1; min-width: 0; }
 	.moment-kicker { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-muted); }
@@ -1170,7 +1166,7 @@
 	.channel-grid-multi { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 	.channel-card { display: flex; align-items: center; gap: 12px; height: 58px; padding: 0 16px; position: relative; transition: background .15s; }
 	.channel-card:not(:first-child) { border-top: 1px solid var(--glass-border); }
-	.channel-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--ch-color, var(--primary)); box-shadow: 0 0 8px var(--ch-color, var(--primary)); }
+	.channel-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--ch-color, var(--primary)); }
 	.channel-card:hover { background: var(--glass-bg-strong); }
 	.ch-rank { font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.45); min-width: 20px; text-align: right; }
 	.ch-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--ch-color, var(--primary)); display: grid; place-items: center; font-weight: 900; color: #fff; }
@@ -1258,7 +1254,7 @@
 	.pcard-big { font-size: 34px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.05; }
 	.pcard-sub { font-size: 12px; color: var(--text-muted); line-height: 1.45; margin-top: 3px; }
 	.streak-flame { position: absolute; right: 12px; bottom: -14px; color: oklch(0.82 0.18 85); opacity: 0.1; pointer-events: none; }
-	.streak-num { font-size: 48px; font-weight: 900; line-height: 1; letter-spacing: -0.04em; background: linear-gradient(160deg, #fff 25%, oklch(0.82 0.18 85)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 18px oklch(0.82 0.18 85 / 0.4)); }
+	.streak-num { font-size: 48px; font-weight: 400; font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif; line-height: 1; letter-spacing: -0.02em; color: oklch(0.82 0.18 85); }
 	.equiv-row { display: flex; align-items: baseline; gap: 10px; margin-top: 8px; }
 	.equiv-times { font-size: 26px; font-weight: 900; letter-spacing: -0.03em; color: oklch(0.82 0.18 85); flex-shrink: 0; }
 	.equiv-label { font-size: 12px; color: var(--text-muted); line-height: 1.35; }
@@ -1372,4 +1368,60 @@
 		.ytg-row { grid-template-columns: 110px 1fr; }
 		.ytg-meta { display: none; }
 	}
+
+	/* ── Estilo clasico, opcional desde Ajustes ─────────────────────
+	   Restaura el cristal original. Va aqui abajo y con :global(:root[...])
+	   para ganar por especificidad sin tocar las reglas de arriba. */
+	:global(:root[data-style='legacy']) .surface {
+		background: var(--glass-bg); border-radius: 18px;
+		box-shadow: var(--glass-shadow), var(--glass-inner);
+		backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+		margin-bottom: 14px;
+	}
+	:global(:root[data-style='legacy']) .surface::before {
+		content: ''; position: absolute; top: 0; left: 8%; right: 8%; height: 1px;
+		background: linear-gradient(90deg, transparent, var(--glass-shine), transparent);
+		pointer-events: none; z-index: 2;
+	}
+	:global(:root[data-style='legacy']) .rw-hero-num {
+		font-family: inherit; font-weight: 900; letter-spacing: -0.04em;
+		background: linear-gradient(165deg, #fff 25%, var(--primary));
+		-webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+		filter: drop-shadow(0 0 28px oklch(0.78 0.15 300 / 0.35));
+	}
+	:global(:root[data-style='legacy']) .rw-pct-num {
+		font-family: inherit; font-weight: 900; letter-spacing: -0.04em;
+		filter: drop-shadow(0 0 24px oklch(0.78 0.15 300 / 0.5));
+	}
+	:global(:root[data-style='legacy']) .streak-num {
+		font-family: inherit; font-weight: 900; letter-spacing: -0.04em;
+		background: linear-gradient(160deg, #fff 25%, oklch(0.82 0.18 85));
+		-webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+		filter: drop-shadow(0 0 18px oklch(0.82 0.18 85 / 0.4));
+	}
+	:global(:root[data-style='legacy']) .rewind-section h2 .hico {
+		width: 26px; height: 26px; border-radius: 8px; opacity: 1;
+		background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+	}
+	:global(:root[data-style='legacy']) .moment-icon {
+		width: 44px; height: 44px; border-radius: 13px; opacity: 1;
+		background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+	}
+	:global(:root[data-style='legacy']) .mb2-bar {
+		border-radius: 6px 6px 0 0; opacity: 1;
+		background: linear-gradient(180deg, var(--primary), oklch(0.55 0.13 300));
+	}
+	:global(:root[data-style='legacy']) .mb2-bar.top {
+		background: linear-gradient(180deg, oklch(0.86 0.16 85), oklch(0.62 0.14 85));
+		box-shadow: 0 0 18px oklch(0.84 0.16 85 / 0.5);
+	}
+	:global(:root[data-style='legacy']) .db-bar.top {
+		background: linear-gradient(180deg, oklch(0.86 0.16 85), oklch(0.6 0.14 85));
+		box-shadow: 0 0 14px oklch(0.84 0.16 85 / 0.4);
+	}
+	:global(:root[data-style='legacy']) .yt-creator-avatar {
+		box-shadow: 0 0 0 2px var(--glass-border), 0 0 32px color-mix(in srgb, var(--yt-glow, var(--youtube)) 42%, transparent);
+	}
+	:global(:root[data-style='legacy']) .channel-card::before { width: 3px; box-shadow: 0 0 8px var(--ch-color, var(--primary)); }
 </style>

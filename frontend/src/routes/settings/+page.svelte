@@ -80,6 +80,7 @@
 	let theme     = $state<'dark' | 'light'>('dark');
 	let wallpaper = $state<'aurora' | 'atardecer' | 'oceano' | 'bosque'>('aurora');
 	let blur      = $state(28);
+	let legacyStyle = $state(false);
 
 	async function steamSync() {
 		steamSyncState = 'syncing';
@@ -129,6 +130,7 @@
 			theme     = (localStorage.getItem('deus_vault_theme')     as any) || 'dark';
 			wallpaper = (localStorage.getItem('deus_vault_wallpaper') as any) || 'aurora';
 			blur      = Number(localStorage.getItem('deus_vault_blur')) || 28;
+			legacyStyle = localStorage.getItem('deus_vault_style') === 'legacy';
 		} catch (e) {}
 	});
 
@@ -137,6 +139,7 @@
 			localStorage.setItem('deus_vault_theme',     theme);
 			localStorage.setItem('deus_vault_wallpaper', wallpaper);
 			localStorage.setItem('deus_vault_blur',      String(blur));
+			localStorage.setItem('deus_vault_style',     legacyStyle ? 'legacy' : 'minimal');
 		} catch (e) {}
 		window.dispatchEvent(new CustomEvent('deus_vault_appearance_changed'));
 	}
@@ -307,6 +310,16 @@
 							</button>
 						{/each}
 					</div>
+				</div>
+
+				<!-- Estilo visual -->
+				<div>
+					<span class="cx-label">{t('settings.appearance.style')}</span>
+					<label class="cx-check">
+						<input type="checkbox" bind:checked={legacyStyle} onchange={applyAppearance} />
+						<span>{t('settings.appearance.legacyStyle')}</span>
+					</label>
+					<div class="cx-hint">{t('settings.appearance.legacyStyleHint')}</div>
 				</div>
 
 				<!-- Blur -->
@@ -629,6 +642,8 @@
 	.cx-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 	.cx-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 16px; }
 	.cx-label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 9px; display: block; }
+	.cx-check { display: flex; align-items: center; gap: 9px; cursor: pointer; font-size: 13px; color: var(--text); margin: 6px 0 6px; }
+	.cx-check input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0; }
 	.cx-hint { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
 	.cx-hint strong { color: var(--text-muted); }
 	.cx-salary-result { display:flex; align-items:baseline; gap:8px; background:oklch(0.82 0.18 75 / 0.1); border:1px solid oklch(0.82 0.18 75 / 0.25); border-radius:var(--radius-xs); padding:10px 14px; }

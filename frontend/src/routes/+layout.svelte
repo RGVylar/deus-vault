@@ -32,9 +32,12 @@
 			const theme     = localStorage.getItem('deus_vault_theme')     ?? 'dark';
 			const wallpaper = localStorage.getItem('deus_vault_wallpaper') ?? 'aurora';
 			const blur      = localStorage.getItem('deus_vault_blur')      ?? '28';
+			// Estilo visual: minimalista por defecto; 'legacy' recupera el de cristal.
+			const style     = localStorage.getItem('deus_vault_style')     ?? 'minimal';
 			const el = document.documentElement;
 			el.setAttribute('data-theme',     theme === 'light' ? 'light' : '');
 			el.setAttribute('data-wallpaper', wallpaper === 'aurora' ? '' : wallpaper);
+			el.setAttribute('data-style',     style === 'legacy' ? 'legacy' : '');
 			el.style.setProperty('--blur', `${blur}px`);
 		} catch (e) {}
 	}
