@@ -199,8 +199,11 @@ async def _lookup_product(url: str) -> ProductLookupResult:
             if entero:
                 decimal = re.search(r'class="[^"]*a-price-fraction[^"]*"[^>]*>([^<]+)', html)
                 crudo = re.sub(r"[^\d]", "", entero.group(1))
+                # Sin backslashes dentro de la f-string: Python 3.11 no los admite
+                # en expresiones interpoladas y el servidor corre 3.11.
+                cents = re.sub(r"[^\d]", "", decimal.group(1)) if decimal else "00"
                 if crudo:
-                    price = _parse_price(f"{crudo}.{re.sub(r'[^\\d]', '', decimal.group(1)) if decimal else '00'}")
+                    price = _parse_price(crudo + "." + (cents or "00"))
 
         # Fallback: <title> tag
         if not title:
