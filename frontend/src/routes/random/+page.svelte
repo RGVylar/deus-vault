@@ -202,7 +202,7 @@
 		{/if}
 
 		<!-- Desktop: botón grande -->
-		<button class="btn btn-primary desk-only" style="width:100%; justify-content:center; font-size:15px; padding:15px; border-radius:14px; margin-top:22px;"
+		<button class="btn btn-primary desk-only" style="width:100%; justify-content:center; font-size:15px; padding:15px; border-radius: var(--radius-sm); margin-top:22px;"
 			onclick={roll} disabled={spinning}>
 			{spinning ? t('random.searching') : t('random.rollDice')}
 		</button>

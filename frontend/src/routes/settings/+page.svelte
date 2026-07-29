@@ -653,7 +653,7 @@
 	/* ── Theme tiles ── */
 	.cx-theme-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 	.cx-theme {
-		all: unset; cursor: pointer; border-radius: 14px; overflow: hidden;
+		all: unset; cursor: pointer; border-radius: var(--radius-sm); overflow: hidden;
 		border: 1px solid var(--glass-border); position: relative;
 		transition: border-color .15s, box-shadow .15s;
 	}
@@ -701,7 +701,7 @@
 	/* ── Blur control + live demo ── */
 	.cx-blur { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; }
 	.cx-blur-demo {
-		width: 74px; height: 74px; border-radius: 16px; flex-shrink: 0; position: relative; overflow: hidden;
+		width: 74px; height: 74px; border-radius: var(--radius-sm); flex-shrink: 0; position: relative; overflow: hidden;
 		background: conic-gradient(from 45deg, oklch(0.78 0.2 300), oklch(0.78 0.2 200), oklch(0.8 0.18 140), oklch(0.78 0.2 340), oklch(0.78 0.2 300));
 	}
 	.cx-blur-demo .panel {
@@ -768,7 +768,7 @@
 	/* ── Steam connect ── */
 	.cx-steam-connect {
 		display: flex; flex-direction: column; gap: 12px;
-		padding: 16px; border-radius: 14px;
+		padding: 16px; border-radius: var(--radius-sm);
 		background: color-mix(in oklab, var(--game) 8%, transparent);
 		border: 1px solid color-mix(in oklab, var(--game) 22%, transparent);
 	}
@@ -788,7 +788,7 @@
 	.cx-maint[open] summary .chev { transform: rotate(90deg); }
 
 	/* ── Save bar ── */
-	.cx-savebar { display: flex; gap: 10px; align-items: center; padding: 12px 14px; margin-top: 16px; border-radius: 18px; }
+	.cx-savebar { display: flex; gap: 10px; align-items: center; padding: 12px 14px; margin-top: 16px; border-radius: var(--radius-sm); }
 	@media (min-width: 1024px) { .cx-savebar { position: sticky; bottom: 14px; z-index: 5; } }
 	.cx-savebar :global(.btn) { flex: 1; justify-content:center; }
 	.cx-saved { color: var(--game); font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }

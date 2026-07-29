@@ -109,6 +109,15 @@
 }
 /* El fondo animado es lo que mas ruido mete: fuera en plano. Se conserva
    --bg-base, asi que la eleccion de fondo sigue tintando sutilmente. */
+/* Hay componentes que fijan su propio blur sin pasar por --blur (.btn,
+   .tab-bar, .modal, tarjetas de Deseos...). En plano no debe quedar ninguno,
+   asi que se anulan de raiz en vez de perseguirlos uno a uno. */
+:root:not([data-style="legacy"]) *,
+:root:not([data-style="legacy"]) *::before,
+:root:not([data-style="legacy"]) *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
 :root:not([data-style="legacy"]) .wallpaper .blob,
 :root:not([data-style="legacy"]) .wallpaper .grain { display: none; }
 
@@ -359,7 +368,7 @@ a { color: inherit; text-decoration: none; }
   -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
   backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
   border: 1px solid var(--glass-border);
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   color: var(--text);
   box-shadow: var(--glass-inner);
   outline: none;
@@ -378,7 +387,7 @@ a { color: inherit; text-decoration: none; }
   padding: 12px;
   font-size: 13px;
   font-family: inherit;
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   background: var(--glass-bg-weak);
   -webkit-backdrop-filter: blur(var(--blur));
   backdrop-filter: blur(var(--blur));
@@ -400,7 +409,7 @@ input.text, textarea.text, select.text {
   -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
   backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
   border: 1px solid var(--glass-border);
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   color: var(--text);
   box-shadow: var(--glass-inner);
   outline: none;
@@ -635,7 +644,7 @@ button { font-family: inherit; }
   justify-content: center;
   gap: 6px;
   padding: 10px 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--glass-border);
   background: var(--glass-bg-weak);
   font-size: 13px;
@@ -760,7 +769,7 @@ button { font-family: inherit; }
   padding: 20px 20px 24px;
   background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border-bright);
-  border-radius: 28px;
+  border-radius: var(--radius);
   box-shadow: 0 -10px 60px rgba(0,0,0,0.6), var(--glass-inner);
   -webkit-backdrop-filter: blur(40px) saturate(2);
   backdrop-filter: blur(40px) saturate(2);
@@ -856,7 +865,7 @@ button { font-family: inherit; }
 }
 .type-card {
   padding: 12px;
-  border-radius: 16px;
+  border-radius: var(--radius-sm);
   background: color-mix(in oklab, var(--accent, var(--primary)) 10%, var(--glass-bg));
   border: 1px solid color-mix(in oklab, var(--accent, var(--primary)) 20%, var(--glass-border));
   -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
@@ -888,7 +897,7 @@ button { font-family: inherit; }
   -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
   backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
   border: 1px solid var(--glass-border);
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   text-align: center;
   box-shadow: var(--glass-inner);
 }
@@ -928,14 +937,14 @@ button { font-family: inherit; }
 }
 .login-card {
   padding: 20px;
-  border-radius: 24px;
+  border-radius: var(--radius);
 }
 .seg {
   display: flex;
   padding: 4px;
   background: var(--glass-bg-weak);
   border: 1px solid var(--glass-border);
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   margin-bottom: 14px;
 }
 .seg button {
@@ -960,7 +969,7 @@ button { font-family: inherit; }
 /* ───────── SETTINGS ───────── */
 .setting-group {
   padding: 16px;
-  border-radius: 18px;
+  border-radius: var(--radius-sm);
   margin-bottom: 12px;
 }
 .setting-group-title {
@@ -1131,7 +1140,7 @@ h2 {
     z-index: 5;
     margin: 14px 0 14px 14px;
     padding: 18px 12px;
-    border-radius: 22px;
+    border-radius: var(--radius);
     background: var(--glass-bg);
     -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
     backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
@@ -1233,7 +1242,7 @@ h2 {
 .sb-user {
   margin-top: 4px;
   padding: 10px 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   background: var(--glass-bg-weak);
   border: 1px solid var(--glass-border);
   display: flex;
@@ -1277,7 +1286,7 @@ h2 {
   -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
   backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
   border: 1px solid var(--glass-border);
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   color: var(--text);
   outline: none;
   box-shadow: var(--glass-inner);
@@ -1318,7 +1327,7 @@ h2 {
 .desk-hero {
   position: relative;
   padding: 36px 32px;
-  border-radius: 28px;
+  border-radius: var(--radius);
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
   backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
@@ -1357,7 +1366,7 @@ h2 {
 
 .desk-quick {
   padding: 24px;
-  border-radius: 28px;
+  border-radius: var(--radius);
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
   backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
@@ -1425,7 +1434,7 @@ h2 {
   .desk-hero-grid > .hero {
     text-align: left;
     padding: 36px 32px;
-    border-radius: 28px;
+    border-radius: var(--radius);
     background: var(--glass-bg);
     -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
     backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
@@ -1524,7 +1533,7 @@ h2 {
     align-items: start;
     max-width: 1100px;
   }
-  .desk-settings-grid .setting-group { padding: 22px; border-radius: 20px; margin-bottom: 0; }
+  .desk-settings-grid .setting-group { padding: 22px; border-radius: var(--radius); margin-bottom: 0; }
   .desk-settings-grid .setting-full { grid-column: 1 / -1; }
 }
 
@@ -1578,7 +1587,7 @@ h2 {
   .modal {
     max-width: 600px;
     max-height: 85vh;
-    border-radius: 28px;
+    border-radius: var(--radius);
     box-shadow: 0 20px 80px rgba(0,0,0,0.7), var(--glass-inner);
     animation: fadeup 0.25s cubic-bezier(0.2,0.8,0.2,1);
   }
@@ -1662,7 +1671,7 @@ h2 {
 /* ── Tarjeta de filtros ── */
 .azar-filters {
   padding: 20px;
-  border-radius: 22px;
+  border-radius: var(--radius);
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
   backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
@@ -1686,7 +1695,7 @@ h2 {
 .type-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .type-btn {
   appearance: none; cursor: pointer; font-family: inherit;
-  width: 46px; height: 46px; border-radius: 14px;
+  width: 46px; height: 46px; border-radius: var(--radius-sm);
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--glass-bg-weak); border: 1px solid var(--glass-border);
   color: var(--text-muted); transition: all 0.18s ease; position: relative;
@@ -1742,7 +1751,7 @@ h2 {
 /* ── Escenario (stage) ── */
 .azar-stage {
   position: relative; width: 100%;
-  border-radius: 26px; padding: clamp(22px, 4vw, 36px);
+  border-radius: var(--radius); padding: clamp(22px, 4vw, 36px);
   min-height: 460px;
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
@@ -1839,7 +1848,7 @@ h2 {
 }
 .btn svg { width: 14px; height: 14px; }
 .stage-error {
-  padding: 14px 18px; border-radius: 16px; text-align: center;
+  padding: 14px 18px; border-radius: var(--radius-sm); text-align: center;
   background: color-mix(in oklab, var(--danger) 12%, var(--glass-bg-weak));
   border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
 }

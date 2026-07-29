@@ -800,7 +800,7 @@ a.item-name:hover {
 	background: var(--glass-bg-strong);
 	backdrop-filter: blur(40px) saturate(2);
 	border: 1px solid var(--glass-border-bright);
-	border-radius: 28px;
+	border-radius: var(--radius);
 	padding: 24px;
 	width: 100%;
 	max-width: 520px;

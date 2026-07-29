@@ -332,7 +332,7 @@
 		backdrop-filter: blur(16px);
 		-webkit-backdrop-filter: blur(16px);
 		border: 1px solid var(--glass-border);
-		border-radius: 20px;
+		border-radius: var(--radius);
 	}
 
 	.hero-card {
@@ -389,7 +389,7 @@
 	.stat-card {
 		background: oklch(0.2 0.03 300 / 0.35);
 		border: 1px solid var(--glass-border);
-		border-radius: 14px;
+		border-radius: var(--radius-sm);
 		padding: 12px 14px;
 	}
 

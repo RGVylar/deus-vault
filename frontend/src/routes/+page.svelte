@@ -1766,7 +1766,7 @@ $effect(() => {
 		color: var(--text-dim);
 		background: var(--glass-bg);
 		border: 1px solid var(--glass-border);
-		border-radius: 20px;
+		border-radius: var(--radius);
 		padding: 1px 8px;
 		font-weight: 600;
 	}
