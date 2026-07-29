@@ -219,7 +219,15 @@
 {/if}
 
 <style>
-	h2 { position: relative; }
+	/* El estilo de .rewind-section h2 vive en la pagina y el CSS de Svelte esta
+	   aislado por componente, asi que aqui no llega: hay que repetirlo o el
+	   icono, el titulo y el interruptor caen cada uno en una linea. */
+	.rewind-section h2 {
+		font-size: 12px; font-weight: 800; text-transform: uppercase;
+		letter-spacing: 0.18em; color: var(--text-muted); margin-bottom: 11px;
+		display: flex; align-items: center; gap: 10px;
+	}
+	.rewind-section h2 .hico { color: var(--primary); display: grid; place-items: center; flex-shrink: 0; opacity: 0.8; }
 	.tl-toggle { display: flex; gap: 2px; margin-left: auto; background: var(--glass-bg-strong); border: 1px solid var(--glass-border); padding: 2px; border-radius: 8px; }
 	.tl-toggle button {
 		font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
