@@ -3,8 +3,13 @@
   "name": "Deus Vault",
   "version": "1.0.0",
   "description": "Rastrea tu consumo de YouTube y otros medios en Deus Vault",
-
-  "permissions": ["storage", "notifications", "activeTab", "tabs", "scripting"],
+  "permissions": [
+    "storage",
+    "notifications",
+    "activeTab",
+    "tabs",
+    "scripting"
+  ],
   "host_permissions": [
     "https://www.youtube.com/*",
     "https://*.tiktok.com/*",
@@ -26,18 +31,24 @@
     "https://*.ebay.es/*",
     "https://*.ebay.com/*",
     "https://*.zalando.es/*",
-    "https://*.zara.com/*"
+    "https://*.zara.com/*",
+    "https://*.anycubic.es/*",
+    "https://*.anycubic.com/*"
   ],
-
   "background": {
     "service_worker": "service-worker.js"
   },
-
   "content_scripts": [
     {
-      "matches": ["https://www.youtube.com/*"],
-      "js": ["content/youtube.js"],
-      "css": ["content/youtube.css"],
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "content/youtube.js"
+      ],
+      "css": [
+        "content/youtube.css"
+      ],
       "run_at": "document_idle"
     },
     {
@@ -48,12 +59,18 @@
         "https://twitter.com/*",
         "https://*.instagram.com/*"
       ],
-      "js": ["content/distraction.js"],
+      "js": [
+        "content/distraction.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://content.mugrelore.com/*"],
-      "js": ["content/vault.js"],
+      "matches": [
+        "https://content.mugrelore.com/*"
+      ],
+      "js": [
+        "content/vault.js"
+      ],
       "run_at": "document_start"
     },
     {
@@ -71,25 +88,27 @@
         "https://*.ebay.es/*",
         "https://*.ebay.com/*",
         "https://*.zalando.es/*",
-        "https://*.zara.com/*"
+        "https://*.zara.com/*",
+        "https://*.anycubic.es/*",
+        "https://*.anycubic.com/*"
       ],
-      "js": ["content/product.js"],
+      "js": [
+        "content/product.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
-      "16":  "icons/icon16.svg",
-      "48":  "icons/icon48.svg",
+      "16": "icons/icon16.svg",
+      "48": "icons/icon48.svg",
       "128": "icons/icon128.svg"
     }
   },
-
   "icons": {
-    "16":  "icons/icon16.svg",
-    "48":  "icons/icon48.svg",
+    "16": "icons/icon16.svg",
+    "48": "icons/icon48.svg",
     "128": "icons/icon128.svg"
   }
 }

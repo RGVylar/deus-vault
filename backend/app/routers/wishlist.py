@@ -105,6 +105,14 @@ async def _lookup_product(url: str) -> ProductLookupResult:
             r = await client.get(url)
             html = r.text
 
+        # Se ignoraba el codigo de estado por completo, asi que un 429 o un 403
+        # seguia su curso y acababa devolviendo el <title> de la pagina de error
+        # (o nada). anycubic.es, por ejemplo, responde 429 con 18 bytes.
+        if r.status_code >= 400:
+            return ProductLookupResult(
+                title=None, price=None, image_url=None, store=store, url=url
+            )
+
         # Amazon (y algunas otras) responden 200 con una pagina antirrobot en
         # lugar del producto. Sin esto se acababa guardando un articulo
         # titulado "Amazon.es" y sin precio, que es peor que no guardar nada.

@@ -156,6 +156,7 @@ const PRODUCT_HOSTS = [
   'amazon.es', 'amazon.com', 'amazon.co.uk', 'amazon.de', 'amazon.fr',
   'fnac.es', 'pccomponentes.com', 'mediamarkt.es', 'elcorteingles.es',
   'apple.com', 'ebay.es', 'ebay.com', 'zalando.es', 'zara.com',
+  'anycubic.es', 'anycubic.com',
 ];
 
 function isProductTab(tab) {
