@@ -1371,6 +1371,16 @@
 		.ytg-meta { display: none; }
 	}
 
+	/* En plano las cajas desaparecen del todo: el contenido se apoya en la
+	   pagina y lo que separa es el aire y los filetes internos que ya tienen
+	   las celdas. Solo aplica al Rewind, que es de lectura; en Boveda o
+	   Deseos el borde delimita objetos que se pulsan y ahi se conserva. */
+	:global(:root:not([data-style='legacy'])) .surface {
+		background: transparent;
+		border-color: transparent;
+		margin-bottom: 26px;
+	}
+
 	/* ── Estilo clasico, opcional desde Ajustes ─────────────────────
 	   Restaura el cristal original. Va aqui abajo y con :global(:root[...])
 	   para ganar por especificidad sin tocar las reglas de arriba. */
