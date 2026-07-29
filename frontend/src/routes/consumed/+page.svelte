@@ -506,7 +506,7 @@
 									</span>
 								{:else if c.consumed_at}
 									<button class="date-btn" onclick={() => startEditDate(c)} title={t('consumed.editDate')}>
-										📅 {fmtDate(new Date(c.consumed_at))}
+										📅 {fmtDate(new Date(c.consumed_at), {day:'numeric', month:'short', year:'numeric'})}
 									</button>
 								{:else}
 									<button class="date-btn date-btn-empty" onclick={() => startEditDate(c)} title={t('consumed.addDate')}>
@@ -532,7 +532,7 @@
 									{:else if c.started_at}
 										<span class="date-edit-wrap">
 											<button class="date-btn" onclick={() => startEditStart(c)} title={t('consumed.editStartDate')}>
-												▶ {fmtDate(new Date(c.started_at))}
+												▶ {fmtDate(new Date(c.started_at), {day:'numeric', month:'short', year:'numeric'})}
 											</button>
 											<button class="date-btn date-btn-empty" onclick={() => clearStart(c)} title={t('consumed.removeStartDate')}>×</button>
 										</span>
@@ -543,7 +543,7 @@
 									{/if}
 								{/if}
 							{:else if c.abandoned_at}
-								<span class="date-btn" style="cursor:default;">🚫 {fmtDate(new Date(c.abandoned_at))}</span>
+								<span class="date-btn" style="cursor:default;">🚫 {fmtDate(new Date(c.abandoned_at), {day:'numeric', month:'short', year:'numeric'})}</span>
 							{/if}
 						</div>
 						{#if tab === 'abandoned' && c.progress != null && c.progress > 0}
