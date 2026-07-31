@@ -1,4 +1,5 @@
 import type { RewindStats, TopItem } from '$lib/types';
+import { fetchBlob } from '$lib/api';
 import { formatDuration, typeLabel } from '$lib/utils';
 import { t, tc } from '$lib/i18n/index.svelte';
 
@@ -197,10 +198,10 @@ function buildHeat(stats: RewindStats): { cells: HeatCell[]; cols: number; max: 
  * sin cabeceras CORS falla al cargar en vez de bloquear el `toBlob` después.
  * Cualquier fallo o tardanza devuelve null y se pinta un hueco de color.
  */
-function loadImage(url: string, timeoutMs = 5000): Promise<HTMLImageElement | null> {
+function loadImage(url: string, timeoutMs = 5000, anonymous = true): Promise<HTMLImageElement | null> {
 	return new Promise((resolve) => {
 		const img = new Image();
-		img.crossOrigin = 'anonymous';
+		if (anonymous) img.crossOrigin = 'anonymous';
 		let settled = false;
 		const done = (v: HTMLImageElement | null) => {
 			if (settled) return;
@@ -215,30 +216,59 @@ function loadImage(url: string, timeoutMs = 5000): Promise<HTMLImageElement | nu
 	});
 }
 
-async function loadThumbs(rows: RankRow[]): Promise<(HTMLImageElement | null)[]> {
-	return Promise.all(rows.map((r) => (r.thumb ? loadImage(r.thumb) : Promise.resolve(null))));
+/**
+ * Segundo intento para los hosts que no mandan CORS: el backend sirve la
+ * imagen desde nuestro dominio, y un blob: es mismo origen, así que entra al
+ * canvas sin contaminarlo.
+ */
+async function loadViaProxy(url: string): Promise<HTMLImageElement | null> {
+	let objectUrl: string | null = null;
+	try {
+		const blob = await fetchBlob(`/proxy/image?url=${encodeURIComponent(url)}`);
+		objectUrl = URL.createObjectURL(blob);
+		return await loadImage(objectUrl, 5000, false);
+	} catch {
+		return null;
+	} finally {
+		// Ya está decodificada en memoria: revocar ahora no afecta al drawImage.
+		if (objectUrl) URL.revokeObjectURL(objectUrl);
+	}
 }
 
-/** Dibuja la imagen recortada al centro para llenar el hueco, sin deformarla. */
-function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, size: number, r: number) {
-	ctx.save();
-	roundRect(ctx, x, y, size, size, r);
-	ctx.clip();
-	const s = Math.max(size / img.width, size / img.height);
+async function loadThumb(url: string): Promise<HTMLImageElement | null> {
+	return (await loadImage(url)) ?? loadViaProxy(url);
+}
+
+async function loadThumbs(rows: RankRow[]): Promise<(HTMLImageElement | null)[]> {
+	return Promise.all(rows.map((r) => (r.thumb ? loadThumb(r.thumb) : Promise.resolve(null))));
+}
+
+/**
+ * Encaja la imagen dentro del hueco respetando su proporción y centrada. El
+ * hueco mide siempre lo mismo (16:9) para que los títulos queden alineados,
+ * pero la carátula no se recorta: una cabecera de Steam se ve entera y una
+ * portada vertical de libro tampoco pierde nada.
+ */
+function drawFitted(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, r: number) {
+	const s = Math.min(w / img.width, h / img.height);
 	const dw = img.width * s, dh = img.height * s;
-	ctx.drawImage(img, x + (size - dw) / 2, y + (size - dh) / 2, dw, dh);
+	const dx = x + (w - dw) / 2, dy = y + (h - dh) / 2;
+	ctx.save();
+	roundRect(ctx, dx, dy, dw, dh, Math.min(r, dw / 2, dh / 2));
+	ctx.clip();
+	ctx.drawImage(img, dx, dy, dw, dh);
 	ctx.restore();
 }
 
-function drawThumbFallback(ctx: CanvasRenderingContext2D, row: RankRow, x: number, y: number, size: number, r: number) {
+function drawThumbFallback(ctx: CanvasRenderingContext2D, row: RankRow, x: number, y: number, w: number, h: number, r: number) {
 	const color = TYPE_PALETTE[row.type] ?? PRIMARY;
 	ctx.fillStyle = color + '30';
-	roundRect(ctx, x, y, size, size, r);
+	roundRect(ctx, x, y, w, h, r);
 	ctx.fill();
 	ctx.fillStyle = color;
-	ctx.font = `800 ${Math.round(size * 0.44)}px system-ui, sans-serif`;
+	ctx.font = `800 ${Math.round(h * 0.44)}px system-ui, sans-serif`;
 	ctx.textAlign = 'center';
-	ctx.fillText(row.title.slice(0, 1).toUpperCase(), x + size / 2, y + size * 0.66);
+	ctx.fillText(row.title.slice(0, 1).toUpperCase(), x + w / 2, y + h * 0.66);
 	ctx.textAlign = 'left';
 }
 
@@ -304,10 +334,12 @@ function drawRanking(ctx: CanvasRenderingContext2D, L: Layout, cfg: RankCfg, row
 		ctx.font = `900 ${cfg.rankF}px system-ui, sans-serif`;
 		ctx.fillText(String(i + 1), L.margin + 32, y + cfg.rowH / 2 + cfg.rankF * 0.35);
 
-		const thumbX = L.margin + 62, thumbY = y + (cfg.rowH - cfg.thumb) / 2;
+		// Hueco 16:9: cabe cualquier carátula sin recortarla y no descuadra el texto.
+		const slotW = Math.round(cfg.thumb * 16 / 9);
+		const thumbX = L.margin + 56, thumbY = y + (cfg.rowH - cfg.thumb) / 2;
 		const img = thumbs[i];
-		if (img) drawCover(ctx, img, thumbX, thumbY, cfg.thumb, 14);
-		else drawThumbFallback(ctx, r, thumbX, thumbY, cfg.thumb, 14);
+		if (img) drawFitted(ctx, img, thumbX, thumbY, slotW, cfg.thumb, 14);
+		else drawThumbFallback(ctx, r, thumbX, thumbY, slotW, cfg.thumb, 14);
 
 		// El tiempo se pinta primero para saber cuánto sitio le queda al título.
 		ctx.textAlign = 'right';
@@ -317,7 +349,7 @@ function drawRanking(ctx: CanvasRenderingContext2D, L: Layout, cfg: RankCfg, row
 		ctx.fillStyle = color;
 		ctx.fillText(dur, L.margin + fullW - 24, y + cfg.rowH / 2 + cfg.minF * 0.35);
 
-		const tx = thumbX + cfg.thumb + 22;
+		const tx = thumbX + slotW + 20;
 		const maxW = L.margin + fullW - 24 - durW - 24 - tx;
 		ctx.textAlign = 'left';
 		ctx.fillStyle = '#fff';

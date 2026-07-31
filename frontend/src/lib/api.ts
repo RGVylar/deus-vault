@@ -25,6 +25,17 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
 	return res.json();
 }
 
+/** Descarga binaria autenticada — `request` asume JSON y aquí queremos los bytes. */
+export async function fetchBlob(path: string): Promise<Blob> {
+	const headers: Record<string, string> = {};
+	const token = auth.token;
+	if (token) headers['Authorization'] = `Bearer ${token}`;
+
+	const res = await fetch(`${BASE}${path}`, { headers });
+	if (!res.ok) throw new Error(`HTTP ${res.status}`);
+	return res.blob();
+}
+
 export const api = {
 	get: <T>(path: string) => request<T>(path),
 	post: <T>(path: string, body?: unknown) =>
