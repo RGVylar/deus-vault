@@ -238,6 +238,19 @@ export interface GoodDay {
 	minutes: number;
 }
 
+/** Lo perdido en un año concreto: `DistractionStats` solo sabe de 7/30 días e histórico. */
+export interface DistractionRewind {
+	year: number;
+	total_seconds: number;
+	total_items: number;
+	platforms: PlatformTotal[];
+	by_month: number[];
+	worst_day: string | null;
+	worst_day_seconds: number;
+	days_with_distraction: number;
+	good_minutes: number;
+}
+
 export interface DistractionStats {
 	today_seconds: number;
 	week_seconds: number;

@@ -3,10 +3,42 @@
 	import { distractionsApi } from '$lib/api';
 	import { t, tc } from '$lib/i18n/index.svelte';
 	import type { DistractionStats } from '$lib/types';
+	import { exportWastedImage } from '$lib/wastedShare';
+	import type { ShareFormat } from '$lib/shareCanvas';
 
 	let stats = $state<DistractionStats | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+
+	// Compartir lo perdido: el año no está en `stats`, que solo sabe de 7/30 días.
+	let sharing = $state<ShareFormat | null>(null);
+	let shareMsg = $state('');
+	let shareErr = $state(false);
+	let shareMsgTimer: ReturnType<typeof setTimeout> | null = null;
+
+	async function shareWasted(format: ShareFormat) {
+		if (sharing) return;
+		if (shareMsgTimer) clearTimeout(shareMsgTimer);
+		sharing = format;
+		shareErr = false;
+		shareMsg = t('wasted.share.working');
+		try {
+			const data = await distractionsApi.rewind(new Date().getFullYear());
+			if (data.total_seconds === 0) {
+				shareMsg = t('wasted.share.empty');
+				return;
+			}
+			const result = await exportWastedImage(data, format);
+			shareMsg = result === 'downloaded' ? t('wasted.share.downloaded') : '';
+		} catch (e) {
+			console.error('wasted share failed', e);
+			shareErr = true;
+			shareMsg = t('wasted.share.failed');
+		} finally {
+			sharing = null;
+			if (shareMsg) shareMsgTimer = setTimeout(() => { shareMsg = ''; }, 5000);
+		}
+	}
 
 	const PLATFORM_META: Record<string, { label: string; icon: string; color: string }> = {
 		shorts:  { label: 'YouTube Shorts',  icon: '📱', color: 'oklch(0.65 0.22 25)'  },
@@ -293,6 +325,16 @@
 				</div>
 			</section>
 		{/if}
+
+		<section class="share-lost">
+			<div class="share-lost-actions">
+				<button class="btn share-lost-primary" disabled={sharing !== null} onclick={() => shareWasted('story')}>
+					{t('wasted.share.button')} · 9:16
+				</button>
+				<button class="btn" disabled={sharing !== null} onclick={() => shareWasted('square')}>1:1</button>
+			</div>
+			{#if shareMsg}<div class="share-lost-msg" class:err={shareErr}>{shareMsg}</div>{/if}
+		</section>
 	{/if}
 </div>
 
@@ -303,6 +345,13 @@
 		flex-direction: column;
 		gap: 18px;
 	}
+
+	.share-lost { margin-top: 22px; }
+	.share-lost-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+	.share-lost-actions .btn:disabled { opacity: 0.6; cursor: default; }
+	.share-lost-primary { background: var(--primary); color: #120a1e; border: none; font-weight: 800; }
+	.share-lost-msg { margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+	.share-lost-msg.err { color: var(--danger, #e0556b); }
 
 	.page-title {
 		font-size: 30px;

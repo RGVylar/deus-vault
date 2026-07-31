@@ -9,7 +9,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Chapter from '$lib/components/Chapter.svelte';
 	import YearTimeline from '$lib/components/YearTimeline.svelte';
-	import { exportShareImage, type ShareFormat } from '$lib/rewindShare';
+	import { exportShareImage, type ShareFormat, type ShareVariant } from '$lib/rewindShare';
 	import { privacy, setActive, toggleChannel, isMarked, filterChannels, filterYoutubeItems } from '$lib/stores/privacy.svelte';
 
 	const MONTHS = $derived([
@@ -57,6 +57,7 @@
 	// Compartir la imagen del Rewind
 	let canNativeShare = $state(false);
 	let sharing = $state<ShareFormat | null>(null);
+	let shareVariant = $state<ShareVariant>('year');
 	let shareMsg = $state('');
 	let shareErr = $state(false);
 	const shareVerb = $derived(canNativeShare ? t('rewind.shareImage') : t('rewind.downloadImage'));
@@ -69,7 +70,7 @@
 		shareErr = false;
 		shareMsg = t('rewind.shareWorking');
 		try {
-			const result = await exportShareImage(stats, format);
+			const result = await exportShareImage(stats, format, shareVariant);
 			// 'shared'/'cancelled' ya los ha visto el usuario en la hoja del sistema.
 			shareMsg = result === 'downloaded' ? t('rewind.shareDownloaded') : '';
 		} catch (e) {
@@ -985,6 +986,10 @@
 			{#if stats.top_items_by_type['series']?.length > 0}<div class="share-block"><div class="share-lbl">{t('rewind.topSeries')}</div><div class="share-val">{stats.top_items_by_type['series'][0].title}</div><div class="share-sub">{formatDuration(stats.top_items_by_type['series'][0].minutes)}</div></div>{:else if stats.top_items_by_type['movie']?.length > 0}<div class="share-block"><div class="share-lbl">{t('rewind.topMovie')}</div><div class="share-val">{stats.top_items_by_type['movie'][0].title}</div><div class="share-sub">{formatDuration(stats.top_items_by_type['movie'][0].minutes)}</div></div>{/if}
 			{#if stats.streak_max > 0}<div class="share-block"><div class="share-lbl">{t('rewind.maxStreakLabel')}</div><div class="share-val">{tc('rewind.daysCount', stats.streak_max)}</div><div class="share-sub">{t('rewind.nonstop')}</div></div>{/if}
 		</div>
+		<div class="share-variants">
+			<button class="btn" class:btn-primary={shareVariant === 'year'} onclick={() => shareVariant = 'year'}>{t('rewind.variantYear')}</button>
+			<button class="btn" class:btn-primary={shareVariant === 'timeline'} onclick={() => shareVariant = 'timeline'}>{t('rewind.variantTimeline')}</button>
+		</div>
 		<div class="share-actions">
 			<button class="btn share-btn-primary" disabled={sharing !== null} onclick={() => doShare('story')}>
 				<Icon name="share" size={16} /> {shareVerb} · {t('rewind.shareStory')}
@@ -1318,6 +1323,8 @@
 	.share-val { font-size: 15px; font-weight: 800; margin: 4px 0 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 	.share-val.big { font-size: 26px; color: var(--primary); }
 	.share-sub { font-size: 11px; color: var(--text-muted); }
+	.share-variants { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+	.share-variants .btn { font-size: 13px; }
 	.share-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 	.share-actions .btn { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 	.share-btn-primary { background: var(--primary); color: #120a1e; border: none; font-weight: 800; }

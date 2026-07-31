@@ -67,4 +67,6 @@ export const wishlistApi = {
 export const distractionsApi = {
 	stats: (days = 30) =>
 		api.get<import('./types').DistractionStats>(`/distractions/stats?days=${days}`),
+	rewind: (year: number) =>
+		api.get<import('./types').DistractionRewind>(`/distractions/rewind?year=${year}`),
 };

@@ -12,6 +12,7 @@ from app.routers.contents import _effective_duration
 from app.schemas.distraction import (
     VALID_PLATFORMS,
     DistractionDayOut,
+    DistractionRewind,
     DistractionStats,
     DistractionTickIn,
     GoodDayOut,
@@ -68,6 +69,61 @@ def _good_minutes(db: Session, user_id: int, start: datetime | None = None) -> i
     if start is not None:
         q = q.where(Content.consumed_at >= start)
     return sum(_effective_duration(c) for c in db.scalars(q).all())
+
+
+@router.get("/rewind", response_model=DistractionRewind)
+def rewind(
+    year: int | None = Query(default=None),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> DistractionRewind:
+    """Lo perdido durante un año, para la imagen de compartir y la vista anual."""
+    if year is None:
+        year = date.today().year
+    start, end = date(year, 1, 1), date(year, 12, 31)
+
+    rows = db.scalars(
+        select(DistractionLog).where(
+            DistractionLog.user_id == current_user.id,
+            DistractionLog.date >= start,
+            DistractionLog.date <= end,
+        )
+    ).all()
+
+    by_platform: dict[str, PlatformTotal] = {}
+    by_month = [0] * 12
+    per_day: dict[date, int] = {}
+    for r in rows:
+        agg = by_platform.setdefault(
+            r.platform, PlatformTotal(platform=r.platform, seconds=0, items_count=0)
+        )
+        agg.seconds += r.seconds
+        agg.items_count += r.items_count
+        by_month[r.date.month - 1] += r.seconds
+        per_day[r.date] = per_day.get(r.date, 0) + r.seconds
+
+    worst_day = max(per_day, key=lambda d: per_day[d]) if per_day else None
+
+    good = db.scalars(
+        select(Content).where(
+            Content.user_id == current_user.id,
+            Content.consumed.is_(True),
+            Content.consumed_at >= datetime(year, 1, 1, tzinfo=timezone.utc),
+            Content.consumed_at < datetime(year + 1, 1, 1, tzinfo=timezone.utc),
+        )
+    ).all()
+
+    return DistractionRewind(
+        year=year,
+        total_seconds=sum(r.seconds for r in rows),
+        total_items=sum(r.items_count for r in rows),
+        platforms=sorted(by_platform.values(), key=lambda p: p.seconds, reverse=True),
+        by_month=by_month,
+        worst_day=worst_day,
+        worst_day_seconds=per_day.get(worst_day, 0) if worst_day else 0,
+        days_with_distraction=len(per_day),
+        good_minutes=sum(_effective_duration(c) for c in good),
+    )
 
 
 @router.get("/stats", response_model=DistractionStats)

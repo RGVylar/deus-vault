@@ -1,27 +1,19 @@
-import type { RewindStats, TopItem } from '$lib/types';
+import type { Content, RewindStats, TopItem } from '$lib/types';
 import { fetchBlob } from '$lib/api';
 import { filterChannels, isHiddenNow } from '$lib/stores/privacy.svelte';
 import { formatDuration, typeLabel } from '$lib/utils';
 import { t, tc } from '$lib/i18n/index.svelte';
 
-const TYPE_PALETTE: Record<string, string> = {
-	youtube: '#e0556b',
-	movie:   '#e8b84b',
-	series:  '#7fc8e8',
-	book:    '#7da8e8',
-	game:    '#6fd49a',
-	music:   '#d97fc8',
-};
-const PRIMARY = '#c9a9f5';
-const PRIMARY_RGB = '168,120,230';
+import {
+	PRIMARY, PRIMARY_RGB, TYPE_PALETTE,
+	drawBackdrop, fitText, newCanvas, roundRect, shareOrDownload, toBlob,
+	type ShareFormat, type ShareResult, type Text,
+} from '$lib/shareCanvas';
 
-/** Story vertical (9:16) para Instagram/WhatsApp, o cuadrado (1:1) para feed. */
-export type ShareFormat = 'story' | 'square';
+export type { ShareFormat, ShareResult };
 
-/** 'shared': fue al menú nativo. 'downloaded': cayó a descarga. 'cancelled': el usuario cerró el menú. */
-export type ShareResult = 'shared' | 'downloaded' | 'cancelled';
-
-interface Text { y: number; f: number }
+/** 'year': el resumen de siempre. 'timeline': qué tenías entre manos y cuándo. */
+export type ShareVariant = 'year' | 'timeline';
 interface ChipsCfg { top: number; h: number; gap: number; count: number; labelF: number; valueF: number; subF: number }
 interface RankCfg { top: number; rowH: number; gap: number; rows: number; thumb: number; rankF: number; titleF: number; subF: number; minF: number }
 interface HeatCfg { top: number; gap: number; maxCell: number }
@@ -94,33 +86,6 @@ function minutesToDays(minutes: number): string {
 	if (d === 0) return `${h}h`;
 	if (h === 0) return tc('rewind.share.days', d);
 	return `${d}d ${h}h`;
-}
-
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-	ctx.beginPath();
-	ctx.moveTo(x + r, y);
-	ctx.arcTo(x + w, y, x + w, y + h, r);
-	ctx.arcTo(x + w, y + h, x, y + h, r);
-	ctx.arcTo(x, y + h, x, y, r);
-	ctx.arcTo(x, y, x + w, y, r);
-	ctx.closePath();
-}
-
-/**
- * Recorta el texto para que quepa en `maxW`, cortando por palabra siempre que
- * eso no sacrifique más de un tercio de lo que cabría.
- */
-function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string {
-	if (ctx.measureText(text).width <= maxW) return text;
-	let lo = 0, hi = text.length;
-	while (lo < hi) {
-		const mid = (lo + hi + 1) >> 1;
-		if (ctx.measureText(text.slice(0, mid) + '…').width <= maxW) lo = mid; else hi = mid - 1;
-	}
-	let cut = text.slice(0, lo).trimEnd();
-	const lastSpace = cut.lastIndexOf(' ');
-	if (lastSpace > cut.length * 0.66) cut = cut.slice(0, lastSpace).trimEnd();
-	return cut + '…';
 }
 
 // ── Datos ────────────────────────────────────────────────────────────────
@@ -399,6 +364,264 @@ function drawTypeLegend(ctx: CanvasRenderingContext2D, L: Layout, entries: reado
 	});
 }
 
+// ── Variante "entre manos" ───────────────────────────────────────────────
+
+/**
+ * Las campañas (juego, serie, libro) se viven durante semanas, así que van
+ * como barras de inicio a fin. Las películas son de una sentada: un carril de
+ * puntos. YouTube y música son cientos de ítems: una banda de intensidad
+ * mensual. Mismo criterio que la línea de tiempo de la app.
+ */
+const TL_CAMPAIGN = ['game', 'series', 'book'];
+const TL_NOISE = ['youtube', 'music'];
+
+interface TlBar { title: string; type: string; startPct: number; endPct: number; hasSpan: boolean; minutes: number }
+interface TlData { bars: TlBar[]; hidden: number; movies: number[]; noise: number[]; noiseMax: number; totalCampaigns: number; totalMovies: number }
+
+/** Posición 0-1 dentro del año; null si la fecha cae fuera. */
+function yearPct(iso: string | null | undefined, year: number): number | null {
+	if (!iso) return null;
+	const d = new Date(iso);
+	if (isNaN(d.getTime()) || d.getFullYear() !== year) return null;
+	const daysInMonth = new Date(year, d.getMonth() + 1, 0).getDate();
+	return (d.getMonth() + (d.getDate() - 1) / daysInMonth) / 12;
+}
+
+function buildTimeline(stats: RewindStats, rows: number): TlData {
+	const year = stats.year;
+	const items = (stats.items ?? []) as Content[];
+
+	const all: TlBar[] = [];
+	for (const c of items) {
+		if (!TL_CAMPAIGN.includes(c.content_type)) continue;
+		const end = yearPct(c.consumed_at, year);
+		if (end === null) continue;
+		const rawStart = yearPct(c.started_at, year);
+		const hasSpan = rawStart !== null && rawStart < end;
+		const minutes = c.content_type === 'series' && c.episode_count
+			? c.duration_minutes * c.episode_count
+			: c.duration_minutes;
+		all.push({ title: c.title, type: c.content_type, startPct: hasSpan ? (rawStart as number) : end, endPct: end, hasSpan, minutes });
+	}
+	// Se eligen las más largas, pero se pintan en orden cronológico: así la
+	// imagen se lee como el relato del año y no como un ranking.
+	const picked = [...all].sort((a, b) => b.minutes - a.minutes).slice(0, rows);
+	picked.sort((a, b) => a.startPct - b.startPct);
+
+	const movies: number[] = [];
+	for (const c of items) {
+		if (c.content_type !== 'movie') continue;
+		const p = yearPct(c.consumed_at, year);
+		if (p !== null) movies.push(p);
+	}
+
+	const noise = new Array(12).fill(0);
+	for (const c of items) {
+		if (!TL_NOISE.includes(c.content_type)) continue;
+		if (c.content_type === 'youtube' && isHiddenNow(c.author)) continue;
+		const d = c.consumed_at ? new Date(c.consumed_at) : null;
+		if (!d || isNaN(d.getTime()) || d.getFullYear() !== year) continue;
+		noise[d.getMonth()] += c.duration_minutes;
+	}
+
+	return {
+		bars: picked,
+		hidden: Math.max(0, all.length - picked.length),
+		movies,
+		noise,
+		noiseMax: Math.max(1, ...noise),
+		totalCampaigns: all.length,
+		totalMovies: movies.length,
+	};
+}
+
+interface TlLayout {
+	W: number; H: number; margin: number;
+	glowY: number; glowR: number;
+	mark: Text; name: Text; tagline: Text; year: Text;
+	title: Text; subtitle: Text;
+	barsTop: number; rowStride: number; rows: number; barH: number; titleF: number;
+	more: Text;
+	moviesLabel: Text; moviesLane: number; dot: number;
+	noiseLabel: Text; noiseTop: number; noiseH: number;
+	axis: Text;
+	legend: Text;
+	percent: Text; worthIt: Text; footer: Text;
+}
+
+const TL_LAYOUTS: Record<ShareFormat, TlLayout> = {
+	story: {
+		W: 1080, H: 1920, margin: 80,
+		glowY: 360, glowR: 480,
+		mark: { y: 118, f: 54 }, name: { y: 168, f: 34 }, tagline: { y: 198, f: 20 }, year: { y: 252, f: 26 },
+		title: { y: 344, f: 42 }, subtitle: { y: 390, f: 24 },
+		barsTop: 470, rowStride: 96, rows: 6, barH: 26, titleF: 28,
+		more: { y: 1076, f: 22 },
+		moviesLabel: { y: 1152, f: 22 }, moviesLane: 1186, dot: 16,
+		noiseLabel: { y: 1276, f: 22 }, noiseTop: 1298, noiseH: 126,
+		axis: { y: 1462, f: 20 },
+		legend: { y: 1530, f: 22 },
+		percent: { y: 1672, f: 52 }, worthIt: { y: 1726, f: 26 }, footer: { y: 1866, f: 22 },
+	},
+	square: {
+		W: 1080, H: 1080, margin: 70,
+		glowY: 260, glowR: 380,
+		mark: { y: 86, f: 40 }, name: { y: 128, f: 27 }, tagline: { y: 154, f: 17 }, year: { y: 198, f: 22 },
+		title: { y: 262, f: 32 }, subtitle: { y: 298, f: 19 },
+		barsTop: 344, rowStride: 64, rows: 4, barH: 20, titleF: 22,
+		more: { y: 622, f: 18 },
+		moviesLabel: { y: 674, f: 18 }, moviesLane: 700, dot: 12,
+		noiseLabel: { y: 754, f: 18 }, noiseTop: 772, noiseH: 66,
+		axis: { y: 864, f: 16 },
+		legend: { y: 912, f: 18 },
+		percent: { y: 982, f: 40 }, worthIt: { y: 1020, f: 21 }, footer: { y: 1058, f: 17 },
+	},
+};
+
+function drawTimelineGrid(ctx: CanvasRenderingContext2D, L: TlLayout, top: number, bottom: number) {
+	const fullW = L.W - L.margin * 2;
+	ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+	ctx.lineWidth = 1;
+	for (let m = 0; m <= 12; m++) {
+		const x = L.margin + (m / 12) * fullW;
+		ctx.beginPath();
+		ctx.moveTo(x, top);
+		ctx.lineTo(x, bottom);
+		ctx.stroke();
+	}
+}
+
+function renderTimeline(stats: RewindStats, format: ShareFormat): HTMLCanvasElement {
+	const L = TL_LAYOUTS[format];
+	const data = buildTimeline(stats, L.rows);
+	const [cv, ctx] = newCanvas(L.W, L.H);
+	const fullW = L.W - L.margin * 2;
+	drawBackdrop(ctx, L.W, L.H, L.glowY, L.glowR, 0.26);
+
+	// Marca
+	ctx.textAlign = 'center';
+	ctx.fillStyle = PRIMARY;
+	ctx.font = `700 ${L.mark.f}px system-ui, sans-serif`;
+	ctx.fillText('⛧', L.W / 2, L.mark.y);
+	ctx.fillStyle = '#fff';
+	ctx.font = `800 ${L.name.f}px system-ui, sans-serif`;
+	ctx.fillText('DEUS VAULT', L.W / 2, L.name.y);
+	ctx.fillStyle = 'rgba(255,255,255,0.5)';
+	ctx.font = `italic ${L.tagline.f}px system-ui, sans-serif`;
+	ctx.fillText('memento mori', L.W / 2, L.tagline.y);
+	ctx.fillStyle = PRIMARY;
+	ctx.font = `800 ${L.year.f}px system-ui, sans-serif`;
+	ctx.fillText(`REWIND ${stats.year}`, L.W / 2, L.year.y);
+
+	ctx.fillStyle = '#fff';
+	ctx.font = `900 ${L.title.f}px system-ui, sans-serif`;
+	ctx.fillText(t('rewind.share.timelineTitle'), L.W / 2, L.title.y);
+	ctx.fillStyle = 'rgba(255,255,255,0.6)';
+	ctx.font = `600 ${L.subtitle.f}px system-ui, sans-serif`;
+	ctx.fillText(
+		`${tc('rewind.share.campaignsCount', data.totalCampaigns)} · ${tc('rewind.share.moviesCount', data.totalMovies)}`,
+		L.W / 2, L.subtitle.y,
+	);
+
+	// Rejilla de meses de fondo, para que las barras se sitúen en el año
+	const gridBottom = L.noiseTop + L.noiseH;
+	drawTimelineGrid(ctx, L, L.barsTop - 10, gridBottom);
+
+	// Campañas
+	ctx.textAlign = 'left';
+	data.bars.forEach((b, i) => {
+		const rowTop = L.barsTop + i * L.rowStride;
+		ctx.fillStyle = '#fff';
+		ctx.font = `800 ${L.titleF}px system-ui, sans-serif`;
+		ctx.fillText(fitText(ctx, b.title, fullW - 160), L.margin, rowTop + L.titleF);
+
+		const color = TYPE_PALETTE[b.type] ?? PRIMARY;
+		const barY = rowTop + L.titleF + 14;
+		const x = L.margin + b.startPct * fullW;
+		// Sin started_at solo sabemos cuándo acabaste: se pinta una marca corta
+		// en vez de inventar un tramo que no sabemos si existió.
+		const w = b.hasSpan ? Math.max((b.endPct - b.startPct) * fullW, L.barH) : L.barH;
+		ctx.fillStyle = color;
+		roundRect(ctx, Math.min(x, L.margin + fullW - w), barY, w, L.barH, L.barH / 2);
+		ctx.fill();
+
+		ctx.fillStyle = 'rgba(255,255,255,0.5)';
+		ctx.font = `600 ${Math.round(L.titleF * 0.7)}px system-ui, sans-serif`;
+		ctx.textAlign = 'right';
+		ctx.fillText(formatDuration(b.minutes), L.margin + fullW, rowTop + L.titleF);
+		ctx.textAlign = 'left';
+	});
+
+	if (data.hidden > 0) {
+		ctx.fillStyle = 'rgba(255,255,255,0.4)';
+		ctx.font = `600 ${L.more.f}px system-ui, sans-serif`;
+		ctx.fillText(tc('rewind.share.andMoreCampaigns', data.hidden), L.margin, L.more.y);
+	}
+
+	// Películas: una sentada cada una
+	if (data.movies.length > 0) {
+		ctx.fillStyle = 'rgba(255,255,255,0.5)';
+		ctx.font = `700 ${L.moviesLabel.f}px system-ui, sans-serif`;
+		ctx.fillText(t('rewind.share.moviesLane'), L.margin, L.moviesLabel.y);
+		ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+		ctx.lineWidth = 2;
+		ctx.beginPath();
+		ctx.moveTo(L.margin, L.moviesLane);
+		ctx.lineTo(L.margin + fullW, L.moviesLane);
+		ctx.stroke();
+		ctx.fillStyle = TYPE_PALETTE.movie;
+		for (const p of data.movies) {
+			ctx.beginPath();
+			ctx.arc(L.margin + p * fullW, L.moviesLane, L.dot / 2, 0, Math.PI * 2);
+			ctx.fill();
+		}
+	}
+
+	// Ruido: cientos de ítems, así que intensidad por mes
+	if (data.noise.some((m) => m > 0)) {
+		ctx.fillStyle = 'rgba(255,255,255,0.5)';
+		ctx.font = `700 ${L.noiseLabel.f}px system-ui, sans-serif`;
+		ctx.fillText(t('rewind.share.noiseLane'), L.margin, L.noiseLabel.y);
+		const bw = fullW / 12;
+		data.noise.forEach((minutes, m) => {
+			const h = Math.max(L.noiseH * (minutes / data.noiseMax), 3);
+			ctx.fillStyle = `rgba(224,85,107,${(0.35 + 0.65 * (minutes / data.noiseMax)).toFixed(3)})`;
+			roundRect(ctx, L.margin + m * bw + 3, L.noiseTop + L.noiseH - h, bw - 6, h, Math.min(6, h / 2));
+			ctx.fill();
+		});
+	}
+
+	// Eje de meses
+	ctx.fillStyle = 'rgba(255,255,255,0.35)';
+	ctx.font = `600 ${L.axis.f}px system-ui, sans-serif`;
+	ctx.textAlign = 'center';
+	const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
+	MONTH_KEYS.forEach((k, m) => {
+		ctx.fillText(t(`common.month.${k}` as Parameters<typeof t>[0]), L.margin + (m + 0.5) * (fullW / 12), L.axis.y);
+	});
+
+	// Leyenda: aquí el color es la única pista del tipo
+	const usedTypes = [...new Set(data.bars.map((b) => b.type))];
+	if (data.movies.length > 0) usedTypes.push('movie');
+	if (data.noise.some((m) => m > 0)) usedTypes.push('youtube');
+	drawTypeLegend(ctx, { W: L.W, margin: L.margin, legend: { y: L.legend.y, f: L.legend.f, lineH: L.legend.f + 10, showPct: false } } as Layout,
+		usedTypes.map((type) => [type, 0] as const));
+
+	// Cierre
+	ctx.textAlign = 'center';
+	ctx.fillStyle = '#fff';
+	ctx.font = `900 ${L.percent.f}px system-ui, sans-serif`;
+	ctx.fillText(formatDuration(stats.total_consumed_minutes), L.W / 2, L.percent.y);
+	ctx.fillStyle = 'rgba(255,255,255,0.45)';
+	ctx.font = `italic ${L.worthIt.f}px system-ui, sans-serif`;
+	ctx.fillText(t('rewind.share.percentOfYear', { pct: stats.percentage_of_year.toFixed(2), year: stats.year }), L.W / 2, L.worthIt.y);
+	ctx.fillStyle = 'rgba(255,255,255,0.3)';
+	ctx.font = `600 ${L.footer.f}px system-ui, sans-serif`;
+	ctx.fillText('deus-vault', L.W / 2, L.footer.y);
+
+	return cv;
+}
+
 function drawHeatmap(ctx: CanvasRenderingContext2D, L: Layout, cfg: HeatCfg, stats: RewindStats) {
 	const { cells, cols, max } = buildHeat(stats);
 	const fullW = L.W - L.margin * 2;
@@ -448,24 +671,8 @@ function drawHours(ctx: CanvasRenderingContext2D, L: Layout, cfg: HoursCfg, stat
 
 function renderCanvas(stats: RewindStats, format: ShareFormat, thumbs: (HTMLImageElement | null)[], rows: RankRow[]): HTMLCanvasElement {
 	const L = LAYOUTS[format];
-	const cv = document.createElement('canvas');
-	cv.width = L.W; cv.height = L.H;
-	const ctx = cv.getContext('2d');
-	if (!ctx) throw new Error('canvas 2d context unavailable');
-
-	// Fondo
-	const g = ctx.createLinearGradient(0, 0, L.W, L.H);
-	g.addColorStop(0, '#1a1030');
-	g.addColorStop(0.5, '#120a24');
-	g.addColorStop(1, '#0a0518');
-	ctx.fillStyle = g;
-	ctx.fillRect(0, 0, L.W, L.H);
-
-	const rg = ctx.createRadialGradient(L.W / 2, L.glowY, 40, L.W / 2, L.glowY, L.glowR);
-	rg.addColorStop(0, `rgba(${PRIMARY_RGB},0.28)`);
-	rg.addColorStop(1, 'transparent');
-	ctx.fillStyle = rg;
-	ctx.fillRect(0, 0, L.W, L.H);
+	const [cv, ctx] = newCanvas(L.W, L.H);
+	drawBackdrop(ctx, L.W, L.H, L.glowY, L.glowR);
 
 	// Marca
 	ctx.textAlign = 'center';
@@ -540,22 +747,10 @@ function renderCanvas(stats: RewindStats, format: ShareFormat, thumbs: (HTMLImag
 	return cv;
 }
 
-function toBlob(cv: HTMLCanvasElement): Promise<Blob> {
-	return new Promise((resolve, reject) => {
-		cv.toBlob((b) => (b ? resolve(b) : reject(new Error('canvas toBlob returned null'))), 'image/png');
-	});
-}
+async function buildBlob(stats: RewindStats, format: ShareFormat, variant: ShareVariant): Promise<Blob> {
+	// La timeline se dibuja entera con datos que ya tenemos: no carga imágenes.
+	if (variant === 'timeline') return toBlob(renderTimeline(stats, format));
 
-function download(blob: Blob, filename: string) {
-	const url = URL.createObjectURL(blob);
-	const a = document.createElement('a');
-	a.href = url;
-	a.download = filename;
-	a.click();
-	setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-async function buildBlob(stats: RewindStats, format: ShareFormat): Promise<Blob> {
 	const rows = buildRanking(stats, LAYOUTS[format].rank?.rows ?? 0);
 	const thumbs = await loadThumbs(rows);
 	try {
@@ -573,21 +768,9 @@ async function buildBlob(stats: RewindStats, format: ShareFormat): Promise<Blob>
  * (móvil/PWA). Si no hay compartir nativo — o falla — cae a descarga directa.
  * Lanza si el canvas no se puede rasterizar; el llamante avisa al usuario.
  */
-export async function exportShareImage(stats: RewindStats, format: ShareFormat = 'story'): Promise<ShareResult> {
-	const blob = await buildBlob(stats, format);
-	const filename = `deus-vault-rewind-${stats.year}${format === 'square' ? '-feed' : ''}.png`;
+export async function exportShareImage(stats: RewindStats, format: ShareFormat = 'story', variant: ShareVariant = 'year'): Promise<ShareResult> {
+	const blob = await buildBlob(stats, format, variant);
+	const filename = `deus-vault-rewind-${stats.year}${variant === 'timeline' ? '-timeline' : ''}${format === 'square' ? '-feed' : ''}.png`;
 
-	const file = new File([blob], filename, { type: 'image/png' });
-	if (navigator.canShare?.({ files: [file] })) {
-		try {
-			await navigator.share({ files: [file], title: `Deus Vault · Rewind ${stats.year}` });
-			return 'shared';
-		} catch (e) {
-			// El usuario cerró la hoja de compartir: no es un error, no descargamos a su espalda.
-			if ((e as Error)?.name === 'AbortError') return 'cancelled';
-		}
-	}
-
-	download(blob, filename);
-	return 'downloaded';
+	return shareOrDownload(blob, filename, `Deus Vault · Rewind ${stats.year}`);
 }

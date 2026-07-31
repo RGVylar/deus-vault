@@ -36,6 +36,21 @@ class GoodDayOut(BaseModel):
     minutes: int
 
 
+class DistractionRewind(BaseModel):
+    """Lo perdido en un año concreto. `stats` solo sabe de 7 días, 30 y el
+    histórico completo, así que el Rewind necesitaba su propio corte."""
+
+    year: int
+    total_seconds: int
+    total_items: int
+    platforms: list[PlatformTotal]
+    by_month: list[int]              # 12 posiciones, segundos
+    worst_day: date | None
+    worst_day_seconds: int
+    days_with_distraction: int
+    good_minutes: int                # contenido consumido ese año, para comparar
+
+
 class DistractionStats(BaseModel):
     # Tiempo perdido (segundos)
     today_seconds: int
