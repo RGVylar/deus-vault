@@ -664,6 +664,18 @@ export const es = {
 	'rewind.share.percentOfYear': '{pct}% de {year}',
 	'rewind.share.worthIt': '¿valió la pena cada minuto?',
 
+	// ── privacy (canales ocultos) ──
+	'privacy.markChannel': 'Marcar para ocultar',
+	'privacy.unmarkChannel': 'Dejar de ocultar',
+	'privacy.showAll': 'Ocultar canales marcados',
+	'privacy.hidingCount_one': 'Ocultando {count} canal',
+	'privacy.hidingCount_other': 'Ocultando {count} canales',
+	'privacy.hiddenChannels': 'Canales ocultos',
+	'privacy.hiddenChannelsHint': 'Marca canales desde el Rewind. El interruptor los hace desaparecer de la página y de la imagen que compartes; al apagarlo vuelven.',
+	'privacy.hiddenChannelsEmpty': 'No has marcado ningún canal.',
+	'privacy.hiddenDeviceOnly': 'Esta lista solo vive en este dispositivo.',
+	'privacy.remove': 'Quitar',
+
 	// ── errors ──
 	'errors.generic': 'Error',
 	'errors.session': 'Sesión inválida, vuelve a iniciar sesión',

@@ -1,5 +1,6 @@
 import type { RewindStats, TopItem } from '$lib/types';
 import { fetchBlob } from '$lib/api';
+import { filterChannels, isHiddenNow } from '$lib/stores/privacy.svelte';
 import { formatDuration, typeLabel } from '$lib/utils';
 import { t, tc } from '$lib/i18n/index.svelte';
 
@@ -134,7 +135,7 @@ function buildChips(stats: RewindStats, count: number): Chip[] {
 		if (value) out.push({ label, value, sub });
 	};
 
-	const channel = stats.top_youtube_channels[0];
+	const channel = filterChannels(stats.top_youtube_channels)[0];
 	if (channel) add(t('rewind.share.topChannel'), channel.name, formatDuration(channel.minutes));
 	if (stats.streak_max > 0) add(t('rewind.share.maxStreak'), tc('rewind.share.streakDays', stats.streak_max), t('rewind.share.nonstop'));
 	if (stats.avg_rating != null) {
@@ -163,6 +164,8 @@ function buildRanking(stats: RewindStats, rows: number): RankRow[] {
 	const all: RankRow[] = [];
 	for (const [type, items] of Object.entries(stats.top_items_by_type)) {
 		for (const it of items as TopItem[]) {
+			// Un vídeo de un canal oculto lo delataría igual que la lista de canales.
+			if (type === 'youtube' && isHiddenNow(it.author)) continue;
 			all.push({
 				title: it.title,
 				sub: it.author ? `${typeLabel(type)} · ${it.author}` : typeLabel(type),

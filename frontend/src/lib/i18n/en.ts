@@ -665,6 +665,18 @@ export const en = {
 	'rewind.share.percentOfYear': '{pct}% of {year}',
 	'rewind.share.worthIt': 'was every minute worth it?',
 
+	// ── privacy (hidden channels) ──
+	'privacy.markChannel': 'Mark as hidden',
+	'privacy.unmarkChannel': 'Stop hiding',
+	'privacy.showAll': 'Hide marked channels',
+	'privacy.hidingCount_one': 'Hiding {count} channel',
+	'privacy.hidingCount_other': 'Hiding {count} channels',
+	'privacy.hiddenChannels': 'Hidden channels',
+	'privacy.hiddenChannelsHint': 'Mark channels from the Rewind. The switch makes them vanish from the page and the shared image; turn it off and they come back.',
+	'privacy.hiddenChannelsEmpty': "You haven't marked any channel.",
+	'privacy.hiddenDeviceOnly': 'This list only lives on this device.',
+	'privacy.remove': 'Remove',
+
 	// ── errors ──
 	'errors.generic': 'Error',
 	'errors.session': 'Invalid session, please sign in again',

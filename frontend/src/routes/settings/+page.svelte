@@ -4,6 +4,7 @@
 	import { api } from '$lib/api';
 	import { onMount } from 'svelte';
 	import { t, tc, i18n, setLocale, fmtCurrency, type Locale, type TKey } from '$lib/i18n/index.svelte';
+	import { privacy, toggleChannel } from '$lib/stores/privacy.svelte';
 
 	const LANGUAGES: [Locale, string][] = [['es', '🇪🇸 Español'], ['en', '🇬🇧 English'], ['pt', '🇧🇷 Português']];
 
@@ -525,6 +526,32 @@
 			</div>
 		</div>
 
+		<!-- Canales ocultos -->
+		<div class="glass cx-card cx-span2" style="--accent: var(--youtube);">
+			<div class="cx-card-head">
+				<div class="cx-ico">🙈</div>
+				<div class="cx-htxt">
+					<div class="cx-title">{t('privacy.hiddenChannels')}</div>
+					<div class="cx-sub">{t('privacy.hiddenChannelsHint')}</div>
+				</div>
+			</div>
+			<div class="cx-body">
+				{#if privacy.channels.length === 0}
+					<p class="muted" style="font-size:13px; margin:0;">{t('privacy.hiddenChannelsEmpty')}</p>
+				{:else}
+					<div class="hc-list">
+						{#each privacy.channels as name (name)}
+							<div class="hc-row">
+								<span class="hc-name">{name}</span>
+								<button class="btn" onclick={() => toggleChannel(name)}>{t('privacy.remove')}</button>
+							</div>
+						{/each}
+					</div>
+				{/if}
+				<p class="muted" style="font-size:12px; margin:10px 0 0;">{t('privacy.hiddenDeviceOnly')}</p>
+			</div>
+		</div>
+
 	</div><!-- /cx-grid -->
 
 	<!-- Save bar -->
@@ -788,6 +815,10 @@
 	.cx-maint[open] summary .chev { transform: rotate(90deg); }
 
 	/* ── Save bar ── */
+	.hc-list { display: flex; flex-direction: column; gap: 8px; }
+	.hc-row { display: flex; align-items: center; gap: 12px; }
+	.hc-name { flex: 1; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 	.cx-savebar { display: flex; gap: 10px; align-items: center; padding: 12px 14px; margin-top: 16px; border-radius: var(--radius-sm); }
 	@media (min-width: 1024px) { .cx-savebar { position: sticky; bottom: 14px; z-index: 5; } }
 	.cx-savebar :global(.btn) { flex: 1; justify-content:center; }

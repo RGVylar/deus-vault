@@ -10,6 +10,7 @@
 	import Chapter from '$lib/components/Chapter.svelte';
 	import YearTimeline from '$lib/components/YearTimeline.svelte';
 	import { exportShareImage, type ShareFormat } from '$lib/rewindShare';
+	import { privacy, setActive, toggleChannel, isMarked, filterChannels, filterYoutubeItems } from '$lib/stores/privacy.svelte';
 
 	const MONTHS = $derived([
 		t('common.month.jan'), t('common.month.feb'), t('common.month.mar'), t('common.month.apr'),
@@ -194,6 +195,15 @@
 	const typeSorted = $derived(stats ? Object.entries(stats.by_type).sort((a, b) => b[1].minutes - a[1].minutes) : []);
 	const typeTotal = $derived(stats ? (Object.values(stats.by_type).reduce((a, t) => a + t.minutes, 0) || 1) : 1);
 
+	// ── Canales ocultos ───────────────────────────────────────────
+	// Con el interruptor encendido desaparecen de todo lo que los nombre. Los
+	// agregados (minutos, % del año, heatmap) no se tocan a propósito.
+	const ytChannels = $derived(stats ? filterChannels(stats.top_youtube_channels) : []);
+	const ytChannelsByCount = $derived(stats ? filterChannels(stats.top_youtube_channels_by_count) : []);
+	const ytTopVideos = $derived(stats ? filterYoutubeItems((stats.top_items_by_type['youtube'] ?? []).map(v => ({ ...v, content_type: 'youtube' }))) : []);
+	const visibleItems = $derived(stats ? filterYoutubeItems(stats.items as Content[]) : []);
+	const markedCount = $derived(privacy.channels.length);
+
 	// ── Zona YouTube ──────────────────────────────────────────────
 	const ytStats = $derived(stats?.by_type['youtube'] ?? null);
 	// Solo los vídeos con duración conocida: los de 0min hundirían la media
@@ -312,6 +322,12 @@
 <div class="desk-topbar desk-only">
 	<h1 class="desk-title">Rewind {year}</h1>
 	<div class="desk-spacer"></div>
+	{#if markedCount > 0}
+		<button class="btn hide-toggle" class:on={privacy.active} onclick={() => setActive(!privacy.active)}>
+			<Icon name={privacy.active ? 'eyeOff' : 'eye'} size={15} />
+			{privacy.active ? tc('privacy.hidingCount', markedCount) : t('privacy.showAll')}
+		</button>
+	{/if}
 	<button class="btn" onclick={() => year--}>{t('rewind.previous')}</button>
 	<button class="btn" onclick={() => year++} disabled={year >= new Date().getFullYear()}>{t('rewind.next')}</button>
 </div>
@@ -320,6 +336,14 @@
 	<span style="font-size:18px; font-weight:700; color:var(--primary); min-width:140px; text-align:center;">Rewind {year}</span>
 	<button class="btn" onclick={() => year++} disabled={year >= new Date().getFullYear()}>›</button>
 </div>
+{#if markedCount > 0}
+	<div class="row mobile-only" style="justify-content:center; margin:0 0 16px;">
+		<button class="btn hide-toggle" class:on={privacy.active} onclick={() => setActive(!privacy.active)}>
+			<Icon name={privacy.active ? 'eyeOff' : 'eye'} size={15} />
+			{privacy.active ? tc('privacy.hidingCount', markedCount) : t('privacy.showAll')}
+		</button>
+	</div>
+{/if}
 
 {#if loading}
 	<p class="muted center" style="margin-top:3rem;">{t('rewind.calculating')}</p>
@@ -516,13 +540,13 @@
 
 {#if stats.items.length > 0}
 <Chapter id="linea-tiempo" label={t('rewind.chapter.timeline')} icon="activity">
-	<YearTimeline items={stats.items as Content[]} {year} months={MONTHS} />
+	<YearTimeline items={visibleItems} {year} months={MONTHS} />
 </Chapter>
 {/if}
 
 <!-- ─── YOUTUBE ─── -->
-{#if stats.top_youtube_channels.length > 0}
-	{@const topCh = stats.top_youtube_channels[0]}
+{#if ytChannels.length > 0}
+	{@const topCh = ytChannels[0]}
 	<Chapter id="youtube" label={t('rewind.chapter.youtube')} icon="play">
 
 	<!-- Hero de creador -->
@@ -544,9 +568,9 @@
 				{/if}
 			</div>
 		</div>
-		{#if stats.top_youtube_channels.length > 1}
+		{#if ytChannels.length > 1}
 			<div class="yt-runners">
-				{#each stats.top_youtube_channels.slice(1, 3) as c, i}
+				{#each ytChannels.slice(1, 3) as c, i}
 					<div class="yt-runner">
 						<span class="yt-runner-rank">#{i + 2}</span>
 						{#if c.thumbnail}
@@ -596,12 +620,15 @@
 			<div class="channels-col">
 				<div class="channels-col-head"><Icon name="clock" size={13} /> {t('rewind.byTime')}</div>
 				<div class="surface channel-grid">
-					{#each stats.top_youtube_channels as ch, i}
-						<div class="channel-card" style="--ch-color:{channelColor(ch.name)}">
+					{#each ytChannels as ch, i}
+						<div class="channel-card" class:ch-marked={isMarked(ch.name)} style="--ch-color:{channelColor(ch.name)}">
 							<div class="ch-rank">#{i + 1}</div>
 							{#if ch.thumbnail}<img class="ch-avatar" src={ch.thumbnail} alt={ch.name} />{:else}<div class="ch-avatar">{ch.name[0]?.toUpperCase() ?? '?'}</div>{/if}
 							<div class="ch-info"><div class="ch-name">{ch.name}</div><div class="ch-meta">{tc('rewind.videosSuffix', ch.count)}</div></div>
 							<div class="ch-time">{formatDuration(ch.minutes)}</div>
+							<button class="ch-hide" title={isMarked(ch.name) ? t('privacy.unmarkChannel') : t('privacy.markChannel')} aria-label={isMarked(ch.name) ? t('privacy.unmarkChannel') : t('privacy.markChannel')} onclick={() => toggleChannel(ch.name)}>
+								<Icon name={isMarked(ch.name) ? 'eyeOff' : 'eye'} size={14} />
+							</button>
 						</div>
 					{/each}
 				</div>
@@ -609,12 +636,15 @@
 			<div class="channels-col">
 				<div class="channels-col-head"><Icon name="list" size={13} /> {t('rewind.byVideoCount')}</div>
 				<div class="surface channel-grid">
-					{#each stats.top_youtube_channels_by_count as ch, i}
-						<div class="channel-card" style="--ch-color:{channelColor(ch.name)}">
+					{#each ytChannelsByCount as ch, i}
+						<div class="channel-card" class:ch-marked={isMarked(ch.name)} style="--ch-color:{channelColor(ch.name)}">
 							<div class="ch-rank">#{i + 1}</div>
 							{#if ch.thumbnail}<img class="ch-avatar" src={ch.thumbnail} alt={ch.name} />{:else}<div class="ch-avatar">{ch.name[0]?.toUpperCase() ?? '?'}</div>{/if}
 							<div class="ch-info"><div class="ch-name">{ch.name}</div><div class="ch-meta">{t('rewind.videosTotal', { duration: formatDuration(ch.minutes) })}</div></div>
 							<div class="ch-time">{tc('rewind.videosSuffix', ch.count)}</div>
+							<button class="ch-hide" title={isMarked(ch.name) ? t('privacy.unmarkChannel') : t('privacy.markChannel')} aria-label={isMarked(ch.name) ? t('privacy.unmarkChannel') : t('privacy.markChannel')} onclick={() => toggleChannel(ch.name)}>
+								<Icon name={isMarked(ch.name) ? 'eyeOff' : 'eye'} size={14} />
+							</button>
 						</div>
 					{/each}
 				</div>
@@ -623,11 +653,11 @@
 	</section>
 
 	<!-- Vídeos más largos -->
-	{#if (stats.top_items_by_type['youtube']?.length ?? 0) > 0}
+	{#if ytTopVideos.length > 0}
 		<section class="rewind-section">
 			<h2><span class="hico"><Icon name="play" size={15} /></span> {t('rewind.longestVideos')}</h2>
 			<div class="surface podium-grid">
-				{#each (stats.top_items_by_type['youtube'] ?? []) as item, i}
+				{#each ytTopVideos as item, i}
 					<div class="podium-card" style="--accent:var(--youtube)">
 						<div class="podium-no">{i + 1}</div>
 						{#if item.thumbnail}<img class="podium-img land" src={item.thumbnail} alt="" loading="lazy" />{:else}<div class="podium-img land ph"><Icon name="play" size={20} /></div>{/if}
@@ -951,7 +981,7 @@
 		</div>
 		<div class="share-grid">
 			<div class="share-block"><div class="share-lbl">{t('rewind.yourYear')}</div><div class="share-val big">{formatDuration(stats.total_consumed_minutes)}</div><div class="share-sub">{tc('rewind.itemsLabel', stats.total_consumed_count)}</div></div>
-			{#if stats.top_youtube_channels.length > 0}<div class="share-block"><div class="share-lbl">{t('rewind.topChannel')}</div><div class="share-val">{stats.top_youtube_channels[0].name}</div><div class="share-sub">{formatDuration(stats.top_youtube_channels[0].minutes)}</div></div>{/if}
+			{#if ytChannels.length > 0}<div class="share-block"><div class="share-lbl">{t('rewind.topChannel')}</div><div class="share-val">{ytChannels[0].name}</div><div class="share-sub">{formatDuration(ytChannels[0].minutes)}</div></div>{/if}
 			{#if stats.top_items_by_type['series']?.length > 0}<div class="share-block"><div class="share-lbl">{t('rewind.topSeries')}</div><div class="share-val">{stats.top_items_by_type['series'][0].title}</div><div class="share-sub">{formatDuration(stats.top_items_by_type['series'][0].minutes)}</div></div>{:else if stats.top_items_by_type['movie']?.length > 0}<div class="share-block"><div class="share-lbl">{t('rewind.topMovie')}</div><div class="share-val">{stats.top_items_by_type['movie'][0].title}</div><div class="share-sub">{formatDuration(stats.top_items_by_type['movie'][0].minutes)}</div></div>{/if}
 			{#if stats.streak_max > 0}<div class="share-block"><div class="share-lbl">{t('rewind.maxStreakLabel')}</div><div class="share-val">{tc('rewind.daysCount', stats.streak_max)}</div><div class="share-sub">{t('rewind.nonstop')}</div></div>{/if}
 		</div>
@@ -979,11 +1009,11 @@
 </div>
 
 <!-- Todo lo consumido -->
-{#if stats.items.length > 0}
+{#if visibleItems.length > 0}
 	<section class="rewind-section">
-		<h2><span class="hico"><Icon name="list" size={15} /></span> {t('rewind.allConsumed')} <span class="h2-count">({stats.items.length})</span></h2>
+		<h2><span class="hico"><Icon name="list" size={15} /></span> {t('rewind.allConsumed')} <span class="h2-count">({visibleItems.length})</span></h2>
 		<div class="content-grid">
-			{#each stats.items.slice(0, itemsVisible) as c (c.id)}
+			{#each visibleItems.slice(0, itemsVisible) as c (c.id)}
 				{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series' || c.content_type === 'game'}
 				<div class="c-card" class:landscape class:portrait={!landscape} style="--card-accent:{TYPE_COLORS[c.content_type] ?? 'var(--primary)'}; --accent:{TYPE_COLORS[c.content_type] ?? 'var(--primary)'}">
 					{#if landscape}
@@ -1002,7 +1032,7 @@
 				</div>
 			{/each}
 		</div>
-		{#if itemsVisible < stats.items.length}
+		{#if itemsVisible < visibleItems.length}
 			<div class="show-more">
 				<button class="btn btn-lg" onclick={() => itemsVisible += ITEMS_PAGE}>{t('rewind.seeMore', { remaining: stats.items.length - itemsVisible })}</button>
 			</div>
@@ -1292,6 +1322,21 @@
 	.share-actions .btn { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 	.share-btn-primary { background: var(--primary); color: #120a1e; border: none; font-weight: 800; }
 	.share-actions .btn:disabled { opacity: 0.6; cursor: default; }
+
+	/* Canales ocultos */
+	.hide-toggle { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+	.hide-toggle.on { border-color: var(--primary); color: var(--primary); }
+	.channel-card { position: relative; }
+	.ch-hide {
+		position: absolute; top: 6px; right: 6px; display: grid; place-items: center;
+		width: 26px; height: 26px; padding: 0; border: none; border-radius: 8px;
+		background: transparent; color: var(--text-muted); cursor: pointer; opacity: 0;
+		transition: opacity 0.15s, color 0.15s;
+	}
+	.channel-card:hover .ch-hide, .ch-hide:focus-visible { opacity: 1; }
+	.ch-hide:hover { color: var(--primary); background: rgba(255,255,255,0.06); }
+	/* Un canal marcado se ve siempre marcado, aunque no pases el ratón */
+	.channel-card.ch-marked .ch-hide { opacity: 1; color: var(--primary); }
 	.share-msg { margin-top: 10px; font-size: 12px; color: var(--text-muted); }
 	.share-msg.err { color: var(--danger, #e0556b); }
 
