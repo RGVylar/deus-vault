@@ -25,6 +25,7 @@ interface ChipsCfg { top: number; h: number; gap: number; count: number; labelF:
 interface RankCfg { top: number; rowH: number; gap: number; rows: number; thumb: number; rankF: number; titleF: number; subF: number; minF: number }
 interface HeatCfg { top: number; gap: number; maxCell: number }
 interface HoursCfg { top: number; h: number; gap: number }
+interface LegendCfg { y: number; f: number; lineH: number; showPct: boolean }
 
 interface Layout {
 	W: number; H: number; margin: number;
@@ -35,7 +36,7 @@ interface Layout {
 	rankTitle?: Text; rank?: RankCfg;
 	heatTitle?: Text; heat?: HeatCfg;
 	hoursTitle?: Text; hours?: HoursCfg;
-	breakdown: Text; barGap: number; barH: number;
+	breakdown: Text; barGap: number; barH: number; legend: LegendCfg;
 	percent: Text; worthIt: Text; footer: Text;
 }
 
@@ -54,12 +55,13 @@ const LAYOUTS: Record<ShareFormat, Layout> = {
 		rank: { top: 672, rowH: 82, gap: 12, rows: 5, thumb: 72, rankF: 34, titleF: 32, subF: 22, minF: 28 },
 		heatTitle: { y: 1188, f: 24 },
 		heat: { top: 1206, gap: 3, maxCell: 15 },
-		hoursTitle: { y: 1390, f: 24 },
-		hours: { top: 1408, h: 92, gap: 4 },
-		breakdown: { y: 1566, f: 24 }, barGap: 24, barH: 28,
-		percent: { y: 1710, f: 52 },
-		worthIt: { y: 1762, f: 26 },
-		footer:  { y: 1862, f: 22 },
+		hoursTitle: { y: 1370, f: 24 },
+		hours: { top: 1388, h: 88, gap: 4 },
+		breakdown: { y: 1556, f: 24 }, barGap: 24, barH: 28,
+		legend: { y: 1646, f: 21, lineH: 30, showPct: true },
+		percent: { y: 1740, f: 52 },
+		worthIt: { y: 1792, f: 26 },
+		footer:  { y: 1866, f: 22 },
 	},
 	square: {
 		W: 1080, H: 1080, margin: 70,
@@ -74,10 +76,11 @@ const LAYOUTS: Record<ShareFormat, Layout> = {
 		rank: { top: 414, rowH: 76, gap: 10, rows: 3, thumb: 58, rankF: 27, titleF: 27, subF: 19, minF: 23 },
 		heatTitle: { y: 714, f: 21 },
 		heat: { top: 732, gap: 2, maxCell: 13 },
-		breakdown: { y: 874, f: 21 }, barGap: 20, barH: 24,
-		percent: { y: 986, f: 42 },
-		worthIt: { y: 1026, f: 22 },
-		footer:  { y: 1060, f: 18 },
+		breakdown: { y: 862, f: 21 }, barGap: 20, barH: 24,
+		legend: { y: 936, f: 18, lineH: 25, showPct: false },
+		percent: { y: 1006, f: 42 },
+		worthIt: { y: 1044, f: 22 },
+		footer:  { y: 1072, f: 17 },
 	},
 };
 
@@ -361,6 +364,38 @@ function drawRanking(ctx: CanvasRenderingContext2D, L: Layout, cfg: RankCfg, row
 	});
 }
 
+/** Punto de color + nombre del tipo, en filas que se parten solas si no caben. */
+function drawTypeLegend(ctx: CanvasRenderingContext2D, L: Layout, entries: readonly (readonly [string, number])[]) {
+	const cfg = L.legend;
+	const fullW = L.W - L.margin * 2;
+	const dot = Math.round(cfg.f * 0.5), gapDot = 10, gapItem = 26;
+
+	ctx.font = `600 ${cfg.f}px system-ui, sans-serif`;
+	ctx.textAlign = 'left';
+	const labels = entries.map(([type, share]) => {
+		const name = typeLabel(type);
+		return cfg.showPct ? `${name} ${Math.round(share * 100)}%` : name;
+	});
+
+	let x = L.margin, line = 0;
+	entries.forEach(([type], i) => {
+		const w = dot + gapDot + ctx.measureText(labels[i]).width;
+		if (x > L.margin && x + w > L.margin + fullW) {
+			line++;
+			x = L.margin;
+		}
+		const y = cfg.y + line * cfg.lineH;
+		ctx.fillStyle = TYPE_PALETTE[type] ?? PRIMARY;
+		ctx.beginPath();
+		ctx.arc(x + dot / 2, y - cfg.f * 0.3, dot / 2, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.fillStyle = 'rgba(255,255,255,0.7)';
+		ctx.font = `600 ${cfg.f}px system-ui, sans-serif`;
+		ctx.fillText(labels[i], x + dot + gapDot, y);
+		x += w + gapItem;
+	});
+}
+
 function drawHeatmap(ctx: CanvasRenderingContext2D, L: Layout, cfg: HeatCfg, stats: RewindStats) {
 	const { cells, cols, max } = buildHeat(stats);
 	const fullW = L.W - L.margin * 2;
@@ -470,7 +505,7 @@ function renderCanvas(stats: RewindStats, format: ShareFormat, thumbs: (HTMLImag
 		drawHours(ctx, L, L.hours, stats);
 	}
 
-	// Barra de reparto por tipo
+	// Barra de reparto por tipo + leyenda: sin ella los colores no dicen nada.
 	const typeSorted = Object.entries(stats.by_type).filter(([, s]) => s.minutes > 0).sort((a, b) => b[1].minutes - a[1].minutes);
 	if (typeSorted.length > 0) {
 		sectionTitle(ctx, L, L.breakdown, t('rewind.share.typeBreakdown'));
@@ -484,6 +519,7 @@ function renderCanvas(stats: RewindStats, format: ShareFormat, thumbs: (HTMLImag
 			ctx.fill();
 			dx += w;
 		});
+		drawTypeLegend(ctx, L, typeSorted.map(([type, s]) => [type, s.minutes / total] as const));
 	}
 
 	// Cierre
