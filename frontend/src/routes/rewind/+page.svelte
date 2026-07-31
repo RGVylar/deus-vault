@@ -9,7 +9,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Chapter from '$lib/components/Chapter.svelte';
 	import YearTimeline from '$lib/components/YearTimeline.svelte';
-	import { exportShareImage } from '$lib/rewindShare';
+	import { exportShareImage, type ShareFormat } from '$lib/rewindShare';
 
 	const MONTHS = $derived([
 		t('common.month.jan'), t('common.month.feb'), t('common.month.mar'), t('common.month.apr'),
@@ -53,8 +53,40 @@
 	let loadError = $state<string | null>(null);
 	let itemsVisible = $state(12);
 
+	// Compartir la imagen del Rewind
+	let canNativeShare = $state(false);
+	let sharing = $state<ShareFormat | null>(null);
+	let shareMsg = $state('');
+	let shareErr = $state(false);
+	const shareVerb = $derived(canNativeShare ? t('rewind.shareImage') : t('rewind.downloadImage'));
+	let shareMsgTimer: ReturnType<typeof setTimeout> | null = null;
+
+	async function doShare(format: ShareFormat) {
+		if (!stats || sharing) return;
+		if (shareMsgTimer) clearTimeout(shareMsgTimer);
+		sharing = format;
+		shareErr = false;
+		shareMsg = t('rewind.shareWorking');
+		try {
+			const result = await exportShareImage(stats, format);
+			// 'shared'/'cancelled' ya los ha visto el usuario en la hoja del sistema.
+			shareMsg = result === 'downloaded' ? t('rewind.shareDownloaded') : '';
+		} catch (e) {
+			console.error('rewind share failed', e);
+			shareErr = true;
+			shareMsg = t('rewind.shareFailed');
+		} finally {
+			sharing = null;
+			if (shareMsg) shareMsgTimer = setTimeout(() => { shareMsg = ''; }, 4000);
+		}
+	}
+
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
+		// El navegador solo acepta compartir ficheros en contextos seguros y en algunas plataformas.
+		try {
+			canNativeShare = !!navigator.canShare?.({ files: [new File([], 'x.png', { type: 'image/png' })] });
+		} catch { canNativeShare = false; }
 	});
 
 	$effect(() => {
@@ -924,8 +956,14 @@
 			{#if stats.streak_max > 0}<div class="share-block"><div class="share-lbl">{t('rewind.maxStreakLabel')}</div><div class="share-val">{tc('rewind.daysCount', stats.streak_max)}</div><div class="share-sub">{t('rewind.nonstop')}</div></div>{/if}
 		</div>
 		<div class="share-actions">
-			<button class="btn share-btn-primary" onclick={() => stats && exportShareImage(stats)}><Icon name="share" size={16} /> {t('rewind.downloadImage')}</button>
+			<button class="btn share-btn-primary" disabled={sharing !== null} onclick={() => doShare('story')}>
+				<Icon name="share" size={16} /> {shareVerb} · {t('rewind.shareStory')}
+			</button>
+			<button class="btn" disabled={sharing !== null} onclick={() => doShare('square')}>
+				<Icon name="share" size={16} /> {t('rewind.shareSquare')}
+			</button>
 		</div>
+		{#if shareMsg}<div class="share-msg" class:err={shareErr}>{shareMsg}</div>{/if}
 	</div>
 </section>
 
@@ -1253,6 +1291,9 @@
 	.share-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 	.share-actions .btn { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 	.share-btn-primary { background: var(--primary); color: #120a1e; border: none; font-weight: 800; }
+	.share-actions .btn:disabled { opacity: 0.6; cursor: default; }
+	.share-msg { margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+	.share-msg.err { color: var(--danger, #e0556b); }
 
 	/* Quote */
 	.quote-card { display: flex; align-items: center; gap: 18px; padding: 18px 24px; margin: 20px 0; position: relative; overflow: hidden; }
