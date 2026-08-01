@@ -376,27 +376,38 @@ const TL_CAMPAIGN = ['game', 'series', 'book'];
 const TL_NOISE = ['youtube', 'music'];
 
 interface TlBar { title: string; type: string; startPct: number; endPct: number; hasSpan: boolean; minutes: number }
-interface TlData { bars: TlBar[]; hidden: number; movies: number[]; noise: number[]; noiseMax: number; totalCampaigns: number; totalMovies: number }
+interface TlData { bars: TlBar[]; hidden: number; movies: number[]; noise: number[]; noiseMax: number; totalCampaigns: number; totalMovies: number; months: number }
 
-/** Posición 0-1 dentro del año; null si la fecha cae fuera. */
-function yearPct(iso: string | null | undefined, year: number): number | null {
+/**
+ * Meses que ocupa el eje. En el año en curso se corta en el mes actual: si no,
+ * un julio deja media imagen vacía y aplasta las barras en la mitad izquierda.
+ */
+function timelineMonths(year: number): number {
+	const now = new Date();
+	return year === now.getFullYear() ? now.getMonth() + 1 : 12;
+}
+
+/** Posición 0-1 dentro del tramo dibujado; null si la fecha cae fuera. */
+function yearPct(iso: string | null | undefined, year: number, months: number): number | null {
 	if (!iso) return null;
 	const d = new Date(iso);
 	if (isNaN(d.getTime()) || d.getFullYear() !== year) return null;
 	const daysInMonth = new Date(year, d.getMonth() + 1, 0).getDate();
-	return (d.getMonth() + (d.getDate() - 1) / daysInMonth) / 12;
+	const p = (d.getMonth() + (d.getDate() - 1) / daysInMonth) / months;
+	return Math.min(1, Math.max(0, p));
 }
 
 function buildTimeline(stats: RewindStats, rows: number): TlData {
 	const year = stats.year;
+	const months = timelineMonths(year);
 	const items = (stats.items ?? []) as Content[];
 
 	const all: TlBar[] = [];
 	for (const c of items) {
 		if (!TL_CAMPAIGN.includes(c.content_type)) continue;
-		const end = yearPct(c.consumed_at, year);
+		const end = yearPct(c.consumed_at, year, months);
 		if (end === null) continue;
-		const rawStart = yearPct(c.started_at, year);
+		const rawStart = yearPct(c.started_at, year, months);
 		const hasSpan = rawStart !== null && rawStart < end;
 		const minutes = c.content_type === 'series' && c.episode_count
 			? c.duration_minutes * c.episode_count
@@ -411,16 +422,16 @@ function buildTimeline(stats: RewindStats, rows: number): TlData {
 	const movies: number[] = [];
 	for (const c of items) {
 		if (c.content_type !== 'movie') continue;
-		const p = yearPct(c.consumed_at, year);
+		const p = yearPct(c.consumed_at, year, months);
 		if (p !== null) movies.push(p);
 	}
 
-	const noise = new Array(12).fill(0);
+	const noise = new Array(months).fill(0);
 	for (const c of items) {
 		if (!TL_NOISE.includes(c.content_type)) continue;
 		if (c.content_type === 'youtube' && isHiddenNow(c.author)) continue;
 		const d = c.consumed_at ? new Date(c.consumed_at) : null;
-		if (!d || isNaN(d.getTime()) || d.getFullYear() !== year) continue;
+		if (!d || isNaN(d.getTime()) || d.getFullYear() !== year || d.getMonth() >= months) continue;
 		noise[d.getMonth()] += c.duration_minutes;
 	}
 
@@ -429,6 +440,7 @@ function buildTimeline(stats: RewindStats, rows: number): TlData {
 		hidden: Math.max(0, all.length - picked.length),
 		movies,
 		noise,
+		months,
 		noiseMax: Math.max(1, ...noise),
 		totalCampaigns: all.length,
 		totalMovies: movies.length,
@@ -478,12 +490,12 @@ const TL_LAYOUTS: Record<ShareFormat, TlLayout> = {
 	},
 };
 
-function drawTimelineGrid(ctx: CanvasRenderingContext2D, L: TlLayout, top: number, bottom: number) {
+function drawTimelineGrid(ctx: CanvasRenderingContext2D, L: TlLayout, top: number, bottom: number, months: number) {
 	const fullW = L.W - L.margin * 2;
 	ctx.strokeStyle = 'rgba(255,255,255,0.06)';
 	ctx.lineWidth = 1;
-	for (let m = 0; m <= 12; m++) {
-		const x = L.margin + (m / 12) * fullW;
+	for (let m = 0; m <= months; m++) {
+		const x = L.margin + (m / months) * fullW;
 		ctx.beginPath();
 		ctx.moveTo(x, top);
 		ctx.lineTo(x, bottom);
@@ -525,7 +537,7 @@ function renderTimeline(stats: RewindStats, format: ShareFormat): HTMLCanvasElem
 
 	// Rejilla de meses de fondo, para que las barras se sitúen en el año
 	const gridBottom = L.noiseTop + L.noiseH;
-	drawTimelineGrid(ctx, L, L.barsTop - 10, gridBottom);
+	drawTimelineGrid(ctx, L, L.barsTop - 10, gridBottom, data.months);
 
 	// Campañas
 	ctx.textAlign = 'left';
@@ -582,7 +594,7 @@ function renderTimeline(stats: RewindStats, format: ShareFormat): HTMLCanvasElem
 		ctx.fillStyle = 'rgba(255,255,255,0.5)';
 		ctx.font = `700 ${L.noiseLabel.f}px system-ui, sans-serif`;
 		ctx.fillText(t('rewind.share.noiseLane'), L.margin, L.noiseLabel.y);
-		const bw = fullW / 12;
+		const bw = fullW / data.months;
 		data.noise.forEach((minutes, m) => {
 			const h = Math.max(L.noiseH * (minutes / data.noiseMax), 3);
 			ctx.fillStyle = `rgba(224,85,107,${(0.35 + 0.65 * (minutes / data.noiseMax)).toFixed(3)})`;
@@ -596,8 +608,8 @@ function renderTimeline(stats: RewindStats, format: ShareFormat): HTMLCanvasElem
 	ctx.font = `600 ${L.axis.f}px system-ui, sans-serif`;
 	ctx.textAlign = 'center';
 	const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
-	MONTH_KEYS.forEach((k, m) => {
-		ctx.fillText(t(`common.month.${k}` as Parameters<typeof t>[0]), L.margin + (m + 0.5) * (fullW / 12), L.axis.y);
+	MONTH_KEYS.slice(0, data.months).forEach((k, m) => {
+		ctx.fillText(t(`common.month.${k}` as Parameters<typeof t>[0]), L.margin + (m + 0.5) * (fullW / data.months), L.axis.y);
 	});
 
 	// Leyenda: aquí el color es la única pista del tipo
