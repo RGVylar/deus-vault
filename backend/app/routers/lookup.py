@@ -601,6 +601,31 @@ async def lookup_book(url: str) -> dict:
         except Exception:
             pass
 
+    # For Open Library edition pages (/books/OLxxxxxxM/...), the edition JSON API
+    # exposes number_of_pages directly for this exact edition — no ISBN needed,
+    # and more reliable than the search index (which aggregates across editions
+    # and often lacks a page count for works with many editions).
+    if provider == "openlibrary" and page_count == 0:
+        try:
+            parsed = urlparse(url)
+            parts = [p for p in parsed.path.split("/") if p]
+            if parts and parts[0] == "books" and len(parts) >= 2:
+                olid = parts[1]
+                async with httpx.AsyncClient(timeout=10) as client:
+                    ed_resp = await client.get(f"https://openlibrary.org/books/{olid}.json")
+                if ed_resp.status_code == 200:
+                    edition = ed_resp.json()
+                    try:
+                        page_count = int(edition.get("number_of_pages") or 0)
+                    except Exception:
+                        page_count = 0
+                    if not thumbnail:
+                        covers = edition.get("covers") or []
+                        if covers and covers[0] and covers[0] > 0:
+                            thumbnail = f"https://covers.openlibrary.org/b/id/{covers[0]}-L.jpg"
+        except Exception:
+            pass
+
     # If still missing page_count/thumbnail but we have title+author, search Open Library by title
     if (not page_count or not thumbnail) and title:
         try:
