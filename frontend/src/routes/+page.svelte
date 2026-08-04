@@ -4,7 +4,7 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, TYPE_ICONS, typeLabel, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate } from '$lib/utils';
-	import { quickAdd } from '$lib/stores/quickadd.svelte';
+	import { buildEnrichPatch, enrichContentInBackground as enrichContentInBackgroundShared } from '$lib/contentEnrich';
 	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
 	import type { Content, VaultStats, ContentType, PaginatedContents } from '$lib/types';
 
@@ -269,18 +269,16 @@
 			} catch (e) {}
 		};
 		window.addEventListener('deus_vault_settings_changed', handler as EventListener);
-		return () => window.removeEventListener('deus_vault_settings_changed', handler as EventListener);
-	});
 
-	// React to URLs pasted from anywhere in the app (set by layout)
-	$effect(() => {
-		const url = quickAdd.pendingUrl;
-		if (!url) return;
-		quickAdd.pendingUrl = '';
-		if (showAdd) return;
-		resetForm();
-		addUrl = url;
-		showAdd = true;
+		// Fired by a global Ctrl+V quick-add (or this page's own background enrichment)
+		// once the item is created/updated, so the list picks it up without a manual reload.
+		const contentAddedHandler = () => load();
+		window.addEventListener('deus_vault_content_added', contentAddedHandler);
+
+		return () => {
+			window.removeEventListener('deus_vault_settings_changed', handler as EventListener);
+			window.removeEventListener('deus_vault_content_added', contentAddedHandler);
+		};
 	});
 
 	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string, sort = 'recent', col: string | null = null, prov: string | null = null) {
@@ -581,67 +579,11 @@ $effect(() => {
 
 	/** Resolves a pasted URL after the item was already saved, and patches it in once ready. */
 	async function enrichContentInBackground(contentId: number, url: string, initialType: string) {
-		try {
-			// Reuse the fetch already kicked off by the auto-lookup effect instead of
-			// hitting the (possibly slow) external site a second time for the same URL.
-			let data: any;
-			if (inFlightLookup?.url === url) {
-				data = await inFlightLookup.promise;
-			} else {
-				const params = new URLSearchParams({ url });
-				try {
-					const tmdbKey = localStorage.getItem('deus_vault_tmdb_api_key');
-					const spotifyId = localStorage.getItem('deus_vault_spotify_client_id');
-					const spotifySecret = localStorage.getItem('deus_vault_spotify_client_secret');
-					if (tmdbKey) params.set('tmdb_api_key', tmdbKey);
-					if (spotifyId) params.set('spotify_client_id', spotifyId);
-					if (spotifySecret) params.set('spotify_client_secret', spotifySecret);
-				} catch (e) {}
-				data = await api.get<any>(`/lookup/auto?${params.toString()}`);
-			}
-
-			const type = data.suggested_content_type || initialType;
-			const patch: Record<string, unknown> = {};
-			if (type !== initialType) patch.content_type = type;
-			if (data.title) patch.title = data.title;
-			if (data.author) patch.author = data.author;
-			if (data.thumbnail) patch.thumbnail = data.thumbnail;
-			if (data.channel_thumbnail) patch.channel_thumbnail = data.channel_thumbnail;
-			if (data.source_id) patch.source_id = data.source_id;
-			if (data.provider) patch.provider = data.provider;
-			if (data.trailer_url) patch.trailer_url = data.trailer_url;
-			if (data.genres) patch.genres = data.genres;
-			if (data.rating != null) patch.rating = data.rating;
-
-			if (type === 'book') {
-				const pageCount = Number(data.page_count) || 0;
-				if (pageCount > 0) {
-					const wordsPerPage = Number(data.words_per_page) || readingWordsPerPage;
-					patch.page_count = pageCount;
-					patch.words_per_page = wordsPerPage;
-					patch.duration_minutes = Math.ceil(pageCount * wordsPerPage / Math.max(1, readingWpm));
-				} else if (data.duration_minutes) {
-					patch.duration_minutes = data.duration_minutes;
-				}
-			} else if (data.duration_minutes) {
-				patch.duration_minutes = data.duration_minutes;
-			}
-			if (type === 'series') {
-				if (data.episode_count) patch.episode_count = Number(data.episode_count);
-				if (data.seasons) patch.seasons = Number(data.seasons);
-				if (data.next_episode_date) patch.next_episode_date = data.next_episode_date;
-			}
-			if (data.watch_providers?.length) {
-				patch.streaming_providers = JSON.stringify(data.watch_providers.map((p: any) =>
-					(p.type === 'rent' || p.type === 'buy') ? '$' + p.provider_name : p.provider_name
-				));
-			}
-
-			if (Object.keys(patch).length) {
-				await api.patch(`/contents/${contentId}`, patch);
-				load();
-			}
-		} catch { /* silent — item keeps whatever data it had at save time */ }
+		// Reuse the fetch already kicked off by the auto-lookup effect instead of
+		// hitting the (possibly slow) external site a second time for the same URL.
+		// The 'deus_vault_content_added' listener below reloads the list once it's done.
+		const existingFetch = inFlightLookup?.url === url ? inFlightLookup.promise : null;
+		void enrichContentInBackgroundShared(contentId, url, initialType, existingFetch);
 	}
 
 	function saveSettings() {
@@ -716,27 +658,7 @@ $effect(() => {
 				data = await api.get<any>(`/lookup/auto?${params.toString()}`);
 			}
 
-			const patch: Record<string, unknown> = {};
-			if (data.title) patch.title = data.title;
-			if (data.author) patch.author = data.author;
-			if (data.thumbnail) patch.thumbnail = data.thumbnail;
-			if (data.duration_minutes) patch.duration_minutes = data.duration_minutes;
-			if (data.episode_count != null) patch.episode_count = data.episode_count;
-			if (data.seasons != null) patch.seasons = data.seasons;
-			if (data.page_count && Number(data.page_count) > 0) patch.page_count = data.page_count;
-			if (data.next_episode_date !== undefined) patch.next_episode_date = data.next_episode_date ?? null;
-			if (data.rating != null) patch.rating = data.rating;
-			if (data.provider) patch.provider = data.provider;
-			if (data.trailer_url) patch.trailer_url = data.trailer_url;
-			if (data.genres) patch.genres = data.genres;
-			if (data.imdb_id) patch.imdb_id = data.imdb_id;
-			if (data.watch_providers?.length) {
-				patch.streaming_providers = JSON.stringify(
-					(data.watch_providers as Array<{provider_name: string; type?: string}>).map(p =>
-						(p.type === 'rent' || p.type === 'buy') ? '$' + p.provider_name : p.provider_name
-					)
-				);
-			}
+			const patch = buildEnrichPatch(data, c.content_type);
 			await api.patch(`/contents/${c.id}`, patch);
 			load();
 		} catch (e) { /* silent */ } finally { refreshingId = null; }

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { quickAdd } from '$lib/stores/quickadd.svelte';
+	import { createContentFromUrl } from '$lib/contentEnrich';
 	import { isLookupCandidate } from '$lib/utils';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -61,14 +61,18 @@
 		if (!extInstalled && !localStorage.getItem('dv_ext_banner_dismissed')) showExtBanner = true;
 		window.addEventListener('deus_vault_appearance_changed', applyPrefs);
 
-		// Global Ctrl+V → open add modal on vault page from anywhere in the app
+		// Global Ctrl+V → create the item straight away from anywhere in the app.
+		// No modal to review first — metadata catches up in the background,
+		// same as pasting a URL inside "Añadir contenido" and hitting Guardar early.
 		const pasteHandler = (ev: ClipboardEvent) => {
 			const target = ev.target as HTMLElement;
 			if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
 			const text = ev.clipboardData?.getData('text/plain')?.trim() ?? '';
 			if (!text.startsWith('http') || !isLookupCandidate(text)) return;
 			ev.preventDefault();
-			quickAdd.pendingUrl = text;
+			// createContentFromUrl notifies the vault page itself once the item exists
+			// and again once enrichment lands, so no need to wait for it here.
+			void createContentFromUrl(text);
 			if (page.url.pathname !== '/') goto('/');
 		};
 		window.addEventListener('paste', pasteHandler);
