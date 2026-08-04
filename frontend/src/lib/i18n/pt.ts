@@ -136,6 +136,8 @@ export const pt = {
 	'settings.maintenance.forceAll': 'Forçar tudo',
 	'settings.maintenance.backfillStarted': '✅ Backfill iniciado em segundo plano — vai levar ~30-60s. Recarregue o cofre quando terminar.',
 	'settings.maintenance.backfillError': '⚠ Erro ao executar o backfill',
+	'settings.maintenance.hintBooks': 'Rebusca páginas e duração dos livros que ainda estão em 0. Só afeta os que não têm dados (sem <code>?force</code>).',
+	'settings.maintenance.updateBookButton': '📖 Rebuscar livros',
 
 	// ── random ──
 	'random.title': 'O que eu consumo?',

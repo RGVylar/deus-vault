@@ -135,6 +135,8 @@ export const es = {
 	'settings.maintenance.forceAll': 'Forzar todo',
 	'settings.maintenance.backfillStarted': '✅ Backfill iniciado en segundo plano — tardará ~30-60s. Recarga la bóveda cuando acabe.',
 	'settings.maintenance.backfillError': '⚠ Error al ejecutar el backfill',
+	'settings.maintenance.hintBooks': 'Repesca páginas y duración de los libros que aún están en 0. Solo toca los que no tienen datos (sin <code>?force</code>).',
+	'settings.maintenance.updateBookButton': '📖 Repescar libros',
 
 	// ── random ──
 	'random.title': '¿Qué consumo?',

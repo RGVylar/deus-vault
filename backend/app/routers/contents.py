@@ -1108,3 +1108,72 @@ async def backfill_tmdb_metadata(
     """Fires TMDB metadata backfill as an asyncio task. Returns immediately."""
     asyncio.create_task(_run_tmdb_backfill(user.id, force))
     return {"status": "started", "message": "Backfill en curso — revisa los logs del servidor"}
+
+
+async def _run_book_backfill(user_id: int, force: bool) -> None:
+    """Background task: re-fetches page_count/duration for book items via their stored URL."""
+    from app.routers.lookup import lookup_book
+    from app.database import SessionLocal
+
+    logger.info("book-backfill: task started user_id=%s force=%s", user_id, force)
+    try:
+        db = SessionLocal()
+        try:
+            q = select(Content).where(
+                Content.user_id == user_id,
+                Content.content_type == ContentType.book,
+                Content.url.isnot(None),
+            )
+            if not force:
+                q = q.where(or_(Content.page_count.is_(None), Content.page_count == 0))
+            items = list(db.scalars(q).all())
+
+            if not items:
+                logger.info("book-backfill: nothing to do")
+                return
+
+            logger.info("book-backfill: found %d book items for user %s", len(items), user_id)
+            updated = 0
+            failed = 0
+
+            for item in items:
+                try:
+                    info = await lookup_book(item.url)
+                    page_count = int(info.get("page_count") or 0)
+                    duration = int(info.get("duration_minutes") or 0)
+                    if page_count > 0:
+                        item.page_count = page_count
+                        if duration > 0:
+                            item.duration_minutes = duration
+                        if not item.words_per_page:
+                            item.words_per_page = 300
+                        if info.get("thumbnail") and not item.thumbnail:
+                            item.thumbnail = info["thumbnail"]
+                        if info.get("author") and not item.author:
+                            item.author = info["author"]
+                        updated += 1
+                        logger.info("book-backfill: [OK] %s — %d pages", item.title[:50], page_count)
+                    else:
+                        failed += 1
+                        logger.warning("book-backfill: [MISS] %s", item.title[:50])
+                except Exception as exc:
+                    failed += 1
+                    logger.warning("book-backfill: [ERR] %s: %s", item.title[:50], exc)
+                await asyncio.sleep(0.5)
+
+            db.commit()
+            logger.info("book-backfill: done — updated=%d failed=%d total=%d", updated, failed, len(items))
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.error("book-backfill: FATAL %s", exc, exc_info=True)
+
+
+@router.post("/backfill-book-page-counts", status_code=202)
+async def backfill_book_page_counts(
+    force: bool = Query(False, description="Re-fetch even books that already have a page count"),
+    user: User = Depends(get_admin_user),
+) -> dict:
+    """Fires book page-count/duration backfill as an asyncio task. Returns immediately."""
+    asyncio.create_task(_run_book_backfill(user.id, force))
+    return {"status": "started", "message": "Backfill de libros en curso — revisa los logs del servidor"}

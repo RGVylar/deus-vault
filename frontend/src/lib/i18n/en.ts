@@ -136,6 +136,8 @@ export const en = {
 	'settings.maintenance.forceAll': 'Force all',
 	'settings.maintenance.backfillStarted': '✅ Backfill started in the background — it will take ~30-60s. Reload the vault when it finishes.',
 	'settings.maintenance.backfillError': '⚠ Error running the backfill',
+	'settings.maintenance.hintBooks': 'Re-fetches page count and duration for books still stuck at 0. Only touches items that don\'t have data yet (without <code>?force</code>).',
+	'settings.maintenance.updateBookButton': '📖 Backfill books',
 
 	// ── random ──
 	'random.title': 'What should I consume?',
