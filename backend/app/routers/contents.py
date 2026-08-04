@@ -839,6 +839,7 @@ def random_pick(
     min_duration: int | None = Query(None, ge=0, description="Min remaining minutes"),
     max_duration: int | None = Query(None, ge=0, description="Max remaining minutes"),
     genre: list[str] | None = Query(None, description="Filter by genre"),
+    exclude_id: list[int] | None = Query(None, description="Item ids to skip — e.g. recently shown picks"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Content:
@@ -856,6 +857,14 @@ def random_pick(
 
     if not items:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No pending content in that time range")
+
+    # Skip recently-shown items so consecutive rolls don't repeat the same pick —
+    # but never let the exclusion empty the pool (e.g. only 1-2 eligible items left).
+    if exclude_id:
+        excluded = set(exclude_id)
+        narrowed = [c for c in items if c.id not in excluded]
+        if narrowed:
+            items = narrowed
 
     # Pinned items appear twice in the pool for double weight
     pool = []

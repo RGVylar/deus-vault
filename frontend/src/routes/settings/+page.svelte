@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte';
 	import { t, tc, i18n, setLocale, fmtCurrency, type Locale, type TKey } from '$lib/i18n/index.svelte';
 	import { privacy, toggleChannel } from '$lib/stores/privacy.svelte';
+	import { isFeatureEnabled, setFeatureEnabled } from '$lib/stores/features.svelte';
 
 	const LANGUAGES: [Locale, string][] = [['es', '🇪🇸 Español'], ['en', '🇬🇧 English'], ['pt', '🇧🇷 Português']];
 
@@ -343,6 +344,28 @@
 						<div class="cx-blur-demo"><div class="panel">glass</div></div>
 					</div>
 				</div>
+			</div>
+		</div>
+
+		<!-- Funciones opcionales -->
+		<div class="glass cx-card cx-span2" style="--accent: var(--primary);">
+			<div class="cx-card-head">
+				<div class="cx-ico">🧩</div>
+				<div class="cx-htxt">
+					<div class="cx-title">{t('settings.features.title')}</div>
+					<div class="cx-sub">{t('settings.features.subtitle')}</div>
+				</div>
+			</div>
+			<div class="cx-body">
+				<label class="cx-check">
+					<input
+						type="checkbox"
+						checked={isFeatureEnabled('wishlist')}
+						onchange={(e) => setFeatureEnabled('wishlist', (e.currentTarget as HTMLInputElement).checked)}
+					/>
+					<span>{t('settings.features.wishlist')}</span>
+				</label>
+				<div class="cx-hint">{t('settings.features.wishlistHint')}</div>
 			</div>
 		</div>
 

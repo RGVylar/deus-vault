@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { wishlistApi } from '$lib/api';
 	import { t, tc, fmtCurrency } from '$lib/i18n/index.svelte';
+	import { isFeatureEnabled } from '$lib/stores/features.svelte';
 	import type { WishlistItem, WishlistStats, ProductLookupResult } from '$lib/types';
 
 	// ── State ──────────────────────────────────────────────────────────────
@@ -77,6 +79,7 @@
 	}
 
 	onMount(() => {
+		if (!isFeatureEnabled('wishlist')) { goto('/'); return; }
 		const saved = localStorage.getItem('deus_vault_hourly_rate');
 		if (saved) hourlyRate = parseFloat(saved) || 0;
 		load();

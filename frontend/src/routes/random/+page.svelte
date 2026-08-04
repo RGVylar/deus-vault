@@ -80,6 +80,8 @@
 			if (p.max != null) params.set('max_duration', String(p.max));
 		}
 		for (const g of selectedGenres) params.append('genre', g);
+		// Skip the last few picks so re-rolling doesn't keep landing on the same item.
+		for (const c of recent.slice(0, 3)) params.append('exclude_id', String(c.id));
 		const qs = params.toString();
 		return qs ? '?' + qs : '';
 	}

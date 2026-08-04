@@ -61,6 +61,12 @@ export const es = {
 	'settings.appearance.style': 'Estilo visual',
 	'settings.appearance.legacyStyle': 'Estilo clásico (cristal)',
 	'settings.appearance.legacyStyleHint': 'Por defecto la app usa un estilo plano: sin cristal, sin resplandores y sin fondo animado. Actívalo para recuperar el anterior.',
+
+	// ── settings.features ──
+	'settings.features.title': 'Funciones',
+	'settings.features.subtitle': 'Activa o desactiva secciones opcionales',
+	'settings.features.wishlist': 'Bóveda de Deseos',
+	'settings.features.wishlistHint': 'Desactívala si no quieres usar la lista de deseos. Se quita de la navegación pero tus datos no se borran.',
 	'settings.appearance.wallpaper.aurora': 'Aurora',
 	'settings.appearance.wallpaper.atardecer': 'Atardecer',
 	'settings.appearance.wallpaper.oceano': 'Océano',

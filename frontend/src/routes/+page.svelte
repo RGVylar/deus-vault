@@ -191,6 +191,9 @@
 	let refreshingId = $state<number | null>(null);
 	let autoLookupTimer: ReturnType<typeof setTimeout> | null = null;
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
+	// Lets a Save-before-lookup-finishes flow piggyback on the request already in flight
+	// instead of firing a duplicate one against the same (possibly slow) external site.
+	let inFlightLookup: { url: string; promise: Promise<any> } | null = null;
 
 	// Duplicate detection + new lookup fields
 	let duplicateItem = $state<Content | null>(null);
@@ -386,7 +389,9 @@ $effect(() => {
 				if (spotifyId) params.set('spotify_client_id', spotifyId);
 				if (spotifySecret) params.set('spotify_client_secret', spotifySecret);
 			} catch (e) {}
-			const data = await api.get<any>(`/lookup/auto?${params.toString()}`);
+			const fetchPromise = api.get<any>(`/lookup/auto?${params.toString()}`);
+			inFlightLookup = { url: targetUrl, promise: fetchPromise };
+			const data = await fetchPromise;
 			addTitle = data.title || addTitle;
 			addAuthor = data.author || addAuthor;
 			addThumbnail = data.thumbnail || '';
@@ -439,7 +444,10 @@ $effect(() => {
 			}
 		} catch (e: unknown) {
 			addError = e instanceof Error ? e.message : t('home.lookupFailed');
-		} finally { lookupLoading = false; }
+		} finally {
+			lookupLoading = false;
+			if (inFlightLookup?.url === targetUrl) inFlightLookup = null;
+		}
 	}
 
 	// Title-based TMDB search (only when no URL)
@@ -558,10 +566,82 @@ $effect(() => {
 			if (addAlreadyConsumed && created?.id) {
 				await api.post(`/contents/${created.id}/consume`);
 			}
+			// If the URL lookup for this item hasn't resolved yet (the user didn't wait for
+			// it), keep fetching it in the background and patch the item once it's ready —
+			// no need to block "Guardar" on a slow external site.
+			const pendingUrl = addUrl.trim();
+			if (created?.id && pendingUrl && isLookupCandidate(pendingUrl) && lastLookupUrl !== pendingUrl) {
+				void enrichContentInBackground(created.id, pendingUrl, addType);
+			}
 			showAdd = false;
 			resetForm();
 			load();
 		} catch (e: unknown) { addError = e instanceof Error ? e.message : t('errors.generic'); }
+	}
+
+	/** Resolves a pasted URL after the item was already saved, and patches it in once ready. */
+	async function enrichContentInBackground(contentId: number, url: string, initialType: string) {
+		try {
+			// Reuse the fetch already kicked off by the auto-lookup effect instead of
+			// hitting the (possibly slow) external site a second time for the same URL.
+			let data: any;
+			if (inFlightLookup?.url === url) {
+				data = await inFlightLookup.promise;
+			} else {
+				const params = new URLSearchParams({ url });
+				try {
+					const tmdbKey = localStorage.getItem('deus_vault_tmdb_api_key');
+					const spotifyId = localStorage.getItem('deus_vault_spotify_client_id');
+					const spotifySecret = localStorage.getItem('deus_vault_spotify_client_secret');
+					if (tmdbKey) params.set('tmdb_api_key', tmdbKey);
+					if (spotifyId) params.set('spotify_client_id', spotifyId);
+					if (spotifySecret) params.set('spotify_client_secret', spotifySecret);
+				} catch (e) {}
+				data = await api.get<any>(`/lookup/auto?${params.toString()}`);
+			}
+
+			const type = data.suggested_content_type || initialType;
+			const patch: Record<string, unknown> = {};
+			if (type !== initialType) patch.content_type = type;
+			if (data.title) patch.title = data.title;
+			if (data.author) patch.author = data.author;
+			if (data.thumbnail) patch.thumbnail = data.thumbnail;
+			if (data.channel_thumbnail) patch.channel_thumbnail = data.channel_thumbnail;
+			if (data.source_id) patch.source_id = data.source_id;
+			if (data.provider) patch.provider = data.provider;
+			if (data.trailer_url) patch.trailer_url = data.trailer_url;
+			if (data.genres) patch.genres = data.genres;
+			if (data.rating != null) patch.rating = data.rating;
+
+			if (type === 'book') {
+				const pageCount = Number(data.page_count) || 0;
+				if (pageCount > 0) {
+					const wordsPerPage = Number(data.words_per_page) || readingWordsPerPage;
+					patch.page_count = pageCount;
+					patch.words_per_page = wordsPerPage;
+					patch.duration_minutes = Math.ceil(pageCount * wordsPerPage / Math.max(1, readingWpm));
+				} else if (data.duration_minutes) {
+					patch.duration_minutes = data.duration_minutes;
+				}
+			} else if (data.duration_minutes) {
+				patch.duration_minutes = data.duration_minutes;
+			}
+			if (type === 'series') {
+				if (data.episode_count) patch.episode_count = Number(data.episode_count);
+				if (data.seasons) patch.seasons = Number(data.seasons);
+				if (data.next_episode_date) patch.next_episode_date = data.next_episode_date;
+			}
+			if (data.watch_providers?.length) {
+				patch.streaming_providers = JSON.stringify(data.watch_providers.map((p: any) =>
+					(p.type === 'rent' || p.type === 'buy') ? '$' + p.provider_name : p.provider_name
+				));
+			}
+
+			if (Object.keys(patch).length) {
+				await api.patch(`/contents/${contentId}`, patch);
+				load();
+			}
+		} catch { /* silent — item keeps whatever data it had at save time */ }
 	}
 
 	function saveSettings() {

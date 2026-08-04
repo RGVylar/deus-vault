@@ -7,10 +7,11 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { t, type TKey } from '$lib/i18n/index.svelte';
+	import { features } from '$lib/stores/features.svelte';
 
 	let { children } = $props();
 
-	const navMain: { href: string; labelKey: TKey; icon: string }[] = [
+	const navMainAll: { href: string; labelKey: TKey; icon: string }[] = [
 		{ href: '/',         labelKey: 'nav.vault',    icon: '🏛️' },
 		{ href: '/consumed', labelKey: 'nav.consumed', icon: '✓'  },
 		{ href: '/random',   labelKey: 'nav.random',   icon: '🎲' },
@@ -19,13 +20,16 @@
 		{ href: '/wasted',   labelKey: 'nav.wasted',   icon: '💀' },
 	];
 
-	const navBottom: { href: string; labelKey: TKey; icon: string }[] = [
+	const navBottomAll: { href: string; labelKey: TKey; icon: string }[] = [
 		{ href: '/',         labelKey: 'nav.vault',    icon: '🏛️' },
 		{ href: '/consumed', labelKey: 'nav.consumed', icon: '✅' },
 		{ href: '/wishlist', labelKey: 'nav.wishlist', icon: '⭐' },
 		{ href: '/random',   labelKey: 'nav.random',   icon: '🎲' },
 		{ href: '/settings', labelKey: 'nav.settings', icon: '⚙️' },
 	];
+
+	const navMain = $derived(navMainAll.filter((item) => item.href !== '/wishlist' || features.disabled.indexOf('wishlist') < 0));
+	const navBottom = $derived(navBottomAll.filter((item) => item.href !== '/wishlist' || features.disabled.indexOf('wishlist') < 0));
 
 	function applyPrefs() {
 		try {

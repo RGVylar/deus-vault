@@ -32,6 +32,7 @@ class ContentCreate(BaseModel):
 
 class ContentUpdate(BaseModel):
     title: str | None = None
+    content_type: ContentType | None = None  # lets a background lookup correct a type guessed at save time
     url: str | None = None
     thumbnail: str | None = None
     duration_minutes: int | None = None
@@ -39,11 +40,13 @@ class ContentUpdate(BaseModel):
     words_per_page: int | None = None
     episode_count: int | None = None
     seasons: int | None = None
+    source_id: str | None = None
     author: str | None = None
     notes: str | None = None
     progress: int | None = None
     pinned: bool | None = None
     collection: str | None = None
+    channel_thumbnail: str | None = None
     consumed_at: datetime | None = None  # allows correcting the consumed date
     started_at: datetime | None = None   # allows setting when the user started
     next_episode_date: datetime | None = None

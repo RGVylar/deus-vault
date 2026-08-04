@@ -62,6 +62,12 @@ export const en = {
 	'settings.appearance.style': 'Visual style',
 	'settings.appearance.legacyStyle': 'Classic style (glass)',
 	'settings.appearance.legacyStyleHint': 'The app defaults to a flat style: no glass, no glow, no animated background. Turn this on to bring back the old one.',
+
+	// ── settings.features ──
+	'settings.features.title': 'Features',
+	'settings.features.subtitle': 'Turn optional sections on or off',
+	'settings.features.wishlist': 'Wishlist Vault',
+	'settings.features.wishlistHint': 'Turn it off if you don\'t want to use the wishlist. It disappears from navigation but your data isn\'t deleted.',
 	'settings.appearance.wallpaper.aurora': 'Aurora',
 	'settings.appearance.wallpaper.atardecer': 'Sunset',
 	'settings.appearance.wallpaper.oceano': 'Ocean',
