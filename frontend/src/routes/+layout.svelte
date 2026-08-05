@@ -25,6 +25,8 @@
 		{ href: '/consumed', labelKey: 'nav.consumed', icon: '✅' },
 		{ href: '/wishlist', labelKey: 'nav.wishlist', icon: '⭐' },
 		{ href: '/random',   labelKey: 'nav.random',   icon: '🎲' },
+		{ href: '/rewind',   labelKey: 'nav.rewind',   icon: '📊' },
+		{ href: '/wasted',   labelKey: 'nav.wasted',   icon: '💀' },
 		{ href: '/settings', labelKey: 'nav.settings', icon: '⚙️' },
 	];
 
