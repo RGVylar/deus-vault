@@ -1010,6 +1010,27 @@ async def backfill_youtube_durations(
     return {"updated": updated, "failed": failed, "total": len(items)}
 
 
+def _record_backfill_result(db: Session, user_id: int, key: str, updated: int, failed: int, total: int) -> None:
+    """Persists when a maintenance backfill last ran so the UI can show 'last run' feedback."""
+    import json as _json
+
+    user = db.get(User, user_id)
+    if not user:
+        return
+    try:
+        status = _json.loads(user.maintenance_status) if user.maintenance_status else {}
+    except Exception:
+        status = {}
+    status[key] = {
+        "at": datetime.now(timezone.utc).isoformat(),
+        "updated": updated,
+        "failed": failed,
+        "total": total,
+    }
+    user.maintenance_status = _json.dumps(status)
+    db.commit()
+
+
 async def _run_tmdb_backfill(user_id: int, force: bool) -> None:
     """Background task: updates TMDB metadata for all movie/series items."""
     import json as _json
@@ -1020,13 +1041,14 @@ async def _run_tmdb_backfill(user_id: int, force: bool) -> None:
 
     logger.info("tmdb-backfill: task started user_id=%s force=%s", user_id, force)
     try:
-        api_key = cfg.tmdb_api_key
-        if not api_key:
-            logger.warning("tmdb-backfill: TMDB_API_KEY not configured")
-            return
-
         db = SessionLocal()
         try:
+            api_key = cfg.tmdb_api_key
+            if not api_key:
+                logger.warning("tmdb-backfill: TMDB_API_KEY not configured")
+                _record_backfill_result(db, user_id, "tmdb", 0, 0, 0)
+                return
+
             q = select(Content).where(
                 Content.user_id == user_id,
                 Content.content_type.in_([ContentType.movie, ContentType.series]),
@@ -1038,6 +1060,7 @@ async def _run_tmdb_backfill(user_id: int, force: bool) -> None:
 
             if not items:
                 logger.info("tmdb-backfill: nothing to do")
+                _record_backfill_result(db, user_id, "tmdb", 0, 0, 0)
                 return
 
             logger.info("tmdb-backfill: starting %d items (force=%s)", len(items), force)
@@ -1105,7 +1128,7 @@ async def _run_tmdb_backfill(user_id: int, force: bool) -> None:
 
                 await asyncio.sleep(0.25)
 
-            db.commit()
+            _record_backfill_result(db, user_id, "tmdb", updated, failed, len(items))
             logger.info("tmdb-backfill: done — updated=%d failed=%d total=%d", updated, failed, len(items))
         finally:
             db.close()
@@ -1143,6 +1166,7 @@ async def _run_book_backfill(user_id: int, force: bool) -> None:
 
             if not items:
                 logger.info("book-backfill: nothing to do")
+                _record_backfill_result(db, user_id, "book", 0, 0, 0)
                 return
 
             logger.info("book-backfill: found %d book items for user %s", len(items), user_id)
@@ -1176,7 +1200,7 @@ async def _run_book_backfill(user_id: int, force: bool) -> None:
                     logger.warning("book-backfill: [ERR] %s: %s", item.title[:50], exc)
                 await asyncio.sleep(0.5)
 
-            db.commit()
+            _record_backfill_result(db, user_id, "book", updated, failed, len(items))
             logger.info("book-backfill: done — updated=%d failed=%d total=%d", updated, failed, len(items))
         finally:
             db.close()
@@ -1217,6 +1241,7 @@ async def _run_game_backfill(user_id: int, force: bool) -> None:
 
             if not items:
                 logger.info("game-backfill: nothing to do")
+                _record_backfill_result(db, user_id, "game", 0, 0, 0)
                 return
 
             logger.info("game-backfill: found %d game items for user %s", len(items), user_id)
@@ -1253,7 +1278,7 @@ async def _run_game_backfill(user_id: int, force: bool) -> None:
 
                 await asyncio.sleep(0.5)
 
-            db.commit()
+            _record_backfill_result(db, user_id, "game", updated, failed, len(items))
             logger.info("game-backfill: done — updated=%d failed=%d total=%d", updated, failed, len(items))
         finally:
             db.close()
@@ -1269,3 +1294,16 @@ async def backfill_game_metadata(
     """Fires Steam metadata (genres/rating/synopsis) backfill as an asyncio task. Returns immediately."""
     asyncio.create_task(_run_game_backfill(user.id, force))
     return {"status": "started", "message": "Backfill de juegos en curso — revisa los logs del servidor"}
+
+
+@router.get("/maintenance-status")
+def get_maintenance_status(user: User = Depends(get_admin_user)) -> dict:
+    """Last-run outcome of each maintenance backfill, keyed by 'tmdb' / 'book' / 'game'."""
+    import json as _json
+
+    if not user.maintenance_status:
+        return {}
+    try:
+        return _json.loads(user.maintenance_status)
+    except Exception:
+        return {}

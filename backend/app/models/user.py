@@ -15,6 +15,8 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     steam_id: Mapped[str | None] = mapped_column(String(25), nullable=True)
+    # JSON: {"tmdb": {"at": iso, "updated": n, "failed": n, "total": n}, "book": {...}, "game": {...}}
+    maintenance_status: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

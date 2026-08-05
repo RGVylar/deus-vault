@@ -16,8 +16,9 @@
 	let tmdbApiKey = $state('');
 	let saved = $state(false);
 	let showSpotifySecret = $state(false);
+	type BackfillEntry = { at: string; updated: number; failed: number; total: number };
+	let maintenanceStatus = $state<Record<string, BackfillEntry>>({});
 	let backfillState = $state<'idle' | 'running' | 'done' | 'error'>('idle');
-	let backfillResult = $state<{updated: number; failed: number; total: number} | null>(null);
 	let bookBackfillState = $state<'idle' | 'running' | 'done' | 'error'>('idle');
 	let gameBackfillState = $state<'idle' | 'running' | 'done' | 'error'>('idle');
 	let steamApiKey = $state('');
@@ -68,12 +69,49 @@
 		testElapsedSec = null;
 	}
 
+	/** Backend runs the backfill as a fire-and-forget task, so the only way to know it
+	 *  actually finished is to poll /maintenance-status until its timestamp for `key` moves. */
+	async function pollMaintenanceStatus(
+		key: string,
+		beforeAt: string | undefined,
+		onDone: (entry: BackfillEntry) => void,
+		onTimeout: () => void
+	) {
+		for (let i = 0; i < 40; i++) {
+			await new Promise(r => setTimeout(r, 3000));
+			try {
+				const status = await api.get<Record<string, BackfillEntry>>('/contents/maintenance-status');
+				const entry = status[key];
+				if (entry && entry.at !== beforeAt) {
+					maintenanceStatus = status;
+					onDone(entry);
+					return;
+				}
+			} catch { /* keep trying */ }
+		}
+		onTimeout();
+	}
+
+	function timeAgo(iso: string): string {
+		const diffSec = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+		if (diffSec < 60) return t('settings.maintenance.justNow');
+		if (diffSec < 3600) return tc('settings.maintenance.minutesAgo', Math.floor(diffSec / 60));
+		if (diffSec < 86400) return tc('settings.maintenance.hoursAgo', Math.floor(diffSec / 3600));
+		return tc('settings.maintenance.daysAgo', Math.floor(diffSec / 86400));
+	}
+
+	function formatBackfillResult(entry: BackfillEntry): string {
+		const time = timeAgo(entry.at);
+		if (entry.total === 0) return t('settings.maintenance.lastRunNothing', { time });
+		return t('settings.maintenance.lastRunSummary', { time, updated: entry.updated, failed: entry.failed, total: entry.total });
+	}
+
 	async function runTmdbBackfill(force = false) {
 		backfillState = 'running';
-		backfillResult = null;
+		const beforeAt = maintenanceStatus.tmdb?.at;
 		try {
 			await api.post<any>(`/contents/backfill-tmdb-metadata${force ? '?force=true' : ''}`);
-			backfillState = 'done';
+			pollMaintenanceStatus('tmdb', beforeAt, () => { backfillState = 'done'; }, () => { backfillState = 'idle'; });
 		} catch (e: any) {
 			backfillState = 'error';
 			console.error('Backfill error:', e?.message ?? e);
@@ -82,9 +120,10 @@
 
 	async function runBookBackfill(force = false) {
 		bookBackfillState = 'running';
+		const beforeAt = maintenanceStatus.book?.at;
 		try {
 			await api.post<any>(`/contents/backfill-book-page-counts${force ? '?force=true' : ''}`);
-			bookBackfillState = 'done';
+			pollMaintenanceStatus('book', beforeAt, () => { bookBackfillState = 'done'; }, () => { bookBackfillState = 'idle'; });
 		} catch (e: any) {
 			bookBackfillState = 'error';
 			console.error('Book backfill error:', e?.message ?? e);
@@ -93,9 +132,10 @@
 
 	async function runGameBackfill(force = false) {
 		gameBackfillState = 'running';
+		const beforeAt = maintenanceStatus.game?.at;
 		try {
 			await api.post<any>(`/contents/backfill-game-metadata${force ? '?force=true' : ''}`);
-			gameBackfillState = 'done';
+			pollMaintenanceStatus('game', beforeAt, () => { gameBackfillState = 'done'; }, () => { gameBackfillState = 'idle'; });
 		} catch (e: any) {
 			gameBackfillState = 'error';
 			console.error('Game backfill error:', e?.message ?? e);
@@ -129,6 +169,11 @@
 
 	onMount(async () => {
 		if (!auth.isLoggedIn) goto('/login');
+
+		// Solo funciona para admins, pero es inofensivo pedirlo siempre — si 403, no se muestra nada
+		api.get<Record<string, BackfillEntry>>('/contents/maintenance-status')
+			.then(status => maintenanceStatus = status)
+			.catch(() => {});
 
 		// Tras el callback de Steam, refrescar datos del usuario
 		const url = new URL(window.location.href);
@@ -635,10 +680,14 @@
 				</button>
 				<button class="btn" onclick={() => runTmdbBackfill(true)} disabled={backfillState === 'running'} style="opacity:0.6; font-size:11px;">{t('settings.maintenance.forceAll')}</button>
 			</div>
-			{#if backfillState === 'done'}
-				<p class="cx-hint" style="color:var(--game);">{t('settings.maintenance.backfillStarted')}</p>
+			{#if backfillState === 'running'}
+				<p class="cx-hint" style="color:var(--text-muted);">{t('settings.maintenance.stillRunning')}</p>
 			{:else if backfillState === 'error'}
 				<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.maintenance.backfillError')}</p>
+			{:else if backfillState === 'done' && maintenanceStatus.tmdb}
+				<p class="cx-hint" style="color:var(--game);">✅ {formatBackfillResult(maintenanceStatus.tmdb)}</p>
+			{:else if maintenanceStatus.tmdb}
+				<p class="cx-hint" style="color:var(--text-muted);">{t('settings.maintenance.lastRunLabel')} {formatBackfillResult(maintenanceStatus.tmdb)}</p>
 			{/if}
 
 			<p class="cx-hint" style="color:var(--text-muted); line-height:1.5; margin-top:12px;">
@@ -650,10 +699,14 @@
 				</button>
 				<button class="btn" onclick={() => runBookBackfill(true)} disabled={bookBackfillState === 'running'} style="opacity:0.6; font-size:11px;">{t('settings.maintenance.forceAll')}</button>
 			</div>
-			{#if bookBackfillState === 'done'}
-				<p class="cx-hint" style="color:var(--game);">{t('settings.maintenance.backfillStarted')}</p>
+			{#if bookBackfillState === 'running'}
+				<p class="cx-hint" style="color:var(--text-muted);">{t('settings.maintenance.stillRunning')}</p>
 			{:else if bookBackfillState === 'error'}
 				<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.maintenance.backfillError')}</p>
+			{:else if bookBackfillState === 'done' && maintenanceStatus.book}
+				<p class="cx-hint" style="color:var(--game);">✅ {formatBackfillResult(maintenanceStatus.book)}</p>
+			{:else if maintenanceStatus.book}
+				<p class="cx-hint" style="color:var(--text-muted);">{t('settings.maintenance.lastRunLabel')} {formatBackfillResult(maintenanceStatus.book)}</p>
 			{/if}
 
 			<p class="cx-hint" style="color:var(--text-muted); line-height:1.5; margin-top:12px;">
@@ -665,10 +718,14 @@
 				</button>
 				<button class="btn" onclick={() => runGameBackfill(true)} disabled={gameBackfillState === 'running'} style="opacity:0.6; font-size:11px;">{t('settings.maintenance.forceAll')}</button>
 			</div>
-			{#if gameBackfillState === 'done'}
-				<p class="cx-hint" style="color:var(--game);">{t('settings.maintenance.backfillStarted')}</p>
+			{#if gameBackfillState === 'running'}
+				<p class="cx-hint" style="color:var(--text-muted);">{t('settings.maintenance.stillRunning')}</p>
 			{:else if gameBackfillState === 'error'}
 				<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.maintenance.backfillError')}</p>
+			{:else if gameBackfillState === 'done' && maintenanceStatus.game}
+				<p class="cx-hint" style="color:var(--game);">✅ {formatBackfillResult(maintenanceStatus.game)}</p>
+			{:else if maintenanceStatus.game}
+				<p class="cx-hint" style="color:var(--text-muted);">{t('settings.maintenance.lastRunLabel')} {formatBackfillResult(maintenanceStatus.game)}</p>
 			{/if}
 		</div>
 	</details>
