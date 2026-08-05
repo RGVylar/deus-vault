@@ -443,7 +443,7 @@
 		<div class="content-grid">
 			{#each contents as c (c.id)}
 				{@const link = buildConsumeUrl(c)}
-				{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series' || c.content_type === 'game'}
+				{@const landscape = c.content_type === 'youtube' || c.content_type === 'game'}
 				<div
 					class="c-card"
 					class:landscape

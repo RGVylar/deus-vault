@@ -40,10 +40,12 @@
 		}
 	}
 
-	// Landscape layout: video + game content has wide thumbnails → banner at top
-	// Books and music have portrait/square covers → side column
+	// Landscape layout: only content whose thumbnail is actually wide (YouTube
+	// thumbnails, Steam headers) gets the banner treatment. Movies/series use
+	// TMDB posters (portrait 2:3), so they go in the portrait side-column like
+	// books/music — otherwise the poster gets cropped to a thin sliver.
 	function isLandscape(type: ContentType): boolean {
-		return type === 'youtube' || type === 'movie' || type === 'series' || type === 'game';
+		return type === 'youtube' || type === 'game';
 	}
 
 	// For portrait cards (books, music only)

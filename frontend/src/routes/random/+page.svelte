@@ -237,7 +237,7 @@
 			{:else if pick || ghost}
 				{@const item = (pick ?? ghost)!}
 				{@const isGhost = !pick}
-				{@const landscape = ['youtube','movie','series','game'].includes(item.content_type)}
+				{@const landscape = ['youtube','game'].includes(item.content_type)}
 				{@const link = pick ? buildConsumeUrl(pick) : null}
 				<div class="result-inner {isGhost ? 'ghost' : 'reveal'}">
 					{#if !isGhost}<p class="result-kicker">{t('random.nextContent')}</p>{/if}

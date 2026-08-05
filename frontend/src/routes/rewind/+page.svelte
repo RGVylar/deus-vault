@@ -1019,7 +1019,7 @@
 		<h2><span class="hico"><Icon name="list" size={15} /></span> {t('rewind.allConsumed')} <span class="h2-count">({visibleItems.length})</span></h2>
 		<div class="content-grid">
 			{#each visibleItems.slice(0, itemsVisible) as c (c.id)}
-				{@const landscape = c.content_type === 'youtube' || c.content_type === 'movie' || c.content_type === 'series' || c.content_type === 'game'}
+				{@const landscape = c.content_type === 'youtube' || c.content_type === 'game'}
 				<div class="c-card" class:landscape class:portrait={!landscape} style="--card-accent:{TYPE_COLORS[c.content_type] ?? 'var(--primary)'}; --accent:{TYPE_COLORS[c.content_type] ?? 'var(--primary)'}">
 					{#if landscape}
 						<div class="thumb-land">{#if c.thumbnail}<img src={c.thumbnail} alt="" />{:else}<div class="ph"><Icon name={TYPE_ICON[c.content_type] ?? 'list'} size={28} /></div>{/if}</div>
