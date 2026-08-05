@@ -152,16 +152,19 @@ async def steam_sync(
             select(Content).where(Content.user_id == user.id, Content.source_id == source_id)
         ).first()
 
+        # Steam's own store header (460x215, landscape) — NOT img_icon_url, which is a
+        # 32x32 square icon that turns into a blurry, badly-cropped smear when forced
+        # into our wide game-card thumbnail box.
+        thumbnail = f"https://cdn.akamai.steamstatic.com/steam/apps/{appid}/header.jpg"
+
         if existing:
             existing.duration_minutes = playtime
+            # Self-heals older rows created back when this synced the tiny icon instead.
+            if existing.thumbnail != thumbnail:
+                existing.thumbnail = thumbnail
             synced += 1
         elif create_new:
             name = game.get("name", f"Steam Game {appid}")
-            icon = game.get("img_icon_url")
-            thumbnail = (
-                f"https://media.steampowered.com/steamcommunity/public/images/apps/{appid}/{icon}.jpg"
-                if icon else None
-            )
             db.add(Content(
                 user_id=user.id,
                 title=name,
@@ -208,10 +211,7 @@ async def steam_library(
             "name": g.get("name", ""),
             "playtime_forever": g.get("playtime_forever", 0),
             "source_id": f"steam_{g['appid']}",
-            "thumbnail": (
-                f"https://media.steampowered.com/steamcommunity/public/images/apps/{g['appid']}/{g['img_icon_url']}.jpg"
-                if g.get("img_icon_url") else None
-            ),
+            "thumbnail": f"https://cdn.akamai.steamstatic.com/steam/apps/{g['appid']}/header.jpg",
         }
         for g in games
         if g.get("playtime_forever", 0) > 0
