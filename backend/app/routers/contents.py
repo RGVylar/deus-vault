@@ -1192,3 +1192,80 @@ async def backfill_book_page_counts(
     """Fires book page-count/duration backfill as an asyncio task. Returns immediately."""
     asyncio.create_task(_run_book_backfill(user.id, force))
     return {"status": "started", "message": "Backfill de libros en curso — revisa los logs del servidor"}
+
+
+async def _run_game_backfill(user_id: int, force: bool) -> None:
+    """Background task: refreshes Steam metadata (genres/rating/synopsis) for game items.
+
+    Deliberately never touches duration_minutes — HowLongToBeat matches are fuzzy and
+    duration is hand-editable, so a bad match on re-fetch shouldn't clobber a user correction.
+    """
+    from app.routers.lookup import lookup_steam
+    from app.database import SessionLocal
+
+    logger.info("game-backfill: task started user_id=%s force=%s", user_id, force)
+    try:
+        db = SessionLocal()
+        try:
+            q = select(Content).where(
+                Content.user_id == user_id,
+                Content.content_type == ContentType.game,
+            ).where(or_(Content.source_id.isnot(None), Content.url.isnot(None)))
+            if not force:
+                q = q.where(Content.synopsis.is_(None))
+            items = list(db.scalars(q).all())
+
+            if not items:
+                logger.info("game-backfill: nothing to do")
+                return
+
+            logger.info("game-backfill: found %d game items for user %s", len(items), user_id)
+            updated = 0
+            failed = 0
+
+            for item in items:
+                try:
+                    steam_url = item.url if item.url and "steampowered.com" in item.url else (
+                        f"https://store.steampowered.com/app/{item.source_id}"
+                        if item.source_id and item.source_id.isdigit() else None
+                    )
+                    if not steam_url:
+                        failed += 1
+                        continue
+
+                    info = await lookup_steam(steam_url)
+                    if info.get("genres"):
+                        item.genres = info["genres"]
+                    if info.get("rating") is not None:
+                        item.rating = info["rating"]
+                    if info.get("synopsis"):
+                        item.synopsis = info["synopsis"]
+                    if info.get("thumbnail") and not item.thumbnail:
+                        item.thumbnail = info["thumbnail"]
+                    if info.get("author") and not item.author:
+                        item.author = info["author"]
+
+                    updated += 1
+                    logger.info("game-backfill: [OK] %s", item.title[:60])
+                except Exception as exc:
+                    failed += 1
+                    logger.warning("game-backfill: [ERR] %s: %s", item.title[:60], exc)
+
+                await asyncio.sleep(0.5)
+
+            db.commit()
+            logger.info("game-backfill: done — updated=%d failed=%d total=%d", updated, failed, len(items))
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.error("game-backfill: FATAL %s", exc, exc_info=True)
+
+
+@router.post("/backfill-game-metadata", status_code=202)
+async def backfill_game_metadata(
+    force: bool = Query(False, description="Re-fetch even games that already have a synopsis"),
+    user: User = Depends(get_admin_user),
+) -> dict:
+    """Fires Steam metadata (genres/rating/synopsis) backfill as an asyncio task. Returns immediately."""
+    asyncio.create_task(_run_game_backfill(user.id, force))
+    return {"status": "started", "message": "Backfill de juegos en curso — revisa los logs del servidor"}

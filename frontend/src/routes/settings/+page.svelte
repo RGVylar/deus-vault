@@ -19,6 +19,7 @@
 	let backfillState = $state<'idle' | 'running' | 'done' | 'error'>('idle');
 	let backfillResult = $state<{updated: number; failed: number; total: number} | null>(null);
 	let bookBackfillState = $state<'idle' | 'running' | 'done' | 'error'>('idle');
+	let gameBackfillState = $state<'idle' | 'running' | 'done' | 'error'>('idle');
 	let steamApiKey = $state('');
 	let steamSyncState = $state<'idle' | 'syncing' | 'done' | 'error'>('idle');
 	let steamSyncResult = $state<{synced: number; created: number; total_steam_games: number} | null>(null);
@@ -87,6 +88,17 @@
 		} catch (e: any) {
 			bookBackfillState = 'error';
 			console.error('Book backfill error:', e?.message ?? e);
+		}
+	}
+
+	async function runGameBackfill(force = false) {
+		gameBackfillState = 'running';
+		try {
+			await api.post<any>(`/contents/backfill-game-metadata${force ? '?force=true' : ''}`);
+			gameBackfillState = 'done';
+		} catch (e: any) {
+			gameBackfillState = 'error';
+			console.error('Game backfill error:', e?.message ?? e);
 		}
 	}
 
@@ -641,6 +653,21 @@
 			{#if bookBackfillState === 'done'}
 				<p class="cx-hint" style="color:var(--game);">{t('settings.maintenance.backfillStarted')}</p>
 			{:else if bookBackfillState === 'error'}
+				<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.maintenance.backfillError')}</p>
+			{/if}
+
+			<p class="cx-hint" style="color:var(--text-muted); line-height:1.5; margin-top:12px;">
+				{@html t('settings.maintenance.hintGames')}
+			</p>
+			<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+				<button class="btn" onclick={() => runGameBackfill(false)} disabled={gameBackfillState === 'running'}>
+					{gameBackfillState === 'running' ? t('settings.maintenance.updating') : t('settings.maintenance.updateGameButton')}
+				</button>
+				<button class="btn" onclick={() => runGameBackfill(true)} disabled={gameBackfillState === 'running'} style="opacity:0.6; font-size:11px;">{t('settings.maintenance.forceAll')}</button>
+			</div>
+			{#if gameBackfillState === 'done'}
+				<p class="cx-hint" style="color:var(--game);">{t('settings.maintenance.backfillStarted')}</p>
+			{:else if gameBackfillState === 'error'}
 				<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.maintenance.backfillError')}</p>
 			{/if}
 		</div>

@@ -144,6 +144,8 @@ export const en = {
 	'settings.maintenance.backfillError': '⚠ Error running the backfill',
 	'settings.maintenance.hintBooks': 'Re-fetches page count and duration for books still stuck at 0. Only touches items that don\'t have data yet (without <code>?force</code>).',
 	'settings.maintenance.updateBookButton': '📖 Backfill books',
+	'settings.maintenance.hintGames': 'Updates genres, rating and synopsis for games with Steam data. Only touches items without a synopsis yet (without <code>?force</code>). Never touches duration.',
+	'settings.maintenance.updateGameButton': '🎮 Backfill games',
 
 	// ── random ──
 	'random.title': 'What should I consume?',
