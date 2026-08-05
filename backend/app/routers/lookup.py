@@ -73,12 +73,25 @@ def _ytdlp_extract_video(url: str) -> dict:
 
     video_id = info.get("id", "")
 
-    # Best video thumbnail — prefer hqdefault, fall back to hardcoded URL
+    # Best video thumbnail — prefer a genuinely widescreen one. hqdefault.jpg is a
+    # 4:3 canvas that pads 16:9 video frames with black bars, so forcing it into our
+    # wide landscape card crops out ~40% of the height (mostly the actual picture,
+    # not just the bars). yt-dlp's thumbnails list carries width/height per entry,
+    # so pick the highest-res candidate that's actually ~16:9 and fall back to
+    # hqdefault only if nothing better is listed.
     thumbnails = info.get("thumbnails") or []
-    video_thumb = next(
-        (t["url"] for t in reversed(thumbnails) if "hqdefault" in t.get("url", "")),
-        f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
-    )
+    widescreen = [
+        t for t in thumbnails
+        if t.get("url") and t.get("width") and t.get("height")
+        and 1.6 <= t["width"] / t["height"] <= 1.95
+    ]
+    if widescreen:
+        video_thumb = max(widescreen, key=lambda t: t["width"])["url"]
+    else:
+        video_thumb = next(
+            (t["url"] for t in reversed(thumbnails) if "hqdefault" in t.get("url", "")),
+            f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
+        )
 
     # Channel avatar from channel_thumbnails[], closest to 88px
     channel_thumbs = info.get("channel_thumbnails") or []
