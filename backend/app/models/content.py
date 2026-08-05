@@ -79,6 +79,7 @@ class Content(Base):
     provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
     trailer_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     genres: Mapped[str | None] = mapped_column(String(500), nullable=True)  # comma-separated
+    synopsis: Mapped[str | None] = mapped_column(Text, nullable=True)
     streaming_providers: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON: ["Netflix","Max"]
     imdb_id: Mapped[str | None] = mapped_column(String(20), nullable=True)  # tt1234567
 

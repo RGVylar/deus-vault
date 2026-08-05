@@ -42,6 +42,7 @@ export interface Content {
 	provider?: string | null;
 	trailer_url?: string | null;
 	genres?: string | null;
+	synopsis?: string | null;
 	streaming_providers?: string | null;  // JSON: ["Netflix","Max"]
 	imdb_id?: string | null;
 }
@@ -100,6 +101,7 @@ export interface LookupResult {
 	duration_minutes: number;
 	next_episode_date?: string | null;
 	watch_providers?: Array<{ provider_name: string; logo_path: string }>;
+	synopsis?: string | null;
 }
 
 export interface TopItem {

@@ -31,6 +31,74 @@ export const TYPE_ICONS: Record<string, string> = {
 	game: '🎮'
 };
 
+// Type accent colors matching CSS vars
+export const TYPE_COLOR: Record<string, string> = {
+	youtube: 'var(--youtube)',
+	movie:   'var(--movie)',
+	series:  'var(--series)',
+	book:    'var(--book)',
+	game:    'var(--game)',
+	music:   'var(--music)',
+};
+
+export const PROVIDER_LABELS: Record<string, string> = {
+	netflix: 'Netflix', prime: 'Prime Video', max: 'Max',
+	disney: 'Disney+', crunchyroll: 'Crunchyroll', stremio: 'Stremio',
+	appletv: 'Apple TV+',
+};
+
+// Reverse map: author string → provider key (for existing content without provider field)
+const AUTHOR_TO_PROVIDER: Record<string, string> = {
+	'Netflix': 'netflix', 'Prime Video': 'prime', 'Max': 'max',
+	'Disney+': 'disney', 'Crunchyroll': 'crunchyroll', 'Stremio': 'stremio',
+	'Apple TV+': 'appletv',
+};
+
+export function resolveProvider(c: { provider?: string | null; author?: string | null }): string | null {
+	return c.provider ?? AUTHOR_TO_PROVIDER[c.author ?? ''] ?? null;
+}
+
+export function shortProviderName(name: string): string {
+	const n = name.toLowerCase();
+	if (n.includes('netflix')) return 'Netflix';
+	if (n.includes('disney')) return 'D+';
+	if (n.includes('prime') || (n.includes('amazon') && !n.includes('mgm'))) return 'Prime';
+	if (n.includes('max') && !n.includes('starz')) return 'Max';
+	if (n.includes('movistar')) return 'M+';
+	if (n.includes('apple')) return 'Apple TV+';
+	if (n.includes('crunchyroll')) return 'Crunchyroll';
+	if (n.includes('skyshow')) return 'Sky';
+	if (n.includes('rakuten')) return 'Rakuten';
+	if (n.includes('filmin')) return 'Filmin';
+	if (n.includes('mgm')) return 'MGM+';
+	if (n.includes('starz')) return 'Starz';
+	if (n.includes('mubi')) return 'Mubi';
+	if (n.includes('paramount')) return 'Paramount+';
+	if (n.includes('google play')) return 'G Play';
+	if (n.includes('tivify')) return 'Tivify';
+	// Fallback: first word, max 8 chars
+	return name.split(' ')[0].substring(0, 8);
+}
+
+export function providerNameToKey(name: string): string {
+	const n = name.toLowerCase();
+	if (n.includes('netflix')) return 'netflix';
+	if (n.includes('prime') || (n.includes('amazon') && !n.includes('mgm'))) return 'prime';
+	if (n.includes('max') && !n.includes('starz')) return 'max';
+	if (n.includes('disney')) return 'disney';
+	if (n.includes('crunchyroll')) return 'crunchyroll';
+	if (n.includes('apple')) return 'appletv';
+	if (n.includes('movistar')) return 'movistar';
+	if (n.includes('filmin')) return 'filmin';
+	if (n.includes('skyshow')) return 'skyshowtime';
+	if (n.includes('rakuten')) return 'rakuten';
+	if (n.includes('starz')) return 'starz';
+	if (n.includes('mgm')) return 'mgm';
+	if (n.includes('mubi')) return 'mubi';
+	if (n.includes('paramount')) return 'paramount';
+	return 'other';
+}
+
 const TYPE_LABEL_KEYS: Record<string, TKey> = {
 	youtube: 'types.youtube',
 	movie: 'types.movie',

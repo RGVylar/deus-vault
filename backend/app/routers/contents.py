@@ -1078,6 +1078,10 @@ async def _run_tmdb_backfill(user_id: int, force: bool) -> None:
                     if genre_list:
                         item.genres = ", ".join(g["name"] for g in genre_list if g.get("name"))
 
+                    overview = details.get("overview")
+                    if overview:
+                        item.synopsis = overview
+
                     imdb = await _fetch_imdb_id(media_type, tmdb_id, api_key, details)
                     if imdb:
                         item.imdb_id = imdb
@@ -1160,6 +1164,8 @@ async def _run_book_backfill(user_id: int, force: bool) -> None:
                             item.thumbnail = info["thumbnail"]
                         if info.get("author") and not item.author:
                             item.author = info["author"]
+                        if info.get("synopsis") and not item.synopsis:
+                            item.synopsis = info["synopsis"]
                         updated += 1
                         logger.info("book-backfill: [OK] %s — %d pages", item.title[:50], page_count)
                     else:

@@ -56,6 +56,7 @@ export function buildEnrichPatch(data: any, currentType: string): Record<string,
 	if (data.provider) patch.provider = data.provider;
 	if (data.trailer_url) patch.trailer_url = data.trailer_url;
 	if (data.genres) patch.genres = data.genres;
+	if (data.synopsis) patch.synopsis = data.synopsis;
 	if (data.rating != null) patch.rating = data.rating;
 	if (data.imdb_id) patch.imdb_id = data.imdb_id;
 

@@ -343,6 +343,7 @@ async def lookup_book(url: str) -> dict:
                 gb_authors = info.get("authors") or []
                 gb_author = ", ".join(gb_authors)
                 gb_pages = int(info.get("pageCount") or 0)
+                gb_description = info.get("description") or None
                 image_links = info.get("imageLinks") or {}
                 gb_thumb = _clean_gb_thumb(image_links.get("thumbnail", ""))
                 gb_isbn = ""
@@ -364,6 +365,7 @@ async def lookup_book(url: str) -> dict:
                     "duration_minutes": gb_duration,
                     "suggested_content_type": "book",
                     "provider": provider,
+                    "synopsis": gb_description,
                 }
             # API failed (403/429/etc.) — fall back to parsing the already-scraped HTML
             # Google Books pages have JSON-LD and og: tags with title/author
@@ -416,6 +418,7 @@ async def lookup_book(url: str) -> dict:
     isbn = None
     jsonld_author = ""
     jsonld_page_count = 0
+    description: str | None = None
     blocks = re.findall(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, flags=re.IGNORECASE | re.DOTALL)
     for block in blocks:
         try:
@@ -529,6 +532,7 @@ async def lookup_book(url: str) -> dict:
                     page_count = page_count or int(info.get("pageCount") or 0)
                     image_links = info.get("imageLinks") or {}
                     thumbnail = thumbnail or _clean_gb_thumb(image_links.get("thumbnail", ""))
+                    description = description or info.get("description")
         except Exception:
             pass
 
@@ -544,6 +548,7 @@ async def lookup_book(url: str) -> dict:
                     page_count = page_count or int(info.get("pageCount") or 0)
                     image_links = info.get("imageLinks") or {}
                     thumbnail = thumbnail or _clean_gb_thumb(image_links.get("thumbnail", ""))
+                    description = description or info.get("description")
         except Exception:
             pass
 
@@ -693,6 +698,7 @@ async def lookup_book(url: str) -> dict:
         "duration_minutes": duration_minutes,
         "suggested_content_type": "book",
         "provider": provider,
+        "synopsis": description,
     }
 
 
@@ -941,6 +947,7 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
         "rating": rating,
         "trailer_url": trailer_url,
         "genres": genres_str,
+        "synopsis": details.get("overview") or None,
         "imdb_id": await _fetch_imdb_id(media_type, item_id, api_key, details),
     }
 
@@ -1157,6 +1164,7 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
         "rating": rating,
         "trailer_url": trailer_url,
         "genres": genres_str,
+        "synopsis": details.get("overview") or None,
         "imdb_id": await _fetch_imdb_id(media_type, item_id, api_key, details),
     }
 
@@ -1330,6 +1338,7 @@ async def lookup_steam(url: str) -> dict:
         "provider": "steam",
         "rating": rating,
         "genres": ", ".join(g.get("description", "") for g in (info.get("genres") or [])) or None,
+        "synopsis": info.get("short_description") or None,
         "price": price,
     }
 

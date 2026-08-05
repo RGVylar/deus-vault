@@ -3,9 +3,10 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration, TYPE_ICONS, typeLabel, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate } from '$lib/utils';
+	import { formatDuration, TYPE_ICONS, TYPE_COLOR, PROVIDER_LABELS, typeLabel, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate, resolveProvider, shortProviderName, providerNameToKey } from '$lib/utils';
 	import { buildEnrichPatch, enrichContentInBackground as enrichContentInBackgroundShared } from '$lib/contentEnrich';
 	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
+	import ContentDetail from '$lib/components/ContentDetail.svelte';
 	import type { Content, VaultStats, ContentType, PaginatedContents } from '$lib/types';
 
 	const LIMIT = 20;
@@ -15,65 +16,7 @@
 	// sentada — ahí la fecha de inicio sería la de fin.
 	const STARTABLE: ContentType[] = ['game', 'series', 'book'];
 
-	const PROVIDER_LABELS: Record<string, string> = {
-		netflix: 'Netflix', prime: 'Prime Video', max: 'Max',
-		disney: 'Disney+', crunchyroll: 'Crunchyroll', stremio: 'Stremio',
-		appletv: 'Apple TV+',
-	};
-
 	const TYPE_ORDER: ContentType[] = ['movie', 'series', 'youtube', 'book', 'game', 'music'];
-
-	// Reverse map: author string → provider key (for existing content without provider field)
-	const AUTHOR_TO_PROVIDER: Record<string, string> = {
-		'Netflix': 'netflix', 'Prime Video': 'prime', 'Max': 'max',
-		'Disney+': 'disney', 'Crunchyroll': 'crunchyroll', 'Stremio': 'stremio',
-		'Apple TV+': 'appletv',
-	};
-
-	function resolveProvider(c: Content): string | null {
-		return c.provider ?? AUTHOR_TO_PROVIDER[c.author ?? ''] ?? null;
-	}
-
-	function shortProviderName(name: string): string {
-		const n = name.toLowerCase();
-		if (n.includes('netflix')) return 'Netflix';
-		if (n.includes('disney')) return 'D+';
-		if (n.includes('prime') || (n.includes('amazon') && !n.includes('mgm'))) return 'Prime';
-		if (n.includes('max') && !n.includes('starz')) return 'Max';
-		if (n.includes('movistar')) return 'M+';
-		if (n.includes('apple')) return 'Apple TV+';
-		if (n.includes('crunchyroll')) return 'Crunchyroll';
-		if (n.includes('skyshow')) return 'Sky';
-		if (n.includes('rakuten')) return 'Rakuten';
-		if (n.includes('filmin')) return 'Filmin';
-		if (n.includes('mgm')) return 'MGM+';
-		if (n.includes('starz')) return 'Starz';
-		if (n.includes('mubi')) return 'Mubi';
-		if (n.includes('paramount')) return 'Paramount+';
-		if (n.includes('google play')) return 'G Play';
-		if (n.includes('tivify')) return 'Tivify';
-		// Fallback: first word, max 8 chars
-		return name.split(' ')[0].substring(0, 8);
-	}
-
-	function providerNameToKey(name: string): string {
-		const n = name.toLowerCase();
-		if (n.includes('netflix')) return 'netflix';
-		if (n.includes('prime') || (n.includes('amazon') && !n.includes('mgm'))) return 'prime';
-		if (n.includes('max') && !n.includes('starz')) return 'max';
-		if (n.includes('disney')) return 'disney';
-		if (n.includes('crunchyroll')) return 'crunchyroll';
-		if (n.includes('apple')) return 'appletv';
-		if (n.includes('movistar')) return 'movistar';
-		if (n.includes('filmin')) return 'filmin';
-		if (n.includes('skyshow')) return 'skyshowtime';
-		if (n.includes('rakuten')) return 'rakuten';
-		if (n.includes('starz')) return 'starz';
-		if (n.includes('mgm')) return 'mgm';
-		if (n.includes('mubi')) return 'mubi';
-		if (n.includes('paramount')) return 'paramount';
-		return 'other';
-	}
 
 	/** For TMDB source_ids, return the TMDB "where to watch" page — direct links to each platform. */
 	function tmdbWatchUrl(c: Content): string | null {
@@ -96,16 +39,6 @@
 			default:           return `https://www.justwatch.com/es/buscar?q=${q}`;
 		}
 	}
-
-	// Type accent colors matching CSS vars
-	const TYPE_COLOR: Record<string, string> = {
-		youtube: 'var(--youtube)',
-		movie:   'var(--movie)',
-		series:  'var(--series)',
-		book:    'var(--book)',
-		game:    'var(--game)',
-		music:   'var(--music)',
-	};
 
 	// Landscape layout: video + game content has wide thumbnails → banner at top
 	// Books and music have portrait/square covers → side column
@@ -143,6 +76,9 @@
 
 	// Delete confirmation
 	let deletingId = $state<number | null>(null);
+
+	// Detail sheet
+	let detailItem = $state<Content | null>(null);
 
 	// Edit modal
 	let editingItem = $state<Content | null>(null);
@@ -682,6 +618,25 @@ $effect(() => {
 		editError = '';
 	}
 
+	// --- Detail sheet ---
+	function detailEdit(c: Content) {
+		detailItem = null;
+		startEdit(c);
+	}
+	async function detailConsume(id: number) { await consume(id); detailItem = null; }
+	async function detailAbandon(id: number) { await abandon(id); detailItem = null; }
+	async function detailDelete(id: number) { await remove(id); detailItem = null; }
+	function detailTogglePin(c: Content) {
+		togglePin(c);
+		const updated = contents.find(x => x.id === c.id);
+		if (updated) detailItem = updated;
+	}
+	async function detailRefresh(c: Content) {
+		await refresh(c);
+		const updated = contents.find(x => x.id === c.id);
+		if (updated) detailItem = updated;
+	}
+
 	async function saveEdit() {
 		if (!editingItem) return;
 		editError = '';
@@ -975,8 +930,10 @@ $effect(() => {
 				class:portrait={!landscape}
 				style="--card-accent:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}; --accent:{TYPE_COLOR[c.content_type] ?? 'var(--primary)'}"
 			>
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					{#if landscape}
-						<div class="thumb-land">
+						<div class="thumb-land" onclick={() => detailItem = c} title={t('home.detail.viewDetail')}>
 							{#if c.thumbnail}
 								<img src={c.thumbnail} alt=""
 									onerror={(e) => { const img = e.currentTarget as HTMLElement; img.style.display='none'; const ph = img.nextElementSibling as HTMLElement; if (ph) ph.style.display='flex'; }} />
@@ -986,13 +943,17 @@ $effect(() => {
 							{/if}
 						</div>
 					{:else if c.thumbnail}
-						<div class="thumb-port">
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div class="thumb-port" onclick={() => detailItem = c} title={t('home.detail.viewDetail')}>
 							<img src={c.thumbnail} alt=""
 								onerror={(e) => { const p = (e.currentTarget as HTMLElement).parentElement; if (p) p.style.display='none'; }} />
 						</div>
 					{/if}
 					<div class="info">
-						<div class="title">
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div class="title" onclick={() => detailItem = c} style="cursor:pointer;" title={t('home.detail.viewDetail')}>
 							{#if c.pinned}<span title={t('home.priority')}>📌</span>{/if}
 							{c.title}
 						</div>
@@ -1241,6 +1202,22 @@ $effect(() => {
 	<button class="desk-fab" onclick={() => showAdd = true}>
 		<span class="plus">+</span> {t('home.addContent')}
 	</button>
+
+	<!-- Detail sheet -->
+	{#if detailItem}
+		<ContentDetail
+			content={detailItem}
+			onClose={() => detailItem = null}
+			onEdit={detailEdit}
+			onConsume={detailConsume}
+			onAbandon={detailAbandon}
+			onDelete={detailDelete}
+			onRefresh={detailRefresh}
+			onTogglePin={detailTogglePin}
+			{canRefresh}
+			{refreshingId}
+		/>
+	{/if}
 
 	<!-- Edit modal -->
 	{#if editingItem}

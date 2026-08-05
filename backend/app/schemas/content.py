@@ -26,6 +26,7 @@ class ContentCreate(BaseModel):
     provider: str | None = None
     trailer_url: str | None = None
     genres: str | None = None
+    synopsis: str | None = None
     streaming_providers: str | None = None
     imdb_id: str | None = None
 
@@ -54,6 +55,7 @@ class ContentUpdate(BaseModel):
     provider: str | None = None
     trailer_url: str | None = None
     genres: str | None = None
+    synopsis: str | None = None
     streaming_providers: str | None = None  # JSON: ["Netflix","Max"]
     imdb_id: str | None = None
 
@@ -88,6 +90,7 @@ class ContentOut(BaseModel):
     provider: str | None
     trailer_url: str | None
     genres: str | None
+    synopsis: str | None
     streaming_providers: str | None
     imdb_id: str | None
 

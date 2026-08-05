@@ -135,7 +135,7 @@ export const es = {
 
 	// ── settings.maintenance ──
 	'settings.maintenance.title': 'Mantenimiento',
-	'settings.maintenance.hint': 'Actualiza plataformas, trailer, géneros y fecha de estreno de las películas y series con ID de TMDB. Solo toca los que aún no tienen datos (sin <code>?force</code>).',
+	'settings.maintenance.hint': 'Actualiza plataformas, trailer, géneros, sinopsis y fecha de estreno de las películas y series con ID de TMDB. Solo toca los que aún no tienen datos (sin <code>?force</code>).',
 	'settings.maintenance.updating': '⏳ Actualizando…',
 	'settings.maintenance.updateButton': '🔄 Actualizar metadatos TMDB',
 	'settings.maintenance.forceAll': 'Forzar todo',
@@ -629,6 +629,15 @@ export const es = {
 	'home.priorityToggle': 'Prioritario',
 	'home.alreadyConsumedToggle': 'Ya consumido',
 	'home.readingSpeedLabel': 'Velocidad de lectura (palabras/minuto)',
+
+	// ── vista de detalle ──
+	'home.detail.viewDetail': 'Ver detalle',
+	'home.detail.synopsis': 'Sinopsis',
+	'home.detail.info': 'Datos',
+	'home.detail.inVaultSince': 'En la bóveda desde',
+	'home.detail.notes': 'Notas',
+	'home.detail.trailerSection': 'Tráiler',
+	'home.detail.duration': 'Duración',
 
 	// ── types (content type labels) ──
 	'types.youtube': 'YouTube',
