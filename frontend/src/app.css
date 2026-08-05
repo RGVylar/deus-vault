@@ -438,6 +438,11 @@ input.text::placeholder, textarea.text::placeholder { color: var(--text-dim); }
   box-shadow: var(--glass-shadow), var(--glass-inner);
   transition: transform 0.25s ease, border-color 0.2s;
   cursor: pointer;
+  /* Safari/WebKit (iOS) fails to clip children to the border-radius when the
+     same element also has backdrop-filter — the thumbnail ends up floating
+     with its own rounded corners, visually detached from the info panel
+     below. Forcing a mask makes WebKit respect the rounded clip. */
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 .c-card::after {
   content: '';
