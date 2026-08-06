@@ -2,7 +2,7 @@
 	import { t, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
 	import {
 		TYPE_ICONS, TYPE_COLOR, PROVIDER_LABELS,
-		formatDuration, typeLabel, buildConsumeUrl,
+		formatDuration, typeLabel, buildConsumeUrl, isLandscape,
 		resolveProvider, shortProviderName, providerNameToKey
 	} from '$lib/utils';
 	import type { Content } from '$lib/types';
@@ -26,6 +26,14 @@
 	const accent = $derived(TYPE_COLOR[content.content_type] ?? 'var(--primary)');
 	const icon = $derived(TYPE_ICONS[content.content_type] ?? '📄');
 	const consumeUrl = $derived(buildConsumeUrl(content));
+
+	// Landscape sources (YouTube 16:9, Steam headers 460x215) fill a banner sized
+	// to their own ratio — zero crop. Everything else is a vertical cover (posters
+	// 2:3, book covers, square album art) that would turn into an unrecognisable
+	// sliver if forced into a wide banner, so it gets shown whole next to the title
+	// instead, with the same image blurred behind to fill the rest of the space.
+	const landscape = $derived(isLandscape(content.content_type));
+	const heroAspect = $derived(content.content_type === 'youtube' ? '16 / 9' : '460 / 215');
 
 	const genresList = $derived(
 		(content.genres ?? '').split(',').map(g => g.trim()).filter(Boolean)
@@ -51,11 +59,28 @@
 	<div class="modal glass-strong detail-sheet" onclick={e => e.stopPropagation()} role="dialog" tabindex="-1" style="--card-accent:{accent};">
 		<div class="modal-handle"></div>
 
-		<div class="d-hero" class:has-thumb={!!content.thumbnail} style={content.thumbnail ? `background-image:url('${content.thumbnail}')` : ''}>
-			{#if !content.thumbnail}<div class="d-hero-icon">{icon}</div>{/if}
-			<button class="d-close" onclick={onClose} aria-label={t('common.close')}>✕</button>
-			<div class="d-hero-title">{content.title}</div>
-		</div>
+		{#if !content.thumbnail}
+			<div class="d-hero d-hero-empty">
+				<div class="d-hero-icon">{icon}</div>
+				<button class="d-close" onclick={onClose} aria-label={t('common.close')}>✕</button>
+				<div class="d-hero-title">{content.title}</div>
+			</div>
+		{:else if landscape}
+			<div class="d-hero d-hero-banner" style="aspect-ratio:{heroAspect};">
+				<img src={content.thumbnail} alt="" />
+				<div class="d-hero-veil"></div>
+				<button class="d-close" onclick={onClose} aria-label={t('common.close')}>✕</button>
+				<div class="d-hero-title">{content.title}</div>
+			</div>
+		{:else}
+			<div class="d-hero d-hero-cartel">
+				<div class="d-hero-cartel-bg" style="background-image:url('{content.thumbnail}')"></div>
+				<div class="d-hero-cartel-veil"></div>
+				<img class="d-hero-cartel-art" src={content.thumbnail} alt="" />
+				<div class="d-hero-cartel-title">{content.title}</div>
+				<button class="d-close" onclick={onClose} aria-label={t('common.close')}>✕</button>
+			</div>
+		{/if}
 
 		<div class="d-row">
 			<span class="badge">{typeLabel(content.content_type)}</span>
@@ -163,20 +188,63 @@
 	.detail-sheet { padding: 0 0 20px; overflow: hidden; }
 	.detail-sheet .modal-handle { margin-top: 12px; }
 
-	.d-hero {
-		position: relative;
+	.d-hero { position: relative; }
+
+	/* No thumbnail: flat tinted plate with the type icon, same as always. */
+	.d-hero-empty {
 		height: 180px;
 		margin-top: 14px;
-		background-size: cover;
-		background-position: center;
+		display: flex; align-items: center; justify-content: center;
 		background-color: color-mix(in oklab, var(--card-accent) 20%, var(--glass-bg-weak));
 	}
-	.d-hero.has-thumb::after {
-		content: '';
+	.d-hero-icon { font-size: 48px; opacity: .4; }
+
+	/* Landscape sources (YouTube, Steam): the box IS the image's own ratio, so
+	   `cover` never has anything to crop — sized by aspect-ratio, not a fixed
+	   height, and sits flush against the top of the sheet (no gap). */
+	.d-hero-banner { width: 100%; overflow: hidden; display: block; }
+	.d-hero-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+	.d-hero-veil {
 		position: absolute; inset: 0;
 		background: linear-gradient(180deg, transparent 40%, oklch(0.15 0.02 290 / .92) 100%);
 	}
-	.d-hero-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 48px; opacity: .4; }
+
+	/* Portrait sources (posters, book covers, square album art): shown whole,
+	   never cropped, next to the title. The same image blurred behind fills the
+	   rest of the banner so the shape still reads as "this cover" at a glance. */
+	.d-hero-cartel {
+		height: 200px;
+		margin-top: 14px;
+		display: flex; align-items: center; gap: 16px;
+		padding: 0 20px;
+		overflow: hidden;
+	}
+	.d-hero-cartel-bg {
+		position: absolute; inset: 0;
+		background-size: cover; background-position: center;
+		filter: blur(24px) saturate(1.4);
+		transform: scale(1.15);
+	}
+	.d-hero-cartel-veil {
+		position: absolute; inset: 0;
+		background: linear-gradient(100deg, oklch(0.15 0.02 290 / .55), oklch(0.15 0.02 290 / .9) 65%);
+	}
+	.d-hero-cartel-art {
+		position: relative; z-index: 1;
+		height: 78%; width: auto; flex: none;
+		border-radius: var(--radius-xs);
+		box-shadow: 0 8px 22px rgba(0,0,0,.55);
+		object-fit: contain;
+		display: block;
+	}
+	.d-hero-cartel-title {
+		position: relative; z-index: 1;
+		min-width: 0; flex: 1;
+		font-size: 17px; font-weight: 800; letter-spacing: -0.015em; line-height: 1.25;
+		color: #fff;
+		text-shadow: 0 2px 10px rgba(0,0,0,.7);
+	}
+
 	.d-close {
 		position: absolute; top: 12px; right: 12px; z-index: 2; width: 28px; height: 28px; border-radius: 50%;
 		background: rgba(0,0,0,.35); border: 1px solid var(--glass-border); color: var(--text);
