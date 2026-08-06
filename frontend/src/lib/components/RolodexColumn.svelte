@@ -40,12 +40,22 @@
 	let settleTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const N = items.length;
-	const clamp = (p: number) => Math.max(0, Math.min(N - 1, p));
+	// Circular, no acotado: un rolodex de verdad es un cilindro, no un fichero
+	// con principio y fin. `wrap` mantiene position siempre en [0, N); para
+	// cada carta, `circularOffset` mide la distancia más corta dando la vuelta
+	// por el lado que toque, así i=0 y i=N-1 quedan "pegadas" igual que en un
+	// tambor real, aunque el dibujo siga siendo la pila plana (sin 3D).
+	const wrap = (p: number) => ((p % N) + N) % N;
+	function circularOffset(i: number, pos: number) {
+		let raw = i - pos;
+		raw -= N * Math.round(raw / N);
+		return raw;
+	}
 
 	function render() {
 		cardEls.forEach((card, i) => {
 			if (!card) return;
-			const { a, h, y, opacity } = metrics(i - position);
+			const { a, h, y, opacity } = metrics(circularOffset(i, position));
 			if (opacity <= 0) {
 				card.style.display = 'none';
 				card.classList.remove('is-front');
@@ -76,13 +86,13 @@
 	}
 	function settle() {
 		withTransition(() => {
-			position = Math.round(clamp(position));
+			position = wrap(Math.round(position));
 			render();
 		});
 	}
 	function liveUpdate(next: number) {
 		cardEls.forEach((c) => c && (c.style.transition = ''));
-		position = clamp(next);
+		position = wrap(next);
 		render();
 		clearTimeout(settleTimer);
 		settleTimer = setTimeout(settle, 200);
@@ -103,7 +113,7 @@
 	}
 	function onPointerMove(e: PointerEvent) {
 		if (!dragging) return;
-		position = clamp(startPos - (e.clientY - startY) / 58);
+		position = wrap(startPos - (e.clientY - startY) / 58);
 		render();
 	}
 	function endDrag() {
@@ -113,15 +123,15 @@
 	}
 	function onKeydown(e: KeyboardEvent) {
 		if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
-			position = clamp(Math.round(position) - 1);
+			position = wrap(Math.round(position) - 1);
 			settle();
 			e.preventDefault();
 		} else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
-			position = clamp(Math.round(position) + 1);
+			position = wrap(Math.round(position) + 1);
 			settle();
 			e.preventDefault();
 		} else if (e.key === 'Enter' || e.key === ' ') {
-			onSelect(items[Math.round(position)]);
+			onSelect(items[wrap(Math.round(position))]);
 			e.preventDefault();
 		}
 	}
