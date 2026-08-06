@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration, TYPE_ICONS, TYPE_COLOR, PROVIDER_LABELS, typeLabel, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate, resolveProvider, shortProviderName, providerNameToKey } from '$lib/utils';
+	import { formatDuration, TYPE_ICONS, TYPE_COLOR, PROVIDER_LABELS, typeLabel, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate, isLandscape, resolveProvider, shortProviderName, providerNameToKey } from '$lib/utils';
 	import { buildEnrichPatch, enrichContentInBackground as enrichContentInBackgroundShared } from '$lib/contentEnrich';
 	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
 	import ContentDetail from '$lib/components/ContentDetail.svelte';
@@ -38,14 +38,6 @@
 			case 'appletv':    return `https://tv.apple.com/search?term=${q}`;
 			default:           return `https://www.justwatch.com/es/buscar?q=${q}`;
 		}
-	}
-
-	// Landscape layout: only content whose thumbnail is actually wide (YouTube
-	// thumbnails, Steam headers) gets the banner treatment. Movies/series use
-	// TMDB posters (portrait 2:3), so they go in the portrait side-column like
-	// books/music — otherwise the poster gets cropped to a thin sliver.
-	function isLandscape(type: ContentType): boolean {
-		return type === 'youtube' || type === 'game';
 	}
 
 	// For portrait cards (books, music only)
