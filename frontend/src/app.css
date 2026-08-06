@@ -438,11 +438,6 @@ input.text::placeholder, textarea.text::placeholder { color: var(--text-dim); }
   box-shadow: var(--glass-shadow), var(--glass-inner);
   transition: transform 0.25s ease, border-color 0.2s;
   cursor: pointer;
-  /* Safari/WebKit (iOS) fails to clip children to the border-radius when the
-     same element also has backdrop-filter — the thumbnail ends up floating
-     with its own rounded corners, visually detached from the info panel
-     below. Forcing a mask makes WebKit respect the rounded clip. */
-  -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 .c-card::after {
   content: '';
@@ -468,7 +463,11 @@ input.text::placeholder, textarea.text::placeholder { color: var(--text-dim); }
 .c-card.landscape { flex-direction: column; }
 .c-card .thumb-land {
   width: 100%;
-  aspect-ratio: 16/7;
+  /* 16:9 — la proporción real del material: las miniaturas de YouTube son 16:9
+     exactas y las cabeceras de Steam 460x215. Antes esta caja pedía 16/7 (2.29:1),
+     que obligaba a `cover` a comerse ~22% del alto de un 16:9 y guillotinaba
+     logos y títulos por arriba y por abajo. */
+  aspect-ratio: 16/9;
   background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
   background-size: cover;
   background-position: center;
@@ -477,7 +476,10 @@ input.text::placeholder, textarea.text::placeholder { color: var(--text-dim); }
 }
 .c-card .thumb-land img {
   width: 100%;
-  aspect-ratio: 16/7;
+  /* Llena la caja en lugar de imponer su propia proporción. Cuando la imagen
+     declaraba su ratio por separado del contenedor, ambos discrepaban y quedaba
+     una franja muerta debajo de la imagen — el "gap" de las miniaturas. */
+  height: 100%;
   object-fit: cover;
   display: block;
 }
@@ -1124,7 +1126,6 @@ h2 {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 16px;
   }
-  .content-grid .c-card.landscape .thumb-land { aspect-ratio: 16/8; }
   .content-grid .c-card .info { padding: 14px 16px; gap: 7px; }
   .content-grid .c-card .title { font-size: 15px; }
   .content-grid .c-card { min-height: 190px; }
