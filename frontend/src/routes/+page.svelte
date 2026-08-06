@@ -7,6 +7,7 @@
 	import { buildEnrichPatch, enrichContentInBackground as enrichContentInBackgroundShared } from '$lib/contentEnrich';
 	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
 	import ContentDetail from '$lib/components/ContentDetail.svelte';
+	import RolodexBoard from '$lib/components/RolodexBoard.svelte';
 	import type { Content, VaultStats, ContentType, PaginatedContents } from '$lib/types';
 
 	const LIMIT = 20;
@@ -161,6 +162,19 @@
 	$effect(() => {
 		localStorage.setItem('deus_vault_group_by_type', String(groupByType));
 	});
+	let rolodexView = $state(
+		typeof localStorage !== 'undefined'
+			? localStorage.getItem('deus_vault_rolodex_view') === 'true'
+			: false
+	);
+	$effect(() => {
+		localStorage.setItem('deus_vault_rolodex_view', String(rolodexView));
+	});
+	function setViewMode(mode: 'flat' | 'grouped' | 'rolodex') {
+		groupByType = mode === 'grouped';
+		rolodexView = mode === 'rolodex';
+		if (mode !== 'flat') filter = 'all';
+	}
 	let collapsedTypes = $state(new Set<string>());
 	function toggleSection(type: string) {
 		const next = new Set(collapsedTypes);
@@ -212,7 +226,7 @@
 	});
 
 	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string, sort = 'recent', col: string | null = null, prov: string | null = null) {
-		const effectiveLimit = groupByType ? 500 : LIMIT;
+		const effectiveLimit = groupByType || rolodexView ? 500 : LIMIT;
 		let url = `/contents?consumed=${consumed}&limit=${effectiveLimit}&offset=${off}&sort=${sort}`;
 		if (type !== 'all') url += `&content_type=${type}`;
 		if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
@@ -830,14 +844,13 @@ $effect(() => {
 	<div class="desk-section desk-only">
 		<h2>{t('home.pendingSectionTitle')}</h2>
 		<span class="more">{tc('home.itemsCount', total)}</span>
-		<button
-			class="btn group-toggle"
-			class:active={groupByType}
-			onclick={() => { groupByType = !groupByType; if (groupByType) filter = 'all'; }}
-			title={groupByType ? t('home.flatView') : t('home.groupByTypeTitle')}
-		>{groupByType ? t('home.ungroupBtn') : t('home.groupBtn')}</button>
+		<div class="tabs view-mode-tabs">
+			<button class="tab" class:active={!groupByType && !rolodexView} onclick={() => setViewMode('flat')}>{t('home.flatView')}</button>
+			<button class="tab" class:active={groupByType} onclick={() => setViewMode('grouped')}>{t('home.groupBtn')}</button>
+			<button class="tab" class:active={rolodexView} onclick={() => setViewMode('rolodex')}>{t('home.rolodexBtn')}</button>
+		</div>
 	</div>
-	{#if !groupByType}
+	{#if !groupByType && !rolodexView}
 	<div class="tabs desk-tabs">
 		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>{t('common.all')}</button>
 		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️ {t('types.youtube')}</button>
@@ -1154,7 +1167,9 @@ $effect(() => {
 				</div>
 		{/snippet}
 
-		{#if groupByType}
+		{#if rolodexView}
+			<RolodexBoard groups={contentsByType} onSelect={(c) => detailItem = c} />
+		{:else if groupByType}
 			{#each contentsByType as { type, items }}
 				{@const collapsed = collapsedTypes.has(type)}
 				<div class="type-section">
@@ -1181,7 +1196,7 @@ $effect(() => {
 			</div>
 		{/if}
 
-		{#if !groupByType && contents.length < total}
+		{#if !groupByType && !rolodexView && contents.length < total}
 			<div class="center mt16">
 				<button class="btn btn-lg" onclick={loadMore} disabled={loadingMore}>
 					{loadingMore ? t('common.loading') : t('consumed.loadMore', { remaining: total - contents.length })}
