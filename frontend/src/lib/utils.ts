@@ -22,6 +22,12 @@ export function formatDuration(minutes: number): string {
 	return m ? `${h}h ${m}m` : `${h}h`;
 }
 
+/** YouTube y Steam sirven imagen apaisada nativa (16:9 / 460x215); el resto son
+ *  carteles verticales u otros que se recortarían mal en una caja panorámica. */
+export function isLandscape(type: string): boolean {
+	return type === 'youtube' || type === 'game';
+}
+
 export const TYPE_ICONS: Record<string, string> = {
 	youtube: '▶️',
 	movie: '🎬',
