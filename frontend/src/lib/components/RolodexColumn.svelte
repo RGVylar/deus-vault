@@ -7,11 +7,11 @@
 	// Geometría de la pila apilada — fija, no depende de cuántos items tenga la
 	// columna. Dejar que el radio de un tambor 3D creciera con N fue el bug de
 	// la primera versión (la carta frontal se deformaba con columnas grandes).
-	const FULL_H = 72;   // alto de la carta activa
-	const SLIVER_H = 8;  // alto de una carta apilada (solo el canto)
-	const GAP = 3;
+	const FULL_H = 132;  // alto de la carta activa
+	const SLIVER_H = 13; // alto de una carta apilada (solo el canto)
+	const GAP = 4;
 	const STACK0 = FULL_H / 2 + SLIVER_H / 2 + GAP;
-	const MAX_A = 7;     // más allá de esto, ni se renderiza
+	const MAX_A = 6;     // más allá de esto, ni se renderiza
 
 	function metrics(offset: number) {
 		const a = Math.abs(offset);
@@ -180,7 +180,8 @@
 <style>
 	.rolodex-col {
 		flex: 1 1 0;
-		min-width: 150px;
+		min-width: 200px;
+		max-width: 300px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -200,34 +201,36 @@
 		gap: 3px;
 	}
 	.icn {
-		width: 30px;
-		height: 30px;
+		width: 38px;
+		height: 38px;
 		border-radius: var(--radius-xs);
 		display: grid;
 		place-items: center;
-		font-size: 15px;
+		font-size: 19px;
 		background: color-mix(in oklab, var(--col-accent) 22%, var(--glass-bg-strong));
 		border: 1px solid color-mix(in oklab, var(--col-accent) 45%, transparent);
 	}
 	.lbl {
-		font-size: 11.5px;
+		font-size: 14px;
 		font-weight: 700;
 		color: var(--text);
 		letter-spacing: -0.01em;
 	}
 	.cnt {
-		font-size: 10px;
+		font-size: 11.5px;
 		color: var(--text-dim);
 		font-variant-numeric: tabular-nums;
 	}
 
 	.rolodex-stage {
 		position: relative;
-		width: 148px;
-		height: 220px;
+		width: 100%;
+		max-width: 280px;
+		min-width: 190px;
+		height: 360px;
 		overflow: hidden;
-		-webkit-mask-image: linear-gradient(180deg, transparent, black 10%, black 90%, transparent);
-		mask-image: linear-gradient(180deg, transparent, black 10%, black 90%, transparent);
+		-webkit-mask-image: linear-gradient(180deg, transparent, black 8%, black 92%, transparent);
+		mask-image: linear-gradient(180deg, transparent, black 8%, black 92%, transparent);
 		cursor: grab;
 		touch-action: pan-y;
 		border-radius: var(--radius-sm);
@@ -249,7 +252,7 @@
 		position: absolute;
 		top: 50%;
 		left: 50%;
-		width: 138px;
+		width: 100%;
 		border-radius: var(--radius-xs);
 		overflow: hidden;
 		background: var(--glass-bg);
@@ -281,18 +284,19 @@
 	}
 	.t {
 		position: absolute;
-		left: 8px;
-		right: 8px;
-		bottom: 6px;
-		font-size: 11px;
+		left: 12px;
+		right: 12px;
+		bottom: 10px;
+		font-size: 15px;
 		font-weight: 700;
 		color: #fff;
 		letter-spacing: -0.01em;
-		line-height: 1.25;
+		line-height: 1.3;
 		text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
-		white-space: nowrap;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
 		overflow: hidden;
-		text-overflow: ellipsis;
 		transition: opacity 0.2s;
 	}
 
@@ -316,8 +320,9 @@
 			min-width: 108px;
 		}
 		.rolodex-stage {
-			width: 148px;
-			height: 150px;
+			width: 190px;
+			min-width: 0;
+			height: 170px;
 			margin-left: auto;
 		}
 		.rolodex-hint {
