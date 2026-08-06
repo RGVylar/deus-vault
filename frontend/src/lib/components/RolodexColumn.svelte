@@ -37,6 +37,10 @@
 	let dragging = false;
 	let startY = 0;
 	let startPos = 0;
+	let downX = 0;
+	let downY = 0;
+	let moved = false; // distingue un tap (abre detalle) de un arrastre real
+	const DRAG_THRESHOLD = 6; // px
 	let settleTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const N = items.length;
@@ -104,8 +108,11 @@
 	}
 	function onPointerDown(e: PointerEvent) {
 		dragging = true;
+		moved = false;
 		startY = e.clientY;
 		startPos = position;
+		downX = e.clientX;
+		downY = e.clientY;
 		try {
 			stageEl?.setPointerCapture(e.pointerId);
 		} catch (_) {}
@@ -113,13 +120,21 @@
 	}
 	function onPointerMove(e: PointerEvent) {
 		if (!dragging) return;
+		if (!moved && Math.hypot(e.clientX - downX, e.clientY - downY) > DRAG_THRESHOLD) moved = true;
 		position = wrap(startPos - (e.clientY - startY) / 58);
 		render();
 	}
 	function endDrag() {
 		if (!dragging) return;
 		dragging = false;
-		settle();
+		if (moved) {
+			settle();
+		} else {
+			// Un tap de verdad (sin desplazamiento apreciable): abre el detalle
+			// de la carta frontal en vez de tratarlo como arrastre.
+			position = startPos;
+			onSelect(items[wrap(Math.round(startPos))]);
+		}
 	}
 	function onKeydown(e: KeyboardEvent) {
 		if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
@@ -163,7 +178,7 @@
 	>
 		<div class="rolodex-drum">
 			{#each items as c, i (c.id)}
-				<div class="rolodex-card" bind:this={cardEls[i]} onclick={() => onSelect(c)} role="presentation">
+				<div class="rolodex-card" bind:this={cardEls[i]} role="presentation">
 					{#if c.thumbnail}
 						<img
 							src={c.thumbnail}
@@ -238,11 +253,13 @@
 		max-width: 280px;
 		min-width: 190px;
 		height: 360px;
+		-webkit-user-select: none;
+		user-select: none;
+		touch-action: none;
 		overflow: hidden;
 		-webkit-mask-image: linear-gradient(180deg, transparent, black 8%, black 92%, transparent);
 		mask-image: linear-gradient(180deg, transparent, black 8%, black 92%, transparent);
 		cursor: grab;
-		touch-action: pan-y;
 		border-radius: var(--radius-sm);
 	}
 	.rolodex-stage:active {
