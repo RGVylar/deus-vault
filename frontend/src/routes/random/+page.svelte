@@ -5,6 +5,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, typeLabel, buildConsumeUrl } from '$lib/utils';
 	import Icon from '$lib/components/Icon.svelte';
+	import RolodexRoller from '$lib/components/RolodexRoller.svelte';
 	import { t, tc, type TKey } from '$lib/i18n/index.svelte';
 	import type { Content, ContentType } from '$lib/types';
 
@@ -30,19 +31,9 @@
 		{ key: 'book', icon: 'book' },    { key: 'game', icon: 'game' },
 	];
 
-	// Caras del dado 3D (number = pips mostrados)
-	const FACES = [
-		{ t: 'translateZ(calc(var(--d) / 2))', n: 5 },
-		{ t: 'rotateY(180deg) translateZ(calc(var(--d) / 2))', n: 2 },
-		{ t: 'rotateY(90deg) translateZ(calc(var(--d) / 2))', n: 3 },
-		{ t: 'rotateY(-90deg) translateZ(calc(var(--d) / 2))', n: 4 },
-		{ t: 'rotateX(90deg) translateZ(calc(var(--d) / 2))', n: 6 },
-		{ t: 'rotateX(-90deg) translateZ(calc(var(--d) / 2))', n: 1 },
-	];
-	const PIPS: Record<number, number[]> = { 1:[5], 2:[1,9], 3:[1,5,9], 4:[1,3,7,9], 5:[1,3,5,7,9], 6:[1,4,7,3,6,9] };
-
 	let pick: Content | null = $state(null);
-	let ghost: Content | null = $state(null);
+	let deckItems: Content[] = $state([]);
+	let spinTokenCounter = $state(0);
 	let selectedTypes = $state<ContentType[]>([]);   // multi-selección (vacío = cualquiera)
 	let selectedPreset = $state(0);
 	let showCustom = $state(false);
@@ -54,10 +45,9 @@
 	let error = $state('');
 	let spinning = $state(false);
 
-	let cubeRot = $state({ rx: -22, ry: -28 });
 	let recent: Content[] = [];
 
-	const hasResult = $derived(!!pick || !!ghost || !!error);
+	const hasResult = $derived(!!pick || !!error);
 
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
@@ -68,7 +58,7 @@
 	function toggleType(t: ContentType) { selectedTypes = selectedTypes.includes(t) ? selectedTypes.filter(x => x !== t) : [...selectedTypes, t]; }
 	function toggleGenre(g: string) { selectedGenres = selectedGenres.includes(g) ? selectedGenres.filter(x => x !== g) : [...selectedGenres, g]; }
 
-	function buildQuery(): string {
+	function buildQuery(extraExcludeIds: number[] = []): string {
 		const params = new URLSearchParams();
 		for (const t of selectedTypes) params.append('content_type', t);
 		if (showCustom) {
@@ -82,6 +72,7 @@
 		for (const g of selectedGenres) params.append('genre', g);
 		// Skip the last few picks so re-rolling doesn't keep landing on the same item.
 		for (const c of recent.slice(0, 3)) params.append('exclude_id', String(c.id));
+		for (const id of extraExcludeIds) params.append('exclude_id', String(id));
 		const qs = params.toString();
 		return qs ? '?' + qs : '';
 	}
@@ -91,36 +82,41 @@
 		api.get<number>(`/contents/random/count${buildQuery()}`).then(n => matchCount = n).catch(() => matchCount = null);
 	});
 
+	// Cuántas cartas visualmente distintas queremos en el mazo que se ve girar
+	// (además de la que gana). Se recorta al nº de items que realmente hay
+	// disponibles, para no repetir pedidos de más cuando la lista es corta.
+	const DECK_SIZE = 8;
+
 	async function roll() {
 		if (spinning) return;
 		error = '';
 		spinning = true;
-		cubeRot = { rx: cubeRot.rx - (720 + Math.floor(Math.random()*3)*360),
-		            ry: cubeRot.ry + (720 + Math.floor(Math.random()*3)*360) };
-
-		let flick = 0;
-		const iv = recent.length ? setInterval(() => { ghost = recent[(flick++) % recent.length]; pick = null; }, 150) : null;
-
-		const minWait = new Promise(r => setTimeout(r, 850));
 		try {
-			const fetched = await api.get<Content>(`/contents/random${buildQuery()}`);
-			await minWait;
-			if (iv) clearInterval(iv);
-			ghost = null;
-			pick = fetched;
-			recent = [fetched, ...recent.filter(c => c.id !== fetched.id)].slice(0, 6);
+			const deckSize = matchCount != null ? Math.max(1, Math.min(DECK_SIZE, matchCount)) : DECK_SIZE;
+			const collected: Content[] = [];
+			for (let i = 0; i < deckSize; i++) {
+				const item = await api.get<Content>(`/contents/random${buildQuery(collected.map(c => c.id))}`);
+				collected.push(item);
+			}
+			deckItems = collected;
+			const winner = collected[collected.length - 1];
+			pick = winner;
+			recent = [winner, ...recent.filter(c => c.id !== winner.id)].slice(0, 6);
+			spinTokenCounter++; // dispara el giro del RolodexRoller hacia `winner`
 		} catch (e: unknown) {
-			if (iv) clearInterval(iv);
-			ghost = null; pick = null;
+			pick = null;
 			error = e instanceof Error ? e.message : t('errors.generic');
-		} finally {
 			spinning = false;
 		}
 	}
 
+	function handleSettled() {
+		spinning = false;
+	}
+
 	async function consume(id: number) {
 		await api.post(`/contents/${id}/consume`);
-		pick = null; ghost = null;
+		pick = null;
 	}
 </script>
 
@@ -211,37 +207,31 @@
 	</div>
 
 	<!-- ── Stage ── -->
-	<div class="azar-stage" class:has-result={hasResult}>
-		<div class="dice-wrap" onclick={roll} role="button" tabindex="0">
-			<div class="dice3d">
-				<div class="cube" style="transform: rotateX({cubeRot.rx}deg) rotateY({cubeRot.ry}deg)">
-					{#each FACES as f}
-						<div class="face" style="transform:{f.t}">
-							{#each Array(9) as _, i}
-								<span>{#if PIPS[f.n].includes(i + 1)}<span class="pip"></span>{/if}</span>
-							{/each}
-						</div>
-					{/each}
-				</div>
-			</div>
-			<p class="dice-hint">
-				{#if hasResult}<Icon name="refresh" size={14} /> {t('random.rollAgain')}{:else if spinning}{t('random.shuffling')}{:else}{t('random.pressDice')}{/if}
-			</p>
-		</div>
+	<div class="azar-stage roller-mode" class:has-result={hasResult}>
+		{#if deckItems.length > 0}
+			<RolodexRoller items={deckItems} targetId={pick?.id ?? null} spinToken={spinTokenCounter} onRoll={roll} onSettled={handleSettled} />
+		{:else}
+			<button class="roller-start" onclick={roll} disabled={spinning}>
+				<Icon name="sparkles" size={28} />
+				<span>{spinning ? t('random.searching') : t('random.pressDice')}</span>
+			</button>
+		{/if}
+		<p class="dice-hint">
+			{#if hasResult}<Icon name="refresh" size={14} /> {t('random.rollAgain')}{:else if spinning}{t('random.shuffling')}{/if}
+		</p>
 
 		<div class="result-slot">
 			{#if error}
 				<div class="stage-error">
 					<p class="muted">😶 {error === t('errors.noPendingContent') ? t('random.noResultsInRange') : error}</p>
 				</div>
-			{:else if pick || ghost}
-				{@const item = (pick ?? ghost)!}
-				{@const isGhost = !pick}
+			{:else if pick && !spinning}
+				{@const item = pick}
 				{@const landscape = ['youtube','game'].includes(item.content_type)}
-				{@const link = pick ? buildConsumeUrl(pick) : null}
-				<div class="result-inner {isGhost ? 'ghost' : 'reveal'}">
-					{#if !isGhost}<p class="result-kicker">{t('random.nextContent')}</p>{/if}
-					<div class="c-card {isGhost ? '' : 'random-pick'} {landscape ? 'landscape' : 'portrait'}"
+				{@const link = buildConsumeUrl(pick)}
+				<div class="result-inner reveal">
+					<p class="result-kicker">{t('random.nextContent')}</p>
+					<div class="c-card random-pick {landscape ? 'landscape' : 'portrait'}"
 						style="--card-accent:{TYPE_COLOR[item.content_type]}; --accent:{TYPE_COLOR[item.content_type]}">
 						{#if landscape}
 							<div class="thumb-land">
@@ -265,19 +255,17 @@
 								{/if}
 								{#if item.author}<span>{item.author}</span>{/if}
 							</div>
-							{#if !isGhost}
-								<div class="actions" style="margin-top:10px;">
-									{#if link}<a href={link} target="_blank" rel="noopener"><button class="btn btn-primary"><Icon name="zap" size={14} /> {t('random.goNow')}</button></a>{/if}
-									{#if pick?.trailer_url}<a href={pick.trailer_url} target="_blank" rel="noopener"><button class="btn btn-trailer"><Icon name="play" size={14} /> {t('random.trailer')}</button></a>{/if}
-									<button class="btn btn-consume" onclick={() => consume(pick!.id)}><Icon name="check" size={14} /> {t('random.done')}</button>
-									<button class="btn" onclick={roll}><Icon name="refresh" size={14} /> {t('random.another')}</button>
-								</div>
-							{/if}
+							<div class="actions" style="margin-top:10px;">
+								{#if link}<a href={link} target="_blank" rel="noopener"><button class="btn btn-primary"><Icon name="zap" size={14} /> {t('random.goNow')}</button></a>{/if}
+								{#if pick?.trailer_url}<a href={pick.trailer_url} target="_blank" rel="noopener"><button class="btn btn-trailer"><Icon name="play" size={14} /> {t('random.trailer')}</button></a>{/if}
+								<button class="btn btn-consume" onclick={() => consume(pick!.id)}><Icon name="check" size={14} /> {t('random.done')}</button>
+								<button class="btn" onclick={roll}><Icon name="refresh" size={14} /> {t('random.another')}</button>
+							</div>
 						</div>
 					</div>
-					{#if !isGhost}<p class="muted center retry">{t('random.notConvinced')} <button class="linkbtn" onclick={roll}>{t('random.tryAgain')}</button></p>{/if}
+					<p class="muted center retry">{t('random.notConvinced')} <button class="linkbtn" onclick={roll}>{t('random.tryAgain')}</button></p>
 				</div>
-			{:else}
+			{:else if !spinning && deckItems.length === 0}
 				<div class="random-empty desk-only">
 					<div style="font-size:18px; font-weight:700;">{t('random.letFateDecide')}</div>
 					<p class="muted" style="font-size:13px; max-width:320px; margin:0 auto;">{t('random.filterHint')}</p>
