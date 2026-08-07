@@ -2,7 +2,7 @@
 	import type { Content, ContentType } from '$lib/types';
 	import { TYPE_ICONS, TYPE_COLOR, typeLabel } from '$lib/utils';
 
-	let { type, items, onSelect }: { type: ContentType; items: Content[]; onSelect: (c: Content) => void } = $props();
+	let { type, items, onSelect }: { type: ContentType | 'all'; items: Content[]; onSelect: (c: Content) => void } = $props();
 
 	// Geometría de la pila apilada — fija, no depende de cuántos items tenga la
 	// columna. Dejar que el radio de un tambor 3D creciera con N fue el bug de

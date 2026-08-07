@@ -562,7 +562,8 @@ export const en = {
 	'home.itemsCount_one': '{count} item',
 	'home.itemsCount_other': '{count} items',
 	'home.flatView': 'Flat view',
-	'home.groupBtn': '⊞ Group',
+	'home.groupBtn': '⊞ Grouped',
+	'home.ungroupBtn': '☰ Ungrouped',
 	'home.rolodexBtn': '🗂️ Rolodex',
 	'home.searchPlaceholder': 'Search the vault…',
 	'home.sort.recent': '📅 Recent',
@@ -652,6 +653,7 @@ export const en = {
 	'home.detail.duration': 'Duration',
 
 	// ── types (content type labels) ──
+	'types.all': 'All',
 	'types.youtube': 'YouTube',
 	'types.movie': 'Movies',
 	'types.series': 'Series',

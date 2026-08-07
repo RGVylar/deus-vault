@@ -562,7 +562,8 @@ export const pt = {
 	'home.itemsCount_one': '{count} item',
 	'home.itemsCount_other': '{count} itens',
 	'home.flatView': 'Vista simples',
-	'home.groupBtn': '⊞ Agrupar',
+	'home.groupBtn': '⊞ Agrupado',
+	'home.ungroupBtn': '☰ Desagrupado',
 	'home.rolodexBtn': '🗂️ Rolodex',
 	'home.searchPlaceholder': 'Buscar no cofre…',
 	'home.sort.recent': '📅 Recentes',
@@ -652,6 +653,7 @@ export const pt = {
 	'home.detail.duration': 'Duração',
 
 	// ── types (content type labels) ──
+	'types.all': 'Todos',
 	'types.youtube': 'YouTube',
 	'types.movie': 'Filmes',
 	'types.series': 'Séries',

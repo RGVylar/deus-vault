@@ -8,6 +8,7 @@
 	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
 	import ContentDetail from '$lib/components/ContentDetail.svelte';
 	import RolodexBoard from '$lib/components/RolodexBoard.svelte';
+	import RolodexColumn from '$lib/components/RolodexColumn.svelte';
 	import type { Content, VaultStats, ContentType, PaginatedContents } from '$lib/types';
 
 	const LIMIT = 20;
@@ -170,10 +171,12 @@
 	$effect(() => {
 		localStorage.setItem('deus_vault_rolodex_view', String(rolodexView));
 	});
-	function setViewMode(mode: 'flat' | 'grouped' | 'rolodex') {
-		groupByType = mode === 'grouped';
+	function setLayout(mode: 'flat' | 'rolodex') {
 		rolodexView = mode === 'rolodex';
-		if (mode !== 'flat') filter = 'all';
+	}
+	function setGrouping(grouped: boolean) {
+		groupByType = grouped;
+		if (grouped) filter = 'all';
 	}
 	let collapsedTypes = $state(new Set<string>());
 	function toggleSection(type: string) {
@@ -845,12 +848,17 @@ $effect(() => {
 		<h2>{t('home.pendingSectionTitle')}</h2>
 		<span class="more">{tc('home.itemsCount', total)}</span>
 		<div class="tabs view-mode-tabs">
-			<button class="tab" class:active={!groupByType && !rolodexView} onclick={() => setViewMode('flat')}>{t('home.flatView')}</button>
-			<button class="tab" class:active={groupByType} onclick={() => setViewMode('grouped')}>{t('home.groupBtn')}</button>
-			<button class="tab" class:active={rolodexView} onclick={() => setViewMode('rolodex')}>{t('home.rolodexBtn')}</button>
+			<div class="seg-group">
+				<button class="tab" class:active={!rolodexView} onclick={() => setLayout('flat')}>{t('home.flatView')}</button>
+				<button class="tab" class:active={rolodexView} onclick={() => setLayout('rolodex')}>{t('home.rolodexBtn')}</button>
+			</div>
+			<div class="seg-group">
+				<button class="tab" class:active={!groupByType} onclick={() => setGrouping(false)}>{t('home.ungroupBtn')}</button>
+				<button class="tab" class:active={groupByType} onclick={() => setGrouping(true)}>{t('home.groupBtn')}</button>
+			</div>
 		</div>
 	</div>
-	{#if !groupByType && !rolodexView}
+	{#if !groupByType}
 	<div class="tabs desk-tabs">
 		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>{t('common.all')}</button>
 		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️ {t('types.youtube')}</button>
@@ -1167,8 +1175,12 @@ $effect(() => {
 				</div>
 		{/snippet}
 
-		{#if rolodexView}
+		{#if rolodexView && groupByType}
 			<RolodexBoard groups={contentsByType} onSelect={(c) => detailItem = c} />
+		{:else if rolodexView}
+			<div class="rolodex-board rolodex-board-single">
+				<RolodexColumn type={filter} items={contents} onSelect={(c) => detailItem = c} />
+			</div>
 		{:else if groupByType}
 			{#each contentsByType as { type, items }}
 				{@const collapsed = collapsedTypes.has(type)}
@@ -1530,6 +1542,17 @@ $effect(() => {
 {/if}
 
 <style>
+	.view-mode-tabs {
+		gap: 14px;
+	}
+	.seg-group {
+		display: flex;
+		gap: 4px;
+	}
+	.rolodex-board-single {
+		justify-content: center;
+	}
+
 	.progress-track-btn {
 		all: unset;
 		cursor: pointer;

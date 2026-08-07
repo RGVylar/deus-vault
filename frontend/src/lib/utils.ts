@@ -29,6 +29,7 @@ export function isLandscape(type: string): boolean {
 }
 
 export const TYPE_ICONS: Record<string, string> = {
+	all: '🗂️',
 	youtube: '▶️',
 	movie: '🎬',
 	series: '📺',
@@ -106,6 +107,7 @@ export function providerNameToKey(name: string): string {
 }
 
 const TYPE_LABEL_KEYS: Record<string, TKey> = {
+	all: 'types.all',
 	youtube: 'types.youtube',
 	movie: 'types.movie',
 	series: 'types.series',
