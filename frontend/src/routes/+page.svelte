@@ -843,73 +843,82 @@ $effect(() => {
 		</div>
 	{/if}
 
-	<!-- Section header: desktop only (mobile shows counts via the pill stats above) -->
-	<div class="desk-section desk-only">
-		<h2>{t('home.pendingSectionTitle')}</h2>
-		<span class="more">{tc('home.itemsCount', total)}</span>
+	<!-- Section header + layout/grouping toggle: share one row on desktop -->
+	<div class="controls-row">
+		<div class="desk-section desk-only">
+			<h2>{t('home.pendingSectionTitle')}</h2>
+			<span class="more">{tc('home.itemsCount', total)}</span>
+		</div>
+
+		<!-- Layout / grouping toggle: all screen sizes -->
+		<div class="tabs view-mode-tabs">
+			<div class="seg-group">
+				<button class="tab" class:active={!rolodexView} onclick={() => setLayout('flat')}>{t('home.flatView')}</button>
+				<button class="tab" class:active={rolodexView} onclick={() => setLayout('rolodex')}>{t('home.rolodexBtn')}</button>
+			</div>
+			<div class="seg-group">
+				<button class="tab" class:active={!groupByType} onclick={() => setGrouping(false)}>{t('home.ungroupBtn')}</button>
+				<button class="tab" class:active={groupByType} onclick={() => setGrouping(true)}>{t('home.groupBtn')}</button>
+			</div>
+		</div>
 	</div>
 
-	<!-- Layout / grouping toggle: all screen sizes -->
-	<div class="tabs view-mode-tabs">
-		<div class="seg-group">
-			<button class="tab" class:active={!rolodexView} onclick={() => setLayout('flat')}>{t('home.flatView')}</button>
-			<button class="tab" class:active={rolodexView} onclick={() => setLayout('rolodex')}>{t('home.rolodexBtn')}</button>
+	<!-- Type filter + search/sort: share one row on desktop -->
+	<div class="filters-bar">
+		{#if !groupByType}
+		<div class="tabs desk-tabs">
+			<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>{t('common.all')}</button>
+			<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️ {t('types.youtube')}</button>
+			<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬 {t('types.movie')}</button>
+			<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺 {t('types.series')}</button>
+			<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>🎵 {t('types.music')}</button>
+			<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖 {t('types.book')}</button>
+			<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮 {t('types.game')}</button>
 		</div>
-		<div class="seg-group">
-			<button class="tab" class:active={!groupByType} onclick={() => setGrouping(false)}>{t('home.ungroupBtn')}</button>
-			<button class="tab" class:active={groupByType} onclick={() => setGrouping(true)}>{t('home.groupBtn')}</button>
+		{/if}
+
+		<!-- Search + sort (now shown on all screen sizes in filter zone) -->
+		<div class="search-row">
+			<div class="search">
+				<span class="ico">🔍</span>
+				<input type="search" bind:value={searchQuery} placeholder={t('home.searchPlaceholder')} />
+			</div>
+			<select class="sort" bind:value={sortOrder}>
+				<option value="recent">{t('home.sort.recent')}</option>
+				<option value="duration_asc">{t('home.sort.durationAsc')}</option>
+				<option value="duration_desc">{t('home.sort.durationDesc')}</option>
+				<option value="title_asc">{t('home.sort.titleAsc')}</option>
+				<option value="rating_desc">{t('home.sort.ratingDesc')}</option>
+				<option value="rating_asc">{t('home.sort.ratingAsc')}</option>
+			</select>
 		</div>
 	</div>
-	{#if !groupByType}
-	<div class="tabs desk-tabs">
-		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>{t('common.all')}</button>
-		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️ {t('types.youtube')}</button>
-		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬 {t('types.movie')}</button>
-		<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺 {t('types.series')}</button>
-		<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>🎵 {t('types.music')}</button>
-		<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖 {t('types.book')}</button>
-		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮 {t('types.game')}</button>
+
+	<!-- Collection + provider filter chips: share one row on desktop -->
+	{#if collections.length > 0 || availableProviders.length > 0}
+	<div class="filters-bar">
+		{#if collections.length > 0}
+			<div class="tabs tabs-compact">
+				<button class="tab" class:active={activeCollection === null} onclick={() => activeCollection = null}>{t('home.allCollections')}</button>
+				{#each collections as col}
+					<button class="tab" class:active={activeCollection === col} onclick={() => activeCollection = activeCollection === col ? null : col}>📁 {col}</button>
+				{/each}
+			</div>
+		{/if}
+
+		{#if availableProviders.length > 0}
+			<div class="tabs tabs-compact">
+				<button class="tab" class:active={activeProvider === null} onclick={() => activeProvider = null}>{t('common.all')}</button>
+				{#each availableProviders as prov}
+					<button
+						class="tab provider-tab provider-tab-{prov}"
+						class:active={activeProvider === prov}
+						onclick={() => activeProvider = activeProvider === prov ? null : prov}
+					>{PROVIDER_LABELS[prov] ?? prov}</button>
+				{/each}
+			</div>
+		{/if}
 	</div>
-	{/if}
-
-	<!-- Search + sort (now shown on all screen sizes in filter zone) -->
-	<div class="search-row">
-		<div class="search">
-			<span class="ico">🔍</span>
-			<input type="search" bind:value={searchQuery} placeholder={t('home.searchPlaceholder')} />
-		</div>
-		<select class="sort" bind:value={sortOrder}>
-			<option value="recent">{t('home.sort.recent')}</option>
-			<option value="duration_asc">{t('home.sort.durationAsc')}</option>
-			<option value="duration_desc">{t('home.sort.durationDesc')}</option>
-			<option value="title_asc">{t('home.sort.titleAsc')}</option>
-			<option value="rating_desc">{t('home.sort.ratingDesc')}</option>
-			<option value="rating_asc">{t('home.sort.ratingAsc')}</option>
-		</select>
-	</div>
-
-	<!-- Collection filter chips -->
-	{#if collections.length > 0}
-		<div class="tabs" style="padding-top:0;">
-			<button class="tab" class:active={activeCollection === null} onclick={() => activeCollection = null}>{t('home.allCollections')}</button>
-			{#each collections as col}
-				<button class="tab" class:active={activeCollection === col} onclick={() => activeCollection = activeCollection === col ? null : col}>📁 {col}</button>
-			{/each}
-		</div>
-	{/if}
-
-	<!-- Provider filter chips -->
-	{#if availableProviders.length > 0}
-		<div class="tabs" style="padding-top:0;">
-			<button class="tab" class:active={activeProvider === null} onclick={() => activeProvider = null}>{t('common.all')}</button>
-			{#each availableProviders as prov}
-				<button
-					class="tab provider-tab provider-tab-{prov}"
-					class:active={activeProvider === prov}
-					onclick={() => activeProvider = activeProvider === prov ? null : prov}
-				>{PROVIDER_LABELS[prov] ?? prov}</button>
-			{/each}
-		</div>
 	{/if}
 
 	<!-- Content list -->
@@ -1545,7 +1554,7 @@ $effect(() => {
 
 <style>
 	.view-mode-tabs {
-		gap: 8px;
+		gap: 6px;
 		flex-wrap: wrap;
 		overflow-x: visible;
 	}
@@ -1553,7 +1562,7 @@ $effect(() => {
 		display: flex;
 		flex-shrink: 0;
 		gap: 2px;
-		padding: 3px;
+		padding: 2px;
 		background: var(--glass-bg-weak);
 		border: 1px solid var(--glass-border);
 		border-radius: 999px;
@@ -1561,8 +1570,8 @@ $effect(() => {
 	.seg-group .tab {
 		border: none;
 		background: transparent;
-		padding: 6px 12px;
-		font-size: 12.5px;
+		padding: 5px 10px;
+		font-size: 12px;
 	}
 	.seg-group .tab.active {
 		background: var(--glass-bg-strong);
