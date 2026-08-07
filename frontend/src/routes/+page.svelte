@@ -843,19 +843,21 @@ $effect(() => {
 		</div>
 	{/if}
 
-	<!-- Section header + filter tabs -->
+	<!-- Section header: desktop only (mobile shows counts via the pill stats above) -->
 	<div class="desk-section desk-only">
 		<h2>{t('home.pendingSectionTitle')}</h2>
 		<span class="more">{tc('home.itemsCount', total)}</span>
-		<div class="tabs view-mode-tabs">
-			<div class="seg-group">
-				<button class="tab" class:active={!rolodexView} onclick={() => setLayout('flat')}>{t('home.flatView')}</button>
-				<button class="tab" class:active={rolodexView} onclick={() => setLayout('rolodex')}>{t('home.rolodexBtn')}</button>
-			</div>
-			<div class="seg-group">
-				<button class="tab" class:active={!groupByType} onclick={() => setGrouping(false)}>{t('home.ungroupBtn')}</button>
-				<button class="tab" class:active={groupByType} onclick={() => setGrouping(true)}>{t('home.groupBtn')}</button>
-			</div>
+	</div>
+
+	<!-- Layout / grouping toggle: all screen sizes -->
+	<div class="tabs view-mode-tabs">
+		<div class="seg-group">
+			<button class="tab" class:active={!rolodexView} onclick={() => setLayout('flat')}>{t('home.flatView')}</button>
+			<button class="tab" class:active={rolodexView} onclick={() => setLayout('rolodex')}>{t('home.rolodexBtn')}</button>
+		</div>
+		<div class="seg-group">
+			<button class="tab" class:active={!groupByType} onclick={() => setGrouping(false)}>{t('home.ungroupBtn')}</button>
+			<button class="tab" class:active={groupByType} onclick={() => setGrouping(true)}>{t('home.groupBtn')}</button>
 		</div>
 	</div>
 	{#if !groupByType}
@@ -1543,11 +1545,28 @@ $effect(() => {
 
 <style>
 	.view-mode-tabs {
-		gap: 14px;
+		gap: 8px;
+		flex-wrap: wrap;
+		overflow-x: visible;
 	}
 	.seg-group {
 		display: flex;
-		gap: 4px;
+		flex-shrink: 0;
+		gap: 2px;
+		padding: 3px;
+		background: var(--glass-bg-weak);
+		border: 1px solid var(--glass-border);
+		border-radius: 999px;
+	}
+	.seg-group .tab {
+		border: none;
+		background: transparent;
+		padding: 6px 12px;
+		font-size: 12.5px;
+	}
+	.seg-group .tab.active {
+		background: var(--glass-bg-strong);
+		box-shadow: var(--glass-inner), 0 0 0 1px var(--glass-border-bright);
 	}
 	.rolodex-board-single {
 		justify-content: center;

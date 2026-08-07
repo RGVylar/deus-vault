@@ -433,6 +433,8 @@
 			justify-content: flex-start;
 			gap: 16px;
 			padding: 10px 12px;
+			max-width: none;
+			min-width: 0;
 		}
 		.rolodex-col-head {
 			flex-direction: row;

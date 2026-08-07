@@ -24,4 +24,12 @@
 		padding: 4px 2px 8px;
 		scrollbar-width: thin;
 	}
+
+	@media (max-width: 720px) {
+		.rolodex-board {
+			flex-direction: column;
+			gap: 0;
+			overflow-x: visible;
+		}
+	}
 </style>
