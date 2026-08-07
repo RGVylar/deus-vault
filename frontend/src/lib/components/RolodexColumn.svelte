@@ -27,6 +27,8 @@
 		return { a, h, y, opacity };
 	}
 
+	let spinning = $state(false);
+
 	let stageEl: HTMLDivElement | undefined;
 	// Array de refs puramente imperativo (para mutar estilos fuera del ciclo
 	// reactivo en cada tick de rueda/arrastre) — Svelte avisa de que
@@ -102,6 +104,40 @@
 		settleTimer = setTimeout(settle, 200);
 	}
 
+	function spinRandom(e: MouseEvent | KeyboardEvent) {
+		e.stopPropagation();
+		if (spinning || N <= 1) return;
+		const current = wrap(Math.round(position));
+		let target = current;
+		while (target === current) target = Math.floor(Math.random() * N);
+
+		spinning = true;
+		clearTimeout(settleTimer);
+		cardEls.forEach((c) => c && (c.style.transition = ''));
+
+		const laps = 2 + Math.floor(Math.random() * 2);
+		const startPos = position;
+		const forward = ((target - startPos) % N + N) % N;
+		const totalDistance = laps * N + forward;
+		const duration = 1400;
+		const t0 = performance.now();
+
+		function frame(now: number) {
+			const t = Math.min(1, (now - t0) / duration);
+			const eased = 1 - Math.pow(1 - t, 3);
+			position = wrap(startPos + totalDistance * eased);
+			render();
+			if (t < 1) {
+				requestAnimationFrame(frame);
+			} else {
+				position = target;
+				render();
+				spinning = false;
+			}
+		}
+		requestAnimationFrame(frame);
+	}
+
 	function onWheel(e: WheelEvent) {
 		e.preventDefault();
 		liveUpdate(position + e.deltaY * 0.0035);
@@ -158,13 +194,26 @@
 
 <div class="rolodex-col" style="--col-accent: {TYPE_COLOR[type] ?? 'var(--primary)'}">
 	<div class="rolodex-col-head">
-		<div class="icn">{TYPE_ICONS[type] ?? '📄'}</div>
+		<div class="icn-wrap">
+			<div class="icn">{TYPE_ICONS[type] ?? '📄'}</div>
+			<button
+				type="button"
+				class="icn-dice"
+				aria-label="Ir a una posición aleatoria"
+				title="Ir a una posición aleatoria"
+				disabled={N <= 1}
+				onclick={spinRandom}
+			>
+				🎲
+			</button>
+		</div>
 		<div class="lbl">{typeLabel(type)}</div>
 		<div class="cnt">{items.length}</div>
 	</div>
 
 	<div
 		class="rolodex-stage"
+		class:spinning
 		bind:this={stageEl}
 		tabindex="0"
 		role="listbox"
@@ -225,6 +274,11 @@
 		align-items: center;
 		gap: 3px;
 	}
+	.icn-wrap {
+		position: relative;
+		width: 38px;
+		height: 38px;
+	}
 	.icn {
 		width: 38px;
 		height: 38px;
@@ -234,6 +288,41 @@
 		font-size: 19px;
 		background: color-mix(in oklab, var(--col-accent) 22%, var(--glass-bg-strong));
 		border: 1px solid color-mix(in oklab, var(--col-accent) 45%, transparent);
+	}
+	.icn-dice {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		font-size: 17px;
+		border-radius: var(--radius-xs);
+		border: 1px solid color-mix(in oklab, var(--col-accent) 55%, transparent);
+		background: color-mix(in oklab, var(--col-accent) 38%, var(--glass-bg-strong));
+		color: inherit;
+		padding: 0;
+		opacity: 0;
+		transform: scale(0.85);
+		transition: opacity 0.18s, transform 0.18s;
+		cursor: pointer;
+		pointer-events: none;
+	}
+	.icn-wrap:hover .icn-dice,
+	.icn-dice:focus-visible {
+		opacity: 1;
+		transform: scale(1);
+		pointer-events: auto;
+	}
+	.icn-dice:disabled {
+		opacity: 0 !important;
+		pointer-events: none;
+		cursor: default;
+	}
+	@media (hover: none) {
+		.icn-dice:not(:disabled) {
+			opacity: 0.85;
+			transform: scale(1);
+			pointer-events: auto;
+		}
 	}
 	.lbl {
 		font-size: 14px;
@@ -264,6 +353,10 @@
 	}
 	.rolodex-stage:active {
 		cursor: grabbing;
+	}
+	.rolodex-stage.spinning {
+		pointer-events: none;
+		cursor: default;
 	}
 	.rolodex-stage:focus-visible {
 		outline: 2px solid var(--col-accent);
