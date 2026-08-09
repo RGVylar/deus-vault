@@ -191,6 +191,27 @@ export const es = {
 	'random.time.about1h': '~1 hora',
 	'random.time.about2h': '~2 horas',
 	'random.time.freeAfternoon': 'Tarde libre',
+	// Tiempo de atención — cuánto tardas en volver a tirar. No confundir con
+	// los minutos de contenido consumido ("visualización"), que son otra cosa.
+	'random.attention.title': 'Tiempo de atención',
+	'random.attention.hint': 'Cuánto tardas en volver a tirar. Si te paras a mirar algo, damos por hecho que te interesó.',
+	'random.attention.local': 'Solo en este dispositivo. Se borra sola y no se guarda en tu bóveda.',
+	'random.attention.topItems': 'Lo que más te ha frenado',
+	'random.attention.affinity': 'Tu afinidad ahora',
+	'random.attention.tune': 'Afinar el azar',
+	'random.attention.tuneHint': 'Pesa la tirada hacia tus rasgos favoritos, sin dejar a nadie fuera del sorteo.',
+	'random.attention.needMore': 'Tira unas cuantas veces más para afinar',
+	'random.attention.applyFilters': 'Aplicar a los filtros',
+	'random.attention.reset': 'Reiniciar',
+	'random.attention.kind.type': 'Tipo',
+	'random.attention.kind.genre': 'Género',
+	'random.attention.kind.author': 'Autor',
+	'random.attention.kind.decade': 'Época',
+	'random.attention.decadeValue': 'años {value}',
+	'random.attention.level.high': 'Te enganchó',
+	'random.attention.level.mid': 'Te lo pensaste',
+	'random.attention.level.low': 'Descarte rápido',
+	'random.attention.tuned': 'Afinado por tu atención',
 
 	// ── wasted ──
 	'wasted.title': 'Bóveda de lo Perdido',

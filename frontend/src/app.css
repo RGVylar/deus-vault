@@ -1861,11 +1861,90 @@ h2 {
   border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
 }
 
+/* ── Tiempo de atención ──
+   Panel local de /random: cuánto tardas en volver a tirar. Nada que ver con
+   los minutos consumidos que guarda la bóveda — esto no sale del navegador. */
+.attention-card {
+  padding: 18px;
+  border-radius: var(--radius);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+  backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-inner);
+}
+.att-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.att-head .flt-label { margin-bottom: 0; }
+.att-reset { font-size: 11px; font-weight: 700; color: var(--text-muted); border-bottom-color: transparent; }
+.att-reset:hover { color: var(--text); }
+.att-hint { font-size: 12px; color: var(--text-muted); margin: 8px 0 0; line-height: 1.45; }
+.att-sub {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-muted); margin: 16px 0 8px;
+}
+
+.att-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.att-row { display: flex; align-items: center; gap: 10px; }
+.att-thumb {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: var(--radius-sm); overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in oklab, var(--tc, var(--primary)) 16%, var(--glass-bg-weak));
+  color: var(--tc, var(--primary));
+  border: 1px solid color-mix(in oklab, var(--tc, var(--primary)) 30%, transparent);
+}
+.att-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.att-body { flex: 1; min-width: 0; }
+.att-title {
+  font-size: 12.5px; font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.att-bar { margin-top: 5px; height: 4px; border-radius: 2px; background: var(--glass-bg-weak); overflow: hidden; }
+.att-bar span { display: block; height: 100%; border-radius: 2px; background: var(--tc, var(--primary)); }
+.att-meta { flex-shrink: 0; text-align: right; line-height: 1.3; }
+.att-ms { display: block; font-size: 12px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.att-level { display: block; font-size: 10px; font-weight: 700; color: var(--text-muted); }
+.att-level.high { color: var(--tc, var(--primary)); }
+.att-level.low { opacity: 0.7; }
+
+.att-traits { display: flex; flex-direction: column; gap: 8px; }
+.att-trait-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.att-kind {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted); min-width: 54px;
+}
+.att-chip {
+  font-size: 11.5px; padding: 4px 9px; border-radius: 999px;
+  background: var(--glass-bg-weak); border: 1px solid var(--glass-border); color: var(--text-muted);
+}
+.att-chip b { color: var(--text); font-weight: 800; font-variant-numeric: tabular-nums; }
+
+.att-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.att-actions .tab { display: inline-flex; align-items: center; gap: 6px; }
+.att-actions .tab.active {
+  background: color-mix(in oklab, var(--primary) 22%, var(--glass-bg-strong));
+  color: var(--text);
+  border-color: color-mix(in oklab, var(--primary) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent);
+}
+.att-foot { font-size: 11px; color: var(--text-muted); margin: 10px 0 0; line-height: 1.5; }
+
+/* Marca en el resultado cuando el ganador salió pesado por la afinidad */
+.tuned-tag {
+  display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;
+  padding: 2px 7px; border-radius: 999px; letter-spacing: 0.06em;
+  background: color-mix(in oklab, var(--primary) 18%, transparent);
+  border: 1px solid color-mix(in oklab, var(--primary) 40%, transparent);
+  color: var(--text);
+}
+.tuned-tag svg { width: 11px; height: 11px; }
+
 /* ── Desktop: split 340px / 1fr ── */
 @media (min-width: 1024px) {
   .azar { display: grid; grid-template-columns: 340px 1fr; gap: 22px; align-items: start; }
   .azar-head { display: none; }
   .azar-stage { min-height: 520px; }
+  /* El panel cae solo bajo los filtros, en la columna izquierda */
+  .attention-card { grid-column: 1; }
 }
 
 /* ── Móvil: filtros planos, orden título → dado → filtros ── */
@@ -1879,6 +1958,7 @@ h2 {
   .azar-head   { order: 0; }
   .azar-stage  { order: 1; }
   .azar-filters{ order: 2; }
+  .attention-card { order: 3; }
   .azar-filters .flt-block:first-of-type { padding-top: 0; border-top: none; }
 }
 

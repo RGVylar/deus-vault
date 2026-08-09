@@ -7,6 +7,11 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import RolodexRoller from '$lib/components/RolodexRoller.svelte';
 	import { t, tc, type TKey } from '$lib/i18n/index.svelte';
+	import {
+		attention, attachAttentionLifecycle, beginAttention, endAttention, markLaunched, markDone,
+		setTuning, resetAttention, rankedItems, topTraits, attentionLevel, hasSignal, tuningActive,
+		pickTuned, suggestedFilters, formatAttention, TRAIT_KINDS, type TraitKind
+	} from '$lib/stores/attention.svelte';
 	import type { Content, ContentType } from '$lib/types';
 
 	type TimePreset = { labelKey: TKey; min: number | null; max: number | null };
@@ -52,7 +57,35 @@
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
 		api.get<string[]>('/contents/genres').then(g => { availableGenres = g; }).catch(() => {});
+		// Cierra el tramo abierto al esconder la pestaña o al salir de Azar.
+		return attachAttentionLifecycle();
 	});
+
+	// ── Tiempo de atención ──
+	// El panel se reconstruye solo cuando cambian las entradas (cada tirada las
+	// toca), así que basta con derivar de `attention.entries`.
+	const attentionTop = $derived(rankedItems(4));
+	const attentionMaxMs = $derived(attentionTop[0]?.ms ?? 0);
+	const attentionTraits = $derived(
+		TRAIT_KINDS
+			.map(kind => ({ kind, scores: topTraits(kind, kind === 'genre' ? 3 : 2) }))
+			.filter(row => row.scores.length > 0)
+	);
+	const showAttention = $derived(attentionTop.length > 0);
+	let tunedPick = $state(false);   // el ganador de la última tirada salió pesado
+
+	function traitLabel(kind: TraitKind, value: string): string {
+		if (kind === 'type') return typeLabel(value);
+		if (kind === 'decade') return t('random.attention.decadeValue', { value });
+		return value;
+	}
+
+	/** Vuelca la afinidad en los filtros que el backend sí entiende. */
+	function applyAttentionFilters() {
+		const { genres, types } = suggestedFilters();
+		selectedGenres = genres.filter(g => availableGenres.includes(g));
+		selectedTypes = types;
+	}
 
 	function selectPreset(i: number) { selectedPreset = i; showCustom = false; customMin = ''; customMax = ''; }
 	function toggleType(t: ContentType) { selectedTypes = selectedTypes.includes(t) ? selectedTypes.filter(x => x !== t) : [...selectedTypes, t]; }
@@ -89,6 +122,9 @@
 
 	async function roll() {
 		if (spinning) return;
+		// Volver a tirar cierra el tiempo de atención del contenido anterior:
+		// el rato del giro no cuenta, porque ahí ya no se está mirando la ficha.
+		endAttention();
 		error = '';
 		spinning = true;
 		try {
@@ -99,7 +135,10 @@
 				collected.push(item);
 			}
 			deckItems = collected;
-			const winner = collected[collected.length - 1];
+			// El backend ya ha sorteado los candidatos; el afinado sólo decide
+			// cuál de ellos gana, pesando por los rasgos que más te frenan.
+			const winner = pickTuned(collected);
+			tunedPick = tuningActive();
 			pick = winner;
 			recent = [winner, ...recent.filter(c => c.id !== winner.id)].slice(0, 6);
 			spinTokenCounter++; // dispara el giro del RolodexRoller hacia `winner`
@@ -112,9 +151,12 @@
 
 	function handleSettled() {
 		spinning = false;
+		// El cronómetro arranca cuando el rolodex se para y la ficha ya es legible.
+		if (pick) beginAttention(pick);
 	}
 
 	async function consume(id: number) {
+		markDone(id);
 		await api.post(`/contents/${id}/consume`);
 		pick = null;
 	}
@@ -230,7 +272,10 @@
 				{@const landscape = ['youtube','game'].includes(item.content_type)}
 				{@const link = buildConsumeUrl(pick)}
 				<div class="result-inner reveal">
-					<p class="result-kicker">{t('random.nextContent')}</p>
+					<p class="result-kicker">
+						{t('random.nextContent')}
+						{#if tunedPick}<span class="tuned-tag"><Icon name="trendingUp" size={11} /> {t('random.attention.tuned')}</span>{/if}
+					</p>
 					<div class="c-card random-pick {landscape ? 'landscape' : 'portrait'}"
 						style="--card-accent:{TYPE_COLOR[item.content_type]}; --accent:{TYPE_COLOR[item.content_type]}">
 						{#if landscape}
@@ -256,8 +301,8 @@
 								{#if item.author}<span>{item.author}</span>{/if}
 							</div>
 							<div class="actions" style="margin-top:10px;">
-								{#if link}<a href={link} target="_blank" rel="noopener"><button class="btn btn-primary"><Icon name="zap" size={14} /> {t('random.goNow')}</button></a>{/if}
-								{#if pick?.trailer_url}<a href={pick.trailer_url} target="_blank" rel="noopener"><button class="btn btn-trailer"><Icon name="play" size={14} /> {t('random.trailer')}</button></a>{/if}
+								{#if link}<a href={link} target="_blank" rel="noopener" onclick={() => markLaunched(item.id)}><button class="btn btn-primary"><Icon name="zap" size={14} /> {t('random.goNow')}</button></a>{/if}
+								{#if pick?.trailer_url}<a href={pick.trailer_url} target="_blank" rel="noopener" onclick={() => markLaunched(item.id)}><button class="btn btn-trailer"><Icon name="play" size={14} /> {t('random.trailer')}</button></a>{/if}
 								<button class="btn btn-consume" onclick={() => consume(pick!.id)}><Icon name="check" size={14} /> {t('random.done')}</button>
 								<button class="btn" onclick={roll}><Icon name="refresh" size={14} /> {t('random.another')}</button>
 							</div>
@@ -273,5 +318,67 @@
 			{/if}
 		</div>
 	</div>
+
+	<!-- ── Tiempo de atención ──
+	     Aparece cuando hay algo medido, es decir a partir de la segunda tirada:
+	     el tiempo de un contenido se cierra justo cuando vuelves a tirar. -->
+	{#if showAttention}
+		<div class="attention-card">
+			<div class="att-head">
+				<p class="flt-label"><Icon name="activity" size={14} /> {t('random.attention.title')}</p>
+				<button class="linkbtn att-reset" onclick={resetAttention}>{t('random.attention.reset')}</button>
+			</div>
+			<p class="att-hint">{t('random.attention.hint')}</p>
+
+			<p class="att-sub">{t('random.attention.topItems')}</p>
+			<ul class="att-list">
+				{#each attentionTop as e (e.id)}
+					{@const level = attentionLevel(e)}
+					<li class="att-row" style="--tc:{TYPE_COLOR[e.type]}">
+						<div class="att-thumb">
+							{#if e.thumb}<img src={e.thumb} alt="" />{:else}<Icon name={TYPE_ICON[e.type] ?? 'list'} size={14} />{/if}
+						</div>
+						<div class="att-body">
+							<div class="att-title">{e.title}</div>
+							<div class="att-bar"><span style="width:{attentionMaxMs > 0 ? Math.max(6, Math.round((e.ms / attentionMaxMs) * 100)) : 0}%"></span></div>
+						</div>
+						<div class="att-meta">
+							<span class="att-ms">{formatAttention(e.ms)}</span>
+							<span class="att-level {level}">{t(`random.attention.level.${level}` as TKey)}</span>
+						</div>
+					</li>
+				{/each}
+			</ul>
+
+			{#if attentionTraits.length > 0}
+				<p class="att-sub">{t('random.attention.affinity')}</p>
+				<div class="att-traits">
+					{#each attentionTraits as row (row.kind)}
+						<div class="att-trait-row">
+							<span class="att-kind">{t(`random.attention.kind.${row.kind}` as TKey)}</span>
+							<div class="chip-row">
+								{#each row.scores as s (s.value)}
+									<span class="att-chip">{traitLabel(row.kind, s.value)} <b>{formatAttention(s.ms)}</b></span>
+								{/each}
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
+
+			<div class="att-actions">
+				<button class="tab" class:active={attention.tuning} onclick={() => setTuning(!attention.tuning)}>
+					<Icon name="trendingUp" size={13} /> {t('random.attention.tune')}
+				</button>
+				<button class="tab" onclick={applyAttentionFilters}>
+					<Icon name="sparkles" size={13} /> {t('random.attention.applyFilters')}
+				</button>
+			</div>
+			<p class="att-foot">
+				{attention.tuning && !hasSignal() ? t('random.attention.needMore') : t('random.attention.tuneHint')}
+				<br />{t('random.attention.local')}
+			</p>
+		</div>
+	{/if}
 </div>
 {/if}
