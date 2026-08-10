@@ -1006,6 +1006,29 @@ async def _fetch_trailer_url(media_type: str, tmdb_id: int, api_key: str) -> str
     return None
 
 
+async def _fetch_director(tmdb_id: int, api_key: str) -> str | None:
+    """Director(es) de una película.
+
+    TMDB no lo incluye en los detalles: hay que pedir los créditos aparte y
+    buscar el job "Director" dentro del crew. Se admiten dos nombres porque la
+    codirección existe (los Coen, los Daniels…), pero no más: esto acaba en una
+    línea de metadatos, no en unos títulos de crédito.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits",
+                params={"api_key": api_key},
+            )
+        if resp.status_code != 200:
+            return None
+        crew = resp.json().get("crew") or []
+        names = [c["name"] for c in crew if c.get("job") == "Director" and c.get("name")]
+        return ", ".join(list(dict.fromkeys(names))[:2]) or None
+    except Exception:
+        return None
+
+
 async def _fetch_genres(media_type: str, tmdb_id: int, api_key: str, details: dict) -> str | None:
     """Extract genre names from TMDB details dict."""
     genres = details.get("genres") or []
@@ -1524,8 +1547,12 @@ async def lookup_tmdb_detail(
 
     if media_type == "movie":
         duration_minutes = int(details.get("runtime") or 0)
+        # El "quién" de una peli es su director, que es lo que `author` significa
+        # en todos los demás tipos (canal en YouTube, autor en libros,
+        # desarrolladora en juegos). La productora queda de reserva por si TMDB
+        # no da créditos.
         studios = details.get("production_companies", [])
-        author = studios[0]["name"] if studios else ""
+        author = await _fetch_director(tmdb_id, api_key) or (studios[0]["name"] if studios else "")
         release_date = details.get("release_date") or ""
         if release_date:
             next_episode_date = release_date

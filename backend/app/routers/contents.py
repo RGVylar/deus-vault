@@ -1035,7 +1035,12 @@ async def _run_tmdb_backfill(user_id: int, force: bool) -> None:
     """Background task: updates TMDB metadata for all movie/series items."""
     import json as _json
     import httpx as _httpx
-    from app.routers.lookup import _fetch_watch_providers, _fetch_trailer_url, _fetch_imdb_id
+    from app.routers.lookup import (
+        _fetch_watch_providers,
+        _fetch_trailer_url,
+        _fetch_imdb_id,
+        _fetch_director,
+    )
     from app.config import settings as cfg
     from app.database import SessionLocal
 
@@ -1110,6 +1115,10 @@ async def _run_tmdb_backfill(user_id: int, force: bool) -> None:
                         item.imdb_id = imdb
 
                     if media_type == "movie":
+                        # Sustituye la productora que se guardaba antes en `author`
+                        director = await _fetch_director(tmdb_id, api_key)
+                        if director:
+                            item.author = director
                         release_date = details.get("release_date") or ""
                         if release_date:
                             item.next_episode_date = datetime.strptime(release_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
