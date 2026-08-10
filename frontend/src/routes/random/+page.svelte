@@ -54,9 +54,24 @@
 
 	const hasResult = $derived(!!pick || !!error);
 
+	/**
+	 * Los géneros se pedían una sola vez y el error se tragaba en silencio: un
+	 * fallo de red dejaba `availableGenres` vacío y el filtro de género
+	 * desaparecía de la página el resto de la sesión, sin aviso. En móvil pasa
+	 * mucho más (red inestable, arranque en frío, pestaña que despierta), así
+	 * que reintenta y se cura solo.
+	 */
+	async function loadGenres(retries = 2) {
+		try {
+			availableGenres = await api.get<string[]>('/contents/genres');
+		} catch {
+			if (retries > 0) setTimeout(() => loadGenres(retries - 1), 1500);
+		}
+	}
+
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
-		api.get<string[]>('/contents/genres').then(g => { availableGenres = g; }).catch(() => {});
+		loadGenres();
 		// Cierra el tramo abierto al esconder la pestaña o al salir de Azar.
 		return attachAttentionLifecycle();
 	});
@@ -122,6 +137,9 @@
 
 	async function roll() {
 		if (spinning) return;
+		// Si la carga inicial de géneros no llegó, este es el mejor momento para
+		// recuperarla: el usuario está justo en la pantalla donde hacen falta.
+		if (availableGenres.length === 0) void loadGenres(1);
 		// Volver a tirar cierra el tiempo de atención del contenido anterior:
 		// el rato del giro no cuenta, porque ahí ya no se está mirando la ficha.
 		endAttention();
