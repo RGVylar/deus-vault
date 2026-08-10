@@ -64,7 +64,7 @@
 			if (end === null) continue;
 			const rawStart = yearPct(c.started_at);
 			const hasSpan = rawStart !== null && rawStart < end;
-			const mins = c.content_type === 'series' && c.episode_count
+			const mins = (c.content_type === 'series' || c.content_type === 'manga') && c.episode_count
 				? c.duration_minutes * c.episode_count
 				: c.duration_minutes;
 			out.push({

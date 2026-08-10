@@ -1074,7 +1074,11 @@ $effect(() => {
 							{#if c.collection}
 								<span style="font-size:10px; color:var(--text-muted);">📁 {c.collection}</span>
 							{/if}
-							{#if c.content_type === 'series'}
+							{#if c.content_type === 'manga'}
+								{#if c.seasons && c.seasons > 0}<span>🗾 {c.seasons}</span>{/if}
+								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} cap</span>{/if}
+								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/cap</span>{/if}
+							{:else if c.content_type === 'series'}
 								{#if c.seasons && c.seasons > 0}<span>📺 {c.seasons}T</span>{/if}
 								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} ep</span>{/if}
 								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>{/if}
@@ -1100,8 +1104,8 @@ $effect(() => {
 							{/if}
 							{#if c.author}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">{c.author}</span>{/if}
 						</div>
-						{#if c.content_type === 'series' && c.episode_count && c.episode_count > 0 && c.duration_minutes > 0}
-							<div style="font-size:11px; font-weight:600; color:var(--series);">{t('home.totalMinutes', { duration: formatDuration(c.duration_minutes * c.episode_count) })}</div>
+						{#if (c.content_type === 'series' || c.content_type === 'manga') && c.episode_count && c.episode_count > 0 && c.duration_minutes > 0}
+							<div style="font-size:11px; font-weight:600; color:var(--{c.content_type});">{t('home.totalMinutes', { duration: formatDuration(c.duration_minutes * c.episode_count) })}</div>
 						{/if}
 
 						{#if c.notes}
@@ -1138,7 +1142,7 @@ $effect(() => {
 									</div>
 									{#if hasProgress}
 										<span style="font-size:10px; color:var(--text-muted); white-space:nowrap;">{progressLabel(c)}</span>
-										{#if remaining < (c.content_type === 'series' && c.episode_count ? c.duration_minutes * c.episode_count : c.duration_minutes)}
+										{#if remaining < ((c.content_type === 'series' || c.content_type === 'manga') && c.episode_count ? c.duration_minutes * c.episode_count : c.duration_minutes)}
 											<span style="font-size:10px; color:var(--text-dim); white-space:nowrap;">{t('home.remaining', { duration: formatDuration(remaining) })}</span>
 										{/if}
 									{:else}
@@ -1342,13 +1346,25 @@ $effect(() => {
 					<input id="edit-url" class="text" bind:value={editUrl} placeholder="https://…" />
 				</div>
 				<div class="field">
-					<label for="edit-duration">{editingItem.content_type === 'series' ? t('home.durationPerEpisodeLabel') : t('home.durationLabel')}</label>
+					<label for="edit-duration">{editingItem.content_type === 'series' ? t('home.durationPerEpisodeLabel') : editingItem.content_type === 'manga' ? t('home.durationPerChapterLabel') : t('home.durationLabel')}</label>
 					<input id="edit-duration" class="text" type="number" bind:value={editDuration} min="0" />
 				</div>
 				{#if editingItem.content_type === 'book'}
 					<div class="field">
 						<label for="edit-pages">{t('home.pagesLabel')}</label>
 						<input id="edit-pages" class="text" type="number" bind:value={editPageCount} min="0" />
+					</div>
+				{/if}
+				{#if editingItem.content_type === 'manga'}
+					<div class="row">
+						<div class="field" style="flex:1;">
+							<label for="edit-volumes">{t('home.volumesLabel')}</label>
+							<input id="edit-volumes" class="text" type="number" bind:value={editSeasons} min="0" />
+						</div>
+						<div class="field" style="flex:1;">
+							<label for="edit-chapters">{t('home.chapterCountLabel')}</label>
+							<input id="edit-chapters" class="text" type="number" bind:value={editEpisodeCount} min="0" />
+						</div>
 					</div>
 				{/if}
 				{#if editingItem.content_type === 'series'}

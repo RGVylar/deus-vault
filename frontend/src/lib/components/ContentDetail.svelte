@@ -133,7 +133,7 @@
 				{#if content.duration_minutes > 0}
 					<div class="d-meta-item">
 						<div class="d-meta-k">{t('home.detail.duration')}</div>
-						<div class="d-meta-v">{formatDuration(content.duration_minutes)}{content.content_type === 'series' ? '/ep' : ''}</div>
+						<div class="d-meta-v">{formatDuration(content.duration_minutes)}{content.content_type === 'series' ? '/ep' : content.content_type === 'manga' ? '/cap' : ''}</div>
 					</div>
 				{/if}
 				{#if content.times_consumed && content.times_consumed > 1}

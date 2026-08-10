@@ -481,7 +481,14 @@
 							{#if c.rating}
 								<span class="rating-badge">★ {c.rating.toFixed(1)}</span>
 							{/if}
-							{#if c.content_type === 'series'}
+							{#if c.content_type === 'manga'}
+								{#if c.seasons && c.seasons > 0}<span>🗾 {c.seasons}</span>{/if}
+								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} cap</span>{/if}
+								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/cap</span>{/if}
+								{#if c.episode_count && c.episode_count > 0 && c.duration_minutes > 0}
+									<span style="font-size:10px; font-weight:600; color:var(--manga);">~{formatDuration(c.duration_minutes * c.episode_count)} total</span>
+								{/if}
+							{:else if c.content_type === 'series'}
 								{#if c.seasons && c.seasons > 0}<span>📺 {c.seasons}T</span>{/if}
 								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} ep</span>{/if}
 								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>{/if}

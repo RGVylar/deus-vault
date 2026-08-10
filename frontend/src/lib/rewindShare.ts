@@ -372,7 +372,7 @@ function drawTypeLegend(ctx: CanvasRenderingContext2D, L: Layout, entries: reado
  * puntos. YouTube y música son cientos de ítems: una banda de intensidad
  * mensual. Mismo criterio que la línea de tiempo de la app.
  */
-const TL_CAMPAIGN = ['game', 'series', 'book'];
+const TL_CAMPAIGN = ['game', 'series', 'manga', 'book'];
 const TL_NOISE = ['youtube', 'music'];
 
 interface TlBar { title: string; type: string; startPct: number; endPct: number; hasSpan: boolean; minutes: number }
@@ -409,7 +409,7 @@ function buildTimeline(stats: RewindStats, rows: number): TlData {
 		if (end === null) continue;
 		const rawStart = yearPct(c.started_at, year, months);
 		const hasSpan = rawStart !== null && rawStart < end;
-		const minutes = c.content_type === 'series' && c.episode_count
+		const minutes = (c.content_type === 'series' || c.content_type === 'manga') && c.episode_count
 			? c.duration_minutes * c.episode_count
 			: c.duration_minutes;
 		all.push({ title: c.title, type: c.content_type, startPct: hasSpan ? (rawStart as number) : end, endPct: end, hasSpan, minutes });

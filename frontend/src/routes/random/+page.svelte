@@ -322,7 +322,11 @@
 								<span class="badge">{typeLabel(item.content_type)}</span>
 								{#if pickYear}<span class="pick-year">{pickYear}</span>{/if}
 								{#if item.rating}<span class="pick-rating">★ {item.rating.toFixed(1)}</span>{/if}
-								{#if item.content_type === 'series'}
+								{#if item.content_type === 'manga'}
+									{#if item.seasons && item.seasons > 0}<span><Icon name="layers" size={13} /> {item.seasons}</span>{/if}
+									{#if item.episode_count && item.episode_count > 0}<span>{item.episode_count} cap</span>{/if}
+									{#if item.duration_minutes > 0}<span><Icon name="clock" size={13} /> {formatDuration(item.duration_minutes)}/cap</span>{/if}
+								{:else if item.content_type === 'series'}
 									{#if item.seasons && item.seasons > 0}<span><Icon name="layers" size={13} /> {item.seasons}T</span>{/if}
 									{#if item.episode_count && item.episode_count > 0}<span>{item.episode_count} ep</span>{/if}
 									{#if item.duration_minutes > 0}<span><Icon name="clock" size={13} /> {formatDuration(item.duration_minutes)}/ep</span>{/if}
