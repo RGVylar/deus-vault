@@ -1497,11 +1497,35 @@ _ANILIST_FIELDS = """
 _ANILIST_SEARCH = "query($s:String){Page(perPage:6){media(search:$s,type:MANGA,sort:SEARCH_MATCH){%s}}}" % _ANILIST_FIELDS
 _ANILIST_BY_ID = "query($id:Int){Media(id:$id,type:MANGA){%s}}" % _ANILIST_FIELDS
 
-# Cuánto se tarda en leer un capítulo. Un tomo son ~200 páginas de viñeta
-# repartidas en unos 9 capítulos: sale a ~20 páginas por capítulo, que a ritmo
-# de manga son unos 8 minutos. Es una estimación, y el usuario puede corregirla
-# en el propio formulario.
-MINUTES_PER_CHAPTER = 8
+# Cuánto se tarda en leer un capítulo.
+#
+# No se inventa un número de minutos: se reusa el modelo de lectura que ya tiene
+# la bóveda (páginas x palabras por página / velocidad), el mismo que estima la
+# duración de los libros. Las palabras por página son 50 y no 300 porque una
+# página de viñeta tiene poco texto — es el valor que ya usaba el sub-formato
+# manga que existía dentro de `book`.
+#
+# Lo único estimado es cuántas páginas trae un capítulo, y sale de la propia
+# obra cuando AniList da tomos y capítulos: un tankōbon ronda las 190 páginas,
+# así que páginas por capítulo = 190 x tomos / capítulos. En Gantz da 18,4 —
+# bastante mejor que aplicar la misma cifra a todas las obras.
+PAGES_PER_VOLUME = 190
+MANGA_WORDS_PER_PAGE = 50
+FALLBACK_PAGES_PER_CHAPTER = 20
+
+
+def _pages_per_chapter(chapters: int | None, volumes: int | None) -> float:
+    if chapters and volumes and chapters > 0 and volumes > 0:
+        return (PAGES_PER_VOLUME * volumes) / chapters
+    return FALLBACK_PAGES_PER_CHAPTER
+
+
+def _chapter_minutes(chapters: int | None, volumes: int | None) -> int:
+    """Minutos por capítulo con la velocidad de lectura por defecto del servidor.
+    El frontend lo recalcula con la del usuario, igual que hace con los libros."""
+    wpm = max(1, int(getattr(settings, "reading_speed_wpm", 200) or 200))
+    words = _pages_per_chapter(chapters, volumes) * MANGA_WORDS_PER_PAGE
+    return max(1, math.ceil(words / wpm))
 
 
 async def _anilist(query: str, variables: dict) -> dict | None:
@@ -1550,7 +1574,11 @@ def _anilist_to_content(media: dict) -> dict:
         "author": _anilist_author(media),
         "episode_count": chapters,
         "seasons": volumes,
-        "duration_minutes": MINUTES_PER_CHAPTER,
+        "duration_minutes": _chapter_minutes(chapters, volumes),
+        # Ingredientes para que el frontend rehaga la cuenta con la velocidad
+        # de lectura real del usuario (la que mide la prueba de Ajustes).
+        "pages_per_chapter": round(_pages_per_chapter(chapters, volumes), 1),
+        "words_per_page": MANGA_WORDS_PER_PAGE,
         "genres": ", ".join(media.get("genres") or []) or None,
         "synopsis": synopsis,
         "rating": rating,

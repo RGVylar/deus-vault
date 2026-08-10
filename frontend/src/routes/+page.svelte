@@ -466,7 +466,14 @@ $effect(() => {
 			const detail = await api.get<any>(`/lookup/manga-detail?anilist_id=${result.anilist_id}`);
 			if (detail.episode_count) addEpisodeCount = detail.episode_count;
 			if (detail.seasons) addSeasons = detail.seasons;
-			if (detail.duration_minutes) addDuration = detail.duration_minutes;
+			// El servidor estima con su velocidad por defecto; aquí se rehace con
+			// la tuya —la que mide la prueba de lectura de Ajustes— igual que se
+			// hace con los libros. Sin esto, la prueba no serviría de nada aquí.
+			if (detail.pages_per_chapter && detail.words_per_page && readingWpm > 0) {
+				addDuration = Math.max(1, Math.ceil(detail.pages_per_chapter * detail.words_per_page / readingWpm));
+			} else if (detail.duration_minutes) {
+				addDuration = detail.duration_minutes;
+			}
 			if (detail.author) addAuthor = detail.author;
 			if (detail.genres) addGenres = detail.genres;
 			if (detail.synopsis) addSynopsis = detail.synopsis;
