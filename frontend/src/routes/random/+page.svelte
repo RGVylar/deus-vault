@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration, typeLabel, buildConsumeUrl } from '$lib/utils';
+	import { formatDuration, typeLabel, buildConsumeUrl, releaseYear } from '$lib/utils';
 	import Icon from '$lib/components/Icon.svelte';
 	import RolodexRoller from '$lib/components/RolodexRoller.svelte';
 	import { t, tc, type TKey } from '$lib/i18n/index.svelte';
@@ -53,6 +53,8 @@
 	let recent: Content[] = [];
 
 	const hasResult = $derived(!!pick || !!error);
+	const pickYear = $derived(pick ? releaseYear(pick) : null);
+	const pickGenres = $derived((pick?.genres ?? '').split(',').map(g => g.trim()).filter(Boolean));
 
 	/**
 	 * Los géneros se pedían una sola vez y el error se tragaba en silencio: un
@@ -317,6 +319,8 @@
 							<div class="title" style="font-size:15px;">{item.title}</div>
 							<div class="meta">
 								<span class="badge">{typeLabel(item.content_type)}</span>
+								{#if pickYear}<span class="pick-year">{pickYear}</span>{/if}
+								{#if item.rating}<span class="pick-rating">★ {item.rating.toFixed(1)}</span>{/if}
 								{#if item.content_type === 'series'}
 									{#if item.seasons && item.seasons > 0}<span><Icon name="layers" size={13} /> {item.seasons}T</span>{/if}
 									{#if item.episode_count && item.episode_count > 0}<span>{item.episode_count} ep</span>{/if}
@@ -334,6 +338,21 @@
 							</div>
 						</div>
 					</div>
+
+					<!-- Contexto para decidir sin abrir el detalle. Va fuera de la
+					     ficha a propósito: dentro, la columna de info se queda en
+					     175px en móvil y la sinopsis no se puede leer. -->
+					{#if pickGenres.length || item.synopsis}
+						<div class="pick-about">
+							{#if pickGenres.length}
+								<div class="pick-genres">
+									{#each pickGenres.slice(0, 5) as g}<span class="pick-chip">{g}</span>{/each}
+								</div>
+							{/if}
+							{#if item.synopsis}<p class="pick-synopsis">{item.synopsis}</p>{/if}
+						</div>
+					{/if}
+
 					<p class="muted center retry">{t('random.notConvinced')} <button class="linkbtn" onclick={roll}>{t('random.tryAgain')}</button></p>
 				</div>
 			{:else if !spinning && deckItems.length === 0}

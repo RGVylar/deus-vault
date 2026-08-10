@@ -15,6 +15,20 @@ export function isLookupCandidate(url: string): boolean {
 	} catch { return false; }
 }
 
+/**
+ * Año de estreno, cuando se puede saber.
+ *
+ * No hay campo de año en el modelo: en películas `next_episode_date` guarda la
+ * fecha de estreno que devuelve TMDB, y en series ese mismo campo es la fecha
+ * del próximo episodio — que no dice nada del año de la serie. Por eso solo
+ * sale en películas. Si algún día hay una columna propia, este es el sitio.
+ */
+export function releaseYear(c: { content_type: string; next_episode_date?: string | null }): number | null {
+	if (c.content_type !== 'movie' || !c.next_episode_date) return null;
+	const year = Number(String(c.next_episode_date).slice(0, 4));
+	return Number.isFinite(year) && year >= 1900 && year <= 2100 ? year : null;
+}
+
 export function formatDuration(minutes: number): string {
 	if (minutes < 60) return `${minutes}min`;
 	const h = Math.floor(minutes / 60);

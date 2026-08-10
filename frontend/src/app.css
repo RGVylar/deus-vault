@@ -1909,6 +1909,23 @@ h2 {
 }
 .c-card .meta svg { width: 13px; height: 13px; vertical-align: -2px; }
 .c-card .ph svg { width: 40px; height: 40px; opacity: 0.5; }
+
+/* ── Ficha del azar: contexto para decidir sin abrir el detalle ── */
+.pick-year { font-weight: 700; color: var(--text); }
+/* Mismo dorado que la nota del detalle (ContentDetail .d-rating) */
+.pick-rating { color: oklch(0.85 0.15 85); font-weight: 700; white-space: nowrap; }
+.pick-about { margin-top: 12px; }
+.pick-genres { display: flex; flex-wrap: wrap; gap: 5px; }
+.pick-chip {
+  font-size: 10.5px; padding: 3px 8px; border-radius: 999px;
+  background: var(--glass-bg-weak); border: 1px solid var(--glass-border);
+  color: var(--text-muted); white-space: nowrap;
+}
+.pick-synopsis {
+  margin: 9px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted);
+  /* Recortada: es para decidir de un vistazo, no para leerse la peli entera */
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
 .retry { font-size: 13px; margin-top: 14px; }
 .linkbtn {
   all: unset; cursor: pointer; color: var(--primary); font-weight: 700;

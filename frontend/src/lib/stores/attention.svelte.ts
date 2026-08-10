@@ -23,6 +23,7 @@
  */
 
 import type { Content, ContentType } from '$lib/types';
+import { releaseYear } from '$lib/utils';
 
 const LS_KEY = 'deus_vault_attention';
 const LS_TUNING = 'deus_vault_attention_tuning';
@@ -123,17 +124,10 @@ export function resetAttention() {
 
 // ── Rasgos ────────────────────────────────────────────────────────────────
 
-/**
- * La época sólo es fiable en películas: ahí `next_episode_date` guarda la
- * fecha de estreno. En series ese campo es la fecha del próximo episodio, que
- * no dice nada de la época del contenido, así que se ignora. Si algún día el
- * modelo gana un campo de año propio, este es el único sitio que tocar.
- */
+/** La época sale del año de estreno, que hoy sólo se conoce en películas. */
 function decadeOf(c: Content): string | null {
-	if (c.content_type !== 'movie' || !c.next_episode_date) return null;
-	const year = Number(String(c.next_episode_date).slice(0, 4));
-	if (!Number.isFinite(year) || year < 1900 || year > 2100) return null;
-	return String(Math.floor(year / 10) * 10);
+	const year = releaseYear(c);
+	return year == null ? null : String(Math.floor(year / 10) * 10);
 }
 
 /** Rasgos por los que se puede parecer un contenido a otro, como `kind:value`. */

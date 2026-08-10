@@ -1571,6 +1571,9 @@ async def lookup_tmdb_detail(
         "rating": rating,
         "trailer_url": trailer_url,
         "genres": genres_str,
+        # `details` ya trae el overview: no devolverlo era la razón de que las
+        # pelis y series añadidas desde el buscador nunca tuvieran sinopsis.
+        "synopsis": details.get("overview") or None,
         "imdb_id": await _fetch_imdb_id(media_type, tmdb_id, api_key, details),
     }
 
