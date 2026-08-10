@@ -253,9 +253,17 @@
 		{#if deckItems.length > 0}
 			<RolodexRoller items={deckItems} targetId={pick?.id ?? null} spinToken={spinTokenCounter} onRoll={roll} onSettled={handleSettled} />
 		{:else}
+			<!-- Rolodex fantasma: mismos slivers y misma carta que el roller real,
+			     para que antes de la primera tirada ya se vea qué va a pasar. -->
 			<button class="roller-start" onclick={roll} disabled={spinning}>
-				<Icon name="sparkles" size={28} />
-				<span>{spinning ? t('random.searching') : t('random.pressDice')}</span>
+				<span class="rs-sliver rs-far" aria-hidden="true"></span>
+				<span class="rs-sliver rs-near" aria-hidden="true"></span>
+				<span class="rs-card">
+					<Icon name="sparkles" size={26} />
+					<span>{spinning ? t('random.searching') : t('random.pressDice')}</span>
+				</span>
+				<span class="rs-sliver rs-near" aria-hidden="true"></span>
+				<span class="rs-sliver rs-far" aria-hidden="true"></span>
 			</button>
 		{/if}
 		<p class="dice-hint">
