@@ -24,16 +24,17 @@
 	];
 
 	const TYPE_ICON: Record<string, string> = {
-		youtube: 'play', movie: 'film', series: 'tv', music: 'music', book: 'book', game: 'game'
+		youtube: 'play', movie: 'film', series: 'tv', music: 'music', book: 'book', manga: 'manga', game: 'game'
 	};
 	const TYPE_COLOR: Record<string, string> = {
 		youtube: 'var(--youtube)', movie: 'var(--movie)', series: 'var(--series)',
-		book: 'var(--book)', game: 'var(--game)', music: 'var(--music)'
+		book: 'var(--book)', manga: 'var(--manga)', game: 'var(--game)', music: 'var(--music)'
 	};
 	const TYPES: { key: ContentType; icon: string }[] = [
 		{ key: 'youtube', icon: 'play' }, { key: 'movie', icon: 'film' },
 		{ key: 'series', icon: 'tv' },    { key: 'music', icon: 'music' },
-		{ key: 'book', icon: 'book' },    { key: 'game', icon: 'game' },
+		{ key: 'book', icon: 'book' },    { key: 'manga', icon: 'manga' },
+		{ key: 'game', icon: 'game' },
 	];
 
 	let pick: Content | null = $state(null);

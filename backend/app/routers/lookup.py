@@ -1470,6 +1470,118 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
     }
 
 
+# ── Manga (AniList) ──────────────────────────────────────────────────────
+#
+# Ni TMDB ni OpenLibrary sirven aquí: TMDB solo sabe de cine y TV (de Gantz
+# devuelve el anime), y OpenLibrary indexa ediciones sueltas — "Gantz Volume 1",
+# 224 páginas — no la obra completa. AniList sí conoce la colección: capítulos,
+# tomos, estado de publicación y autoría. Es GraphQL, gratis y sin clave.
+
+ANILIST_URL = "https://graphql.anilist.co"
+
+_ANILIST_FIELDS = """
+    id
+    title { romaji english native }
+    format
+    status
+    chapters
+    volumes
+    averageScore
+    genres
+    startDate { year }
+    coverImage { large }
+    description(asHtml: false)
+    staff(perPage: 6) { edges { role node { name { full } } } }
+"""
+
+_ANILIST_SEARCH = "query($s:String){Page(perPage:6){media(search:$s,type:MANGA,sort:SEARCH_MATCH){%s}}}" % _ANILIST_FIELDS
+_ANILIST_BY_ID = "query($id:Int){Media(id:$id,type:MANGA){%s}}" % _ANILIST_FIELDS
+
+# Cuánto se tarda en leer un capítulo. Un tomo son ~200 páginas de viñeta
+# repartidas en unos 9 capítulos: sale a ~20 páginas por capítulo, que a ritmo
+# de manga son unos 8 minutos. Es una estimación, y el usuario puede corregirla
+# en el propio formulario.
+MINUTES_PER_CHAPTER = 8
+
+
+async def _anilist(query: str, variables: dict) -> dict | None:
+    """Una llamada a AniList. Devuelve `data` o None si algo falla."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(ANILIST_URL, json={"query": query, "variables": variables})
+        if resp.status_code != 200:
+            return None
+        return resp.json().get("data")
+    except Exception:
+        return None
+
+
+def _anilist_author(media: dict) -> str:
+    """El mangaka. Los traductores también vienen en staff, así que se filtran."""
+    edges = ((media.get("staff") or {}).get("edges")) or []
+    for edge in edges:
+        role = (edge.get("role") or "").lower()
+        if "translator" in role:
+            continue
+        name = ((edge.get("node") or {}).get("name") or {}).get("full")
+        if name:
+            return name
+    return ""
+
+
+def _anilist_to_content(media: dict) -> dict:
+    """Traduce un `Media` de AniList al dict de campos que espera el frontend."""
+    titles = media.get("title") or {}
+    title = titles.get("english") or titles.get("romaji") or titles.get("native") or ""
+    chapters = media.get("chapters")
+    volumes = media.get("volumes")
+    score = media.get("averageScore")
+    # AniList puntúa sobre 100; el resto de la bóveda guarda notas sobre 10.
+    rating = round(score / 10, 1) if score else None
+    # La sinopsis viene con marcado ligero (<br>, <i>) — se limpia a texto plano.
+    description = media.get("description") or ""
+    synopsis = re.sub(r"<[^>]+>", "", description).strip() or None
+
+    return {
+        "anilist_id": media.get("id"),
+        "title": title,
+        "native_title": titles.get("native") or "",
+        "thumbnail": (media.get("coverImage") or {}).get("large") or "",
+        "author": _anilist_author(media),
+        "episode_count": chapters,
+        "seasons": volumes,
+        "duration_minutes": MINUTES_PER_CHAPTER,
+        "genres": ", ".join(media.get("genres") or []) or None,
+        "synopsis": synopsis,
+        "rating": rating,
+        "status": media.get("status"),
+        "format": media.get("format"),
+        "year": (media.get("startDate") or {}).get("year"),
+        "source_id": f"anilist:{media.get('id')}",
+        "suggested_content_type": "manga",
+    }
+
+
+@router.get("/manga")
+async def search_manga(q: str = Query(..., min_length=2)) -> list[dict]:
+    """Busca una obra en AniList. Devuelve la colección, no un tomo suelto."""
+    data = await _anilist(_ANILIST_SEARCH, {"s": q})
+    if not data:
+        return []
+    media = ((data.get("Page") or {}).get("media")) or []
+    return [_anilist_to_content(m) for m in media]
+
+
+@router.get("/manga-detail")
+async def lookup_manga_detail(anilist_id: int) -> dict:
+    """Ficha completa de una obra ya elegida en el buscador."""
+    data = await _anilist(_ANILIST_BY_ID, {"id": anilist_id})
+    media = (data or {}).get("Media")
+    if not media:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Manga not found on AniList")
+    return _anilist_to_content(media)
+
+
 @router.get("/search")
 async def search_tmdb(
     q: str = Query(..., min_length=2),

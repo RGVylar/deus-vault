@@ -115,7 +115,7 @@
 	// Fecha de inicio: solo tiene sentido en lo que se consume durante dias o
 	// semanas. Sin esto, una vez consumido un item ya no habia forma de ponerla,
 	// que es justo lo que necesita la linea de tiempo del rewind.
-	const STARTABLE: string[] = ['game', 'series', 'book'];
+	const STARTABLE: string[] = ['game', 'series', 'book', 'manga'];
 
 	function startEditStart(c: Content) {
 		editingStartId = c.id;
@@ -140,6 +140,7 @@
 		movie:   'var(--movie)',
 		series:  'var(--series)',
 		book:    'var(--book)',
+		manga:   'var(--manga)',
 		game:    'var(--game)',
 		music:   'var(--music)',
 	};
@@ -428,6 +429,7 @@
 		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬</button>
 		<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺</button>
 		<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖</button>
+		<button class="tab" class:active={filter === 'manga'} onclick={() => filter = 'manga'}>🗾</button>
 		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮</button>
 		<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>🎵</button>
 	</div>

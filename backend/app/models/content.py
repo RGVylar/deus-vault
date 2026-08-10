@@ -25,6 +25,10 @@ class ContentType(str, enum.Enum):
     book = "book"
     game = "game"
     music = "music"
+    # Un manga no es un libro: se lee por capítulos, no por páginas, y la obra
+    # es la colección entera. Por eso su progreso funciona como el de una serie
+    # (episode_count = capítulos, seasons = tomos) y no como el de un libro.
+    manga = "manga"
 
 
 class Content(Base):

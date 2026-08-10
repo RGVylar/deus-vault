@@ -49,6 +49,7 @@ export const TYPE_ICONS: Record<string, string> = {
 	series: '📺',
 	music: '🎵',
 	book: '📖',
+	manga: '🗾',
 	game: '🎮'
 };
 
@@ -58,6 +59,7 @@ export const TYPE_COLOR: Record<string, string> = {
 	movie:   'var(--movie)',
 	series:  'var(--series)',
 	book:    'var(--book)',
+	manga:   'var(--manga)',
 	game:    'var(--game)',
 	music:   'var(--music)',
 };
@@ -127,6 +129,7 @@ const TYPE_LABEL_KEYS: Record<string, TKey> = {
 	series: 'types.series',
 	music: 'types.music',
 	book: 'types.book',
+	manga: 'types.manga',
 	game: 'types.game'
 };
 

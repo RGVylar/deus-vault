@@ -28,11 +28,11 @@
 
 	// Icono de línea por tipo de contenido (sustituye TYPE_ICONS emoji)
 	const TYPE_ICON: Record<string, string> = {
-		youtube: 'play', movie: 'film', series: 'tv', music: 'music', book: 'book', game: 'game',
+		youtube: 'play', movie: 'film', series: 'tv', music: 'music', book: 'book', manga: 'manga', game: 'game',
 	};
 	const TYPE_COLORS: Record<string, string> = {
 		youtube: 'var(--youtube)', movie: 'var(--movie)', series: 'var(--series)',
-		book: 'var(--book)', game: 'var(--game)', music: 'var(--music)',
+		book: 'var(--book)', manga: 'var(--manga)', game: 'var(--game)', music: 'var(--music)',
 	};
 	const PLATFORM_COLORS: Record<string, string> = {
 		'Netflix': '#e50914', 'Prime Video': '#00a8e1', 'Disney+': '#113ccf',

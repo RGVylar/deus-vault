@@ -569,6 +569,13 @@ export const es = {
 	'home.progressInputGame': '% completado (0–100)',
 	'home.progressInputSeries': 'Episodio',
 	'home.progressInputSeriesRange': 'Episodio (1–{total})',
+	'home.progressManga': 'Cap. {ep}',
+	'home.progressMangaTotal': 'Cap. {ep} / {total}',
+	'home.progressInputManga': 'Capítulo',
+	'home.progressInputMangaRange': 'Capítulo (1–{total})',
+	'home.durationPerChapterLabel': 'Duración por capítulo (minutos)',
+	'home.chapterCountLabel': 'Capítulos',
+	'home.volumesLabel': 'Tomos',
 	'home.progressInputGeneric': 'Minuto actual',
 	'home.progressInputGenericRange': 'Minuto actual (0–{total})',
 	'home.pendingDebt': 'DEUDA PENDIENTE',
@@ -679,6 +686,7 @@ export const es = {
 	'types.series': 'Series',
 	'types.music': 'Música',
 	'types.book': 'Libro',
+	'types.manga': 'Manga',
 	'types.game': 'Juego',
 
 	// ── rewind.share (canvas share image) ──

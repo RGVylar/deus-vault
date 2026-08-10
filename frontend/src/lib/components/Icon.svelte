@@ -21,6 +21,8 @@
 		music:      { d: '<circle cx="6" cy="18" r="2.6"/><circle cx="18" cy="16" r="2.6"/><path d="M8.6 18V6l11-2v12"/>' },
 		book:       { d: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H19"/>' },
 		game:       { d: '<rect x="2.5" y="7.5" width="19" height="10" rx="3.5"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="15.8" cy="12" r=".9" fill="currentColor" stroke="none"/><circle cx="18.2" cy="14" r=".9" fill="currentColor" stroke="none"/>' },
+		// Tomos en la estantería: una colección, no un libro suelto
+		manga:      { d: '<rect x="3" y="4.5" width="5" height="15" rx="1.2"/><rect x="9.5" y="4.5" width="5" height="15" rx="1.2"/><path d="M16.4 6.3l4 1.1-3.1 12.1-4-1.1z"/>' },
 		flame:      { f: true, d: '<path d="M12 2.5c.8 3 3.5 3.8 4.6 6.2.8 1.7.6 3.6-.5 5.1.4-1.6-.3-2.7-1.3-3.4.3 2.4-.8 3.6-2 4.6-.9.7-1.6 1.8-1.6 3a4.2 4.2 0 1 1-5.7-3.9c-.2 1 .1 1.9.8 2.5-.5-2.3.6-3.8 1.9-5C14 13.4 13 10 12 2.5z"/>' },
 		trophy:     { d: '<path d="M6.5 4h11v4a5.5 5.5 0 0 1-11 0z"/><path d="M6.5 5H4v1.5a3 3 0 0 0 3 3M17.5 5H20v1.5a3 3 0 0 1-3 3M9 20h6M12 13.5V20"/>' },
 		calendar:   { d: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 3v4M16 3v4"/>' },

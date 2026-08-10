@@ -31,6 +31,11 @@
   --book:    oklch(0.68 0.18 262);
   --game:    oklch(0.84 0.17 150);
   --series:  oklch(0.86 0.12 210);
+  /* Con seis tipos ya no quedaban tonos libres: este es el hueco más ancho que
+     deja la paleta (0.223 al vecino más cercano, mejor que cualquier pareja que
+     ya convivía). Se separa del cian de series por luminosidad, no solo por
+     tono, que es lo que lo salva en marcas pequeñas. */
+  --manga:   oklch(0.68 0.24 190);
   --music:   oklch(0.76 0.19 330);
   --primary: oklch(0.78 0.15 300);
   --danger:  oklch(0.72 0.22 20);

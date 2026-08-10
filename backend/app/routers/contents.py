@@ -47,8 +47,8 @@ def _is_leap_year(year: int) -> bool:
 
 
 def _effective_duration(c: Content) -> int:
-    """Total duration in minutes (series = per-ep * episodes)."""
-    if c.content_type == ContentType.series and c.episode_count and c.episode_count > 0:
+    """Total duration in minutes (series = per-ep * episodes, manga = per-chapter * chapters)."""
+    if c.content_type in (ContentType.series, ContentType.manga) and c.episode_count and c.episode_count > 0:
         return c.duration_minutes * c.episode_count
     return c.duration_minutes
 
@@ -57,7 +57,9 @@ def _remaining_minutes(c: Content) -> int:
     """Minutes left accounting for progress. Used for the pending debt."""
     progress = c.progress or 0
 
-    if c.content_type == ContentType.series:
+    # Manga cuenta igual que una serie: episode_count son capítulos y
+    # duration_minutes lo que se tarda en leer uno.
+    if c.content_type in (ContentType.series, ContentType.manga):
         total_eps = c.episode_count or 0
         if total_eps > 0:
             eps_done = min(progress, total_eps)

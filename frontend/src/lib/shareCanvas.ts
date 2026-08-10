@@ -13,6 +13,7 @@ export const TYPE_PALETTE: Record<string, string> = {
 	// Índigo: el #7da8e8 de antes se diferenciaba de series en un solo canal
 	// (7f/7d), así que en la imagen compartida eran indistinguibles.
 	book:    '#6f7de0',
+	manga:   '#22a89f',
 	game:    '#6fd49a',
 	music:   '#d97fc8',
 };

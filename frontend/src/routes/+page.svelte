@@ -16,9 +16,9 @@
 	// Contenido de "campaña": lo tienes entre manos días o semanas, así que marcar
 	// cuándo empezaste dice algo. Películas, vídeos y canciones se consumen de una
 	// sentada — ahí la fecha de inicio sería la de fin.
-	const STARTABLE: ContentType[] = ['game', 'series', 'book'];
+	const STARTABLE: ContentType[] = ['game', 'series', 'book', 'manga'];
 
-	const TYPE_ORDER: ContentType[] = ['movie', 'series', 'youtube', 'book', 'game', 'music'];
+	const TYPE_ORDER: ContentType[] = ['movie', 'series', 'youtube', 'book', 'manga', 'game', 'music'];
 
 	/** For TMDB source_ids, return the TMDB "where to watch" page — direct links to each platform. */
 	function tmdbWatchUrl(c: Content): string | null {
@@ -134,16 +134,27 @@
 	let addWatchProviders = $state<Array<{provider_name: string; logo_path: string}>>([]);
 	let addTrailerUrl = $state<string | null>(null);
 	let addGenres = $state<string | null>(null);
+	let addSynopsis = $state<string | null>(null);
 
 	// Title search (TMDB dropdown when no URL)
+	// El buscador del título tiene dos fuentes: TMDB para cine y TV, AniList
+	// para manga (ni TMDB ni OpenLibrary saben qué es una colección de manga).
+	// `kind` decide de dónde vino cada fila y a qué detalle se pide la ficha.
 	type TmdbSearchResult = {
-		tmdb_id: number;
-		media_type: string;
+		kind: 'tmdb' | 'manga';
 		title: string;
 		year: string;
 		thumbnail: string;
 		source_id: string;
-		watch_providers: Array<{provider_name: string; logo_path: string}>;
+		// TMDB
+		tmdb_id?: number;
+		media_type?: string;
+		watch_providers?: Array<{provider_name: string; logo_path: string}>;
+		// AniList
+		anilist_id?: number;
+		author?: string;
+		episode_count?: number | null;
+		seasons?: number | null;
 	};
 	let titleSearchResults = $state<TmdbSearchResult[]>([]);
 	let titleSearchLoading = $state(false);
@@ -413,12 +424,27 @@ $effect(() => {
 			titleSearchLoading = true;
 			try {
 				const params = new URLSearchParams({ q: title });
-				try {
-					const tmdbKey = localStorage.getItem('deus_vault_tmdb_api_key');
-					if (tmdbKey) params.set('tmdb_api_key', tmdbKey);
-				} catch (e) {}
-				const results = await api.get<TmdbSearchResult[]>(`/lookup/search?${params.toString()}`);
-				titleSearchResults = results ?? [];
+				if (addType === 'manga') {
+					const found = await api.get<any[]>(`/lookup/manga?${params.toString()}`);
+					titleSearchResults = (found ?? []).map(m => ({
+						kind: 'manga' as const,
+						title: m.title,
+						year: m.year ? String(m.year) : '',
+						thumbnail: m.thumbnail,
+						source_id: m.source_id,
+						anilist_id: m.anilist_id,
+						author: m.author,
+						episode_count: m.episode_count,
+						seasons: m.seasons,
+					}));
+				} else {
+					try {
+						const tmdbKey = localStorage.getItem('deus_vault_tmdb_api_key');
+						if (tmdbKey) params.set('tmdb_api_key', tmdbKey);
+					} catch (e) {}
+					const results = await api.get<any[]>(`/lookup/search?${params.toString()}`);
+					titleSearchResults = (results ?? []).map(r => ({ ...r, kind: 'tmdb' as const }));
+				}
 				showTitleDropdown = titleSearchResults.length > 0;
 			} catch { titleSearchResults = []; showTitleDropdown = false; }
 			finally { titleSearchLoading = false; }
@@ -426,7 +452,41 @@ $effect(() => {
 		return () => { if (titleSearchTimer) clearTimeout(titleSearchTimer); };
 	});
 
+	/** Rellena el formulario con una obra de AniList: capítulos, tomos y autoría. */
+	async function selectMangaResult(result: TmdbSearchResult) {
+		showTitleDropdown = false;
+		titleSearchResults = [];
+		titleSearchLocked = true;
+		addTitle = result.title;
+		addThumbnail = result.thumbnail;
+		addSourceId = result.source_id;
+		addType = 'manga';
+
+		try {
+			const detail = await api.get<any>(`/lookup/manga-detail?anilist_id=${result.anilist_id}`);
+			if (detail.episode_count) addEpisodeCount = detail.episode_count;
+			if (detail.seasons) addSeasons = detail.seasons;
+			if (detail.duration_minutes) addDuration = detail.duration_minutes;
+			if (detail.author) addAuthor = detail.author;
+			if (detail.genres) addGenres = detail.genres;
+			if (detail.synopsis) addSynopsis = detail.synopsis;
+			if (detail.rating != null) addRating = detail.rating;
+			if (detail.thumbnail && !addThumbnail) addThumbnail = detail.thumbnail;
+		} catch { /* nos quedamos con lo que trajo el buscador */ }
+
+		duplicateItem = null;
+		duplicateChecked = false;
+		if (result.source_id) {
+			try {
+				const params = new URLSearchParams({ source_id: result.source_id });
+				duplicateItem = await api.get<Content | null>(`/contents/check-duplicate?${params.toString()}`);
+			} catch { /* ignore */ }
+			duplicateChecked = true;
+		}
+	}
+
 	async function selectTmdbResult(result: TmdbSearchResult) {
+		if (result.kind === 'manga') return selectMangaResult(result);
 		showTitleDropdown = false;
 		titleSearchResults = [];
 		titleSearchLocked = true; // prevent the effect from re-searching
@@ -492,8 +552,8 @@ $effect(() => {
 				thumbnail: addThumbnail || null, duration_minutes: addDuration,
 				page_count: addPageCount && Number(addPageCount) > 0 ? Number(addPageCount) : null,
 				words_per_page: addWordsPerPage && Number(addWordsPerPage) > 0 ? Number(addWordsPerPage) : null,
-				episode_count: addType === 'series' && addEpisodeCount > 0 ? addEpisodeCount : null,
-				seasons: addType === 'series' && addSeasons > 0 ? addSeasons : null,
+				episode_count: (addType === 'series' || addType === 'manga') && addEpisodeCount > 0 ? addEpisodeCount : null,
+				seasons: (addType === 'series' || addType === 'manga') && addSeasons > 0 ? addSeasons : null,
 				source_id: addSourceId || null, author: addAuthor || null, notes: addNotes || null,
 				collection: addCollection.trim() || null, pinned: addPinned,
 				channel_thumbnail: addChannelThumbnail || null,
@@ -502,6 +562,7 @@ $effect(() => {
 				provider: addProvider || null,
 				trailer_url: addTrailerUrl || null,
 				genres: addGenres || null,
+				synopsis: addSynopsis || null,
 				streaming_providers: addWatchProviders.length
 					? JSON.stringify(addWatchProviders.map((p: any) =>
 						(p.type === 'rent' || p.type === 'buy') ? '$' + p.provider_name : p.provider_name
@@ -551,7 +612,7 @@ $effect(() => {
 		duplicateItem = null; duplicateChecked = false;
 		addNextEpisodeDate = null; addWatchProviders = [];
 		addRating = null; addProvider = null;
-		addTrailerUrl = null; addGenres = null;
+		addTrailerUrl = null; addGenres = null; addSynopsis = null;
 		titleSearchResults = []; showTitleDropdown = false;
 	}
 
@@ -709,7 +770,7 @@ $effect(() => {
 	// --- Progress helpers ---
 	function remainingMinutes(c: Content): number {
 		const progress = c.progress ?? 0;
-		if (c.content_type === 'series') {
+		if (c.content_type === 'series' || c.content_type === 'manga') {
 			const totalEps = c.episode_count ?? 0;
 			if (totalEps > 0) return Math.max(0, (totalEps - Math.min(progress, totalEps)) * c.duration_minutes);
 			return c.duration_minutes;
@@ -729,7 +790,7 @@ $effect(() => {
 		if (c.content_type === 'book' && c.page_count && c.page_count > 0)
 			return Math.min(100, (p / c.page_count) * 100);
 		if (c.content_type === 'game') return Math.min(100, p);
-		if (c.content_type === 'series' && c.episode_count && c.episode_count > 0)
+		if ((c.content_type === 'series' || c.content_type === 'manga') && c.episode_count && c.episode_count > 0)
 			return Math.min(100, (p / c.episode_count) * 100);
 		if (c.duration_minutes > 0) return Math.min(100, (p / c.duration_minutes) * 100);
 		return 0;
@@ -741,6 +802,7 @@ $effect(() => {
 		if (c.content_type === 'book') return c.page_count ? t('home.progressBookTotal', { page: p, total: c.page_count }) : t('home.progressBook', { page: p });
 		if (c.content_type === 'game') return t('home.progressGame', { pct: p });
 		if (c.content_type === 'series') return c.episode_count ? t('home.progressSeriesTotal', { ep: p, total: c.episode_count }) : t('home.progressSeries', { ep: p });
+		if (c.content_type === 'manga') return c.episode_count ? t('home.progressMangaTotal', { ep: p, total: c.episode_count }) : t('home.progressManga', { ep: p });
 		return t('home.progressGeneric', { min: p });
 	}
 
@@ -748,6 +810,7 @@ $effect(() => {
 		if (c.content_type === 'book') return c.page_count ? t('home.progressInputBookRange', { total: c.page_count }) : t('home.progressInputBook');
 		if (c.content_type === 'game') return t('home.progressInputGame');
 		if (c.content_type === 'series') return c.episode_count ? t('home.progressInputSeriesRange', { total: c.episode_count }) : t('home.progressInputSeries');
+		if (c.content_type === 'manga') return c.episode_count ? t('home.progressInputMangaRange', { total: c.episode_count }) : t('home.progressInputManga');
 		return c.duration_minutes ? t('home.progressInputGenericRange', { total: c.duration_minutes }) : t('home.progressInputGeneric');
 	}
 
@@ -873,6 +936,7 @@ $effect(() => {
 			<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺 {t('types.series')}</button>
 			<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>🎵 {t('types.music')}</button>
 			<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖 {t('types.book')}</button>
+			<button class="tab" class:active={filter === 'manga'} onclick={() => filter = 'manga'}>🗾 {t('types.manga')}</button>
 			<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮 {t('types.game')}</button>
 		</div>
 		{/if}
@@ -1390,6 +1454,7 @@ $effect(() => {
 						<option value="series">📺 {t('home.typeSingular.series')}</option>
 						<option value="music">🎵 {t('types.music')}</option>
 						<option value="book">📖 {t('types.book')}</option>
+						<option value="manga">🗾 {t('types.manga')}</option>
 						<option value="game">🎮 {t('types.game')}</option>
 					</select>
 				</div>
@@ -1420,14 +1485,18 @@ $effect(() => {
 									{#if result.thumbnail}
 										<img src={result.thumbnail} alt="" class="tmdb-thumb" />
 									{:else}
-										<div class="tmdb-thumb tmdb-thumb-ph">{result.media_type === 'tv' ? '📺' : '🎬'}</div>
+										<div class="tmdb-thumb tmdb-thumb-ph">{result.kind === 'manga' ? '🗾' : result.media_type === 'tv' ? '📺' : '🎬'}</div>
 									{/if}
 									<div class="tmdb-info">
 										<span class="tmdb-title">{result.title}</span>
-										<span class="tmdb-meta">{result.media_type === 'tv' ? t('home.typeSingular.series') : t('home.typeSingular.movie')}{result.year ? ' · ' + result.year : ''}</span>
-										{#if result.watch_providers.length > 0}
+										{#if result.kind === 'manga'}
+											<span class="tmdb-meta">{[result.author, result.episode_count ? t('home.progressInputManga') + ' ' + result.episode_count : '', result.year].filter(Boolean).join(' · ')}</span>
+										{:else}
+											<span class="tmdb-meta">{result.media_type === 'tv' ? t('home.typeSingular.series') : t('home.typeSingular.movie')}{result.year ? ' · ' + result.year : ''}</span>
+										{/if}
+										{#if (result.watch_providers?.length ?? 0) > 0}
 											<div class="tmdb-providers">
-												{#each result.watch_providers.slice(0, 4) as p}
+												{#each (result.watch_providers ?? []).slice(0, 4) as p}
 													{#if p.logo_path}
 														<img src={p.logo_path} alt={p.provider_name} title={p.provider_name} class="tmdb-provider-logo" />
 													{/if}
@@ -1445,9 +1514,26 @@ $effect(() => {
 					<input id="add-author" class="text" bind:value={addAuthor} />
 				</div>
 				<div class="field">
-					<label for="add-duration">{addType === 'series' ? t('home.durationPerEpisodeLabel') : t('home.durationLabel')}</label>
+					<label for="add-duration">{addType === 'series' ? t('home.durationPerEpisodeLabel') : addType === 'manga' ? t('home.durationPerChapterLabel') : t('home.durationLabel')}</label>
 					<input id="add-duration" class="text" type="number" bind:value={addDuration} min="0" />
 				</div>
+				{#if addType === 'manga'}
+					<div class="row">
+						<div class="field" style="flex:1;">
+							<label for="add-volumes">{t('home.volumesLabel')}</label>
+							<input id="add-volumes" class="text" type="number" bind:value={addSeasons} min="0" />
+						</div>
+						<div class="field" style="flex:1;">
+							<label for="add-chapters">{t('home.chapterCountLabel')}</label>
+							<input id="add-chapters" class="text" type="number" bind:value={addEpisodeCount} min="0" />
+						</div>
+					</div>
+					{#if addDuration > 0 && addEpisodeCount > 0}
+						<p class="muted" style="font-size:13px; margin-top:-4px;">
+							{t('home.estimatedTotalDuration', { duration: formatDuration(addDuration * addEpisodeCount) })}
+						</p>
+					{/if}
+				{/if}
 				{#if addType === 'series'}
 					<div class="row">
 						<div class="field" style="flex:1;">

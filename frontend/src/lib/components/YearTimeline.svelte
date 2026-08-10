@@ -18,11 +18,11 @@
 	interface Props { items: Content[]; year: number; months: string[]; }
 	let { items, year, months }: Props = $props();
 
-	const CAMPAIGN: string[] = ['game', 'series', 'book'];
+	const CAMPAIGN: string[] = ['game', 'series', 'manga', 'book'];
 	const NOISE: string[] = ['youtube', 'music'];
 	const COLORS: Record<string, string> = {
 		youtube: 'var(--youtube)', movie: 'var(--movie)', series: 'var(--series)',
-		book: 'var(--book)', game: 'var(--game)', music: 'var(--music)',
+		book: 'var(--book)', manga: 'var(--manga)', game: 'var(--game)', music: 'var(--music)',
 	};
 	const LS_KEY = 'rw-timeline-view';
 

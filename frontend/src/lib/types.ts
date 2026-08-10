@@ -10,7 +10,7 @@ export interface TokenResponse {
 	user: User;
 }
 
-export type ContentType = 'youtube' | 'movie' | 'series' | 'book' | 'game' | 'music';
+export type ContentType = 'youtube' | 'movie' | 'series' | 'book' | 'game' | 'music' | 'manga';
 
 export interface Content {
 	id: number;
@@ -47,9 +47,9 @@ export interface Content {
 	imdb_id?: string | null;
 }
 
-/** Effective duration for stats/display: series multiply by episode count */
+/** Effective duration for stats/display: series and manga multiply by episode/chapter count */
 export function effectiveDuration(c: Content): number {
-	if (c.content_type === 'series' && c.episode_count && c.episode_count > 0) {
+	if ((c.content_type === 'series' || c.content_type === 'manga') && c.episode_count && c.episode_count > 0) {
 		return c.duration_minutes * c.episode_count;
 	}
 	return c.duration_minutes;
