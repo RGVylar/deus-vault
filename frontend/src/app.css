@@ -25,7 +25,10 @@
   /* Content type accents */
   --youtube: oklch(0.72 0.19 18);
   --movie:   oklch(0.82 0.16 75);
-  --book:    oklch(0.77 0.14 240);
+  /* Índigo, no azul claro: con el 240 de antes quedaba a 0.114 de --series en
+     OKLab — la pareja más cercana de la paleta — y en el Rewind los puntos de
+     libro y las barras de serie eran el mismo color. Ahora está a 0.229. */
+  --book:    oklch(0.68 0.18 262);
   --game:    oklch(0.84 0.17 150);
   --series:  oklch(0.86 0.12 210);
   --music:   oklch(0.76 0.19 330);
