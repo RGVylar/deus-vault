@@ -1961,19 +1961,37 @@ h2 {
 @media (min-width: 1400px) {
   .azar-stage {
     display: grid;
-    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+    /* Carriles con tope, no 1fr: con 1fr la ficha se centraba en un carril
+       enorme y dejaba un hueco muerto entre ella y la ruleta. Topados y con
+       el par centrado, el aire sobrante se reparte a los lados. */
+    grid-template-columns: minmax(280px, 420px) minmax(320px, 580px);
     grid-template-rows: auto auto;
-    gap: 10px 28px;
-    align-content: center; align-items: center; justify-items: center;
+    gap: 10px 30px;
+    align-content: center; align-items: center;
+    justify-content: center; justify-items: center;
     /* En dos columnas el escenario ya no necesita ser una torre: bajarlo es lo
        que sube el panel de atención hasta quedar a la vista sin scroll. */
     min-height: 440px;
   }
-  .azar-stage.has-result { align-content: center; }
+  /* `.has-result` empuja el contenido arriba en el layout apilado; aquí no,
+     o los dos carriles se van pegados al borde izquierdo. */
+  .azar-stage.has-result { align-content: center; justify-content: center; }
   .roller-stage, .roller-start { grid-column: 1; grid-row: 1; }
   .dice-hint { grid-column: 1; grid-row: 2; }
   /* La ficha ocupa las dos filas de la derecha y se centra contra la ruleta */
-  .result-slot { grid-column: 2; grid-row: 1 / span 2; max-width: 560px; }
+  .result-slot { grid-column: 2; grid-row: 1 / span 2; }
+
+  /* El panel es tan ancho como el escenario: en una sola columna la afinidad
+     se iba bajo el fold y las barras quedaban estiradas. En dos, todo cabe. */
+  .attention-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    column-gap: 34px;
+    align-items: start;
+  }
+  .att-head, .att-hint { grid-column: 1 / -1; }
+  .att-items { grid-column: 1; }
+  .att-affinity { grid-column: 2; }
 }
 
 /* ── Móvil: filtros planos, orden título → dado → filtros ── */

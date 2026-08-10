@@ -330,6 +330,7 @@
 			</div>
 			<p class="att-hint">{t('random.attention.hint')}</p>
 
+			<div class="att-items">
 			<p class="att-sub">{t('random.attention.topItems')}</p>
 			<ul class="att-list">
 				{#each attentionTop as e (e.id)}
@@ -349,7 +350,10 @@
 					</li>
 				{/each}
 			</ul>
+			</div>
 
+			<!-- Segunda columna en desktop ancho; en móvil sigue cayendo debajo -->
+			<div class="att-affinity">
 			{#if attentionTraits.length > 0}
 				<p class="att-sub">{t('random.attention.affinity')}</p>
 				<div class="att-traits">
@@ -378,6 +382,7 @@
 				{attention.tuning && !hasSignal() ? t('random.attention.needMore') : t('random.attention.tuneHint')}
 				<br />{t('random.attention.local')}
 			</p>
+			</div>
 		</div>
 	{/if}
 </div>
