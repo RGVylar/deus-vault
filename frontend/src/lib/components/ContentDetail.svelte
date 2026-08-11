@@ -174,17 +174,22 @@
 			</div>
 		{/if}
 
+		<!-- En su propia línea: metido en la fila de botones empujaba los iconos
+		     a un segundo renglón, porque la ficha no da para tanto ancho. -->
+		{#if steppable}
+			<div class="d-step-row">
+				<span class="d-step">
+					<button class="d-step-btn" onclick={() => onProgress(content, -1)} disabled={step <= 0} title={t('home.detail.stepDown')} aria-label={t('home.detail.stepDown')}>−</button>
+					<span class="d-step-val">{stepLabel}</span>
+					<button class="d-step-btn" onclick={() => onProgress(content, 1)} disabled={stepMax !== null && step >= stepMax} title={t('home.detail.stepUp')} aria-label={t('home.detail.stepUp')}>+</button>
+				</span>
+			</div>
+		{/if}
+
 		<div class="d-actions">
 			<button class="btn btn-primary" onclick={() => onConsume(content.id)}>✓ {t('home.markConsumed')}</button>
 			{#if consumeUrl}
 				<a href={consumeUrl} target="_blank" rel="noopener"><button class="btn">{t('consumed.open')}</button></a>
-			{/if}
-			{#if steppable}
-				<span class="d-step">
-					<button class="btn d-step-btn" onclick={() => onProgress(content, -1)} disabled={step <= 0} title={t('home.detail.stepDown')} aria-label={t('home.detail.stepDown')}>−</button>
-					<span class="d-step-val">{stepLabel}</span>
-					<button class="btn d-step-btn" onclick={() => onProgress(content, 1)} disabled={stepMax !== null && step >= stepMax} title={t('home.detail.stepUp')} aria-label={t('home.detail.stepUp')}>+</button>
-				</span>
 			{/if}
 			<span class="d-cold-actions">
 				<button class="btn" class:pin-active={content.pinned} onclick={() => onTogglePin(content)} title={content.pinned ? t('home.removePriority') : t('home.markPriority')} style="opacity:{content.pinned ? 1 : 0.5};">{content.pinned ? '📌' : '📍'}</button>
@@ -315,20 +320,30 @@
 	.btn-primary { background: color-mix(in oklab, var(--card-accent) 30%, var(--glass-bg)); border-color: color-mix(in oklab, var(--card-accent) 50%, transparent); font-weight: 700; }
 	.d-cold-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
 
-	/* Capítulo / episodio por el que vamos */
+	/* Capítulo / episodio por el que vamos. Una píldora con la misma altura,
+	   borde y fondo que un .btn, para que se lea como uno más de la familia. */
+	.d-step-row { display: flex; margin: 20px 20px 0; }
+	.d-step-row + .d-actions { margin-top: 10px; }
 	.d-step {
-		display: inline-flex; align-items: center; gap: 4px;
-		padding: 2px; border-radius: var(--radius-xs);
-		background: var(--glass-bg-weak); border: 1px solid var(--glass-border);
+		display: inline-flex; align-items: center; gap: 2px;
+		height: 30px; padding: 0 3px;
+		border: 1px solid var(--glass-border); border-radius: 999px;
+		background: var(--glass-bg);
+		-webkit-backdrop-filter: blur(16px) saturate(1.6);
+		backdrop-filter: blur(16px) saturate(1.6);
 	}
 	.d-step-btn {
-		min-width: 28px; padding: 4px 8px; font-size: 15px; font-weight: 800; line-height: 1;
-		border-color: transparent; background: transparent;
+		all: unset;
+		width: 24px; height: 24px; border-radius: 50%;
+		display: grid; place-items: center;
+		font-size: 15px; font-weight: 700; line-height: 1;
+		color: var(--text-muted); cursor: pointer;
+		transition: background 0.15s, color 0.15s;
 	}
-	.d-step-btn:hover:not(:disabled) { border-color: var(--glass-border-bright); }
-	.d-step-btn:disabled { opacity: 0.35; cursor: default; }
+	.d-step-btn:hover:not(:disabled) { background: var(--glass-bg-strong); color: var(--text); }
+	.d-step-btn:disabled { opacity: 0.3; cursor: default; }
 	.d-step-val {
 		font-size: 12px; font-weight: 700; color: var(--card-accent, var(--primary));
-		min-width: 62px; text-align: center; white-space: nowrap;
+		min-width: 72px; text-align: center; white-space: nowrap;
 	}
 </style>
