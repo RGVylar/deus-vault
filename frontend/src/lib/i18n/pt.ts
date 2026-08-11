@@ -758,10 +758,11 @@ export const pt = {
 	'privacy.hidingCount_one': 'Ocultando {count} canal',
 	'privacy.hidingCount_other': 'Ocultando {count} canais',
 	'privacy.hiddenChannels': 'Canais ocultos',
-	'privacy.hiddenChannelsHint': 'Marque canais no Rewind. O interruptor faz com que sumam da página e da imagem compartilhada; ao desligar, voltam.',
+	'privacy.hiddenChannelsHint': 'Marque canais no Rewind ou em Consumido. O interruptor faz com que sumam da página e da imagem compartilhada; ao desligar, voltam.',
 	'privacy.hiddenChannelsEmpty': 'Você não marcou nenhum canal.',
 	'privacy.hiddenDeviceOnly': 'Esta lista só existe neste dispositivo.',
 	'privacy.remove': 'Remover',
+	'privacy.allHiddenHere': 'Tudo o que está carregado aqui é de canais ocultos.',
 
 	// ── errors ──
 	'errors.generic': 'Erro',

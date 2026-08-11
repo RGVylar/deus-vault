@@ -5,6 +5,8 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, TYPE_ICONS, typeLabel, buildConsumeUrl } from '$lib/utils';
 	import { t, tc, fmtDate } from '$lib/i18n/index.svelte';
+	import Icon from '$lib/components/Icon.svelte';
+	import { privacy, setActive, toggleChannel, isMarked, filterYoutubeItems } from '$lib/stores/privacy.svelte';
 	import type { Content, ContentType, VaultStats, TypeStats, AbandonedTopItem, PaginatedContents } from '$lib/types';
 
 	const LIMIT = 20;
@@ -135,6 +137,19 @@
 		await api.patch(`/contents/${c.id}`, { started_at: null });
 	}
 
+	// ── Canales ocultos ───────────────────────────────────────────
+	// Mismo trato que en el Rewind: con el interruptor encendido los vídeos de
+	// los canales marcados desaparecen de la lista. Las estadísticas de arriba
+	// (minutos totales, recuentos, tasas) no se tocan a propósito.
+	const visible = $derived(filterYoutubeItems(contents));
+	const markedCount = $derived(privacy.channels.length);
+
+	// Los del limbo salen de lo ya cargado, así que también se filtran.
+	const limbo = $derived(visible.filter(c => {
+		if (!c.abandoned_at) return false;
+		return (Date.now() - new Date(c.abandoned_at).getTime()) > 180 * 24 * 60 * 60 * 1000;
+	}));
+
 	const TYPE_COLOR: Record<string, string> = {
 		youtube: 'var(--youtube)',
 		movie:   'var(--movie)',
@@ -153,7 +168,23 @@
 	<!-- Desktop topbar -->
 	<div class="desk-topbar desk-only">
 		<h1 class="desk-title">{tab === 'consumed' ? t('consumed.consumedTab') : t('consumed.abandonedTab')}</h1>
+		{#if markedCount > 0}
+			<div class="desk-spacer"></div>
+			<button class="btn hide-toggle" class:on={privacy.active} onclick={() => setActive(!privacy.active)}>
+				<Icon name={privacy.active ? 'eyeOff' : 'eye'} size={15} />
+				{privacy.active ? tc('privacy.hidingCount', markedCount) : t('privacy.showAll')}
+			</button>
+		{/if}
 	</div>
+
+	{#if markedCount > 0}
+		<div class="row mobile-only" style="justify-content:center; margin:0 0 12px;">
+			<button class="btn hide-toggle" class:on={privacy.active} onclick={() => setActive(!privacy.active)}>
+				<Icon name={privacy.active ? 'eyeOff' : 'eye'} size={15} />
+				{privacy.active ? tc('privacy.hidingCount', markedCount) : t('privacy.showAll')}
+			</button>
+		</div>
+	{/if}
 
 	{#if loadError}
 		<div class="load-error">
@@ -368,11 +399,7 @@
 							<span class="ab-limbo-badge">{stats.abandoned_stale_count}</span>
 						</div>
 						<div class="ab-limbo-sub">{t('consumed.limboSub')}</div>
-						{#each contents.filter(c => {
-							if (!c.abandoned_at) return false;
-							const d = new Date(c.abandoned_at);
-							return (Date.now() - d.getTime()) > 180 * 24 * 60 * 60 * 1000;
-						}).slice(0, 3) as c}
+						{#each limbo.slice(0, 3) as c}
 							<div class="ab-limbo-row">
 								<span class="ab-limbo-title">{TYPE_ICONS[c.content_type] ?? '📄'} {c.title}</span>
 								<span class="ab-limbo-age" style="color:{
@@ -436,14 +463,20 @@
 
 	{#if loading}
 		<p class="muted center">{t('consumed.loading')}</p>
-	{:else if contents.length === 0}
+	{:else if visible.length === 0}
 		<div class="empty">
-			<span class="icon">{tab === 'consumed' ? '✅' : '🚫'}</span>
-			<p>{tab === 'consumed' ? t('consumed.emptyConsumed') : t('consumed.emptyAbandoned')}</p>
+			<span class="icon">{contents.length > 0 ? '🙈' : tab === 'consumed' ? '✅' : '🚫'}</span>
+			<p>
+				{#if contents.length > 0}
+					{t('privacy.allHiddenHere')}
+				{:else}
+					{tab === 'consumed' ? t('consumed.emptyConsumed') : t('consumed.emptyAbandoned')}
+				{/if}
+			</p>
 		</div>
 	{:else}
 		<div class="content-grid">
-			{#each contents as c (c.id)}
+			{#each visible as c (c.id)}
 				{@const link = buildConsumeUrl(c)}
 				{@const landscape = c.content_type === 'youtube' || c.content_type === 'game'}
 				<div
@@ -575,23 +608,52 @@
 								<button class="btn btn-consume" onclick={() => consume(c.id)} title={t('consumed.markComplete')}>{t('consumed.complete')}</button>
 								<button class="btn" onclick={() => restore(c.id)} title={t('consumed.resume')}>{t('consumed.resumeBtn')}</button>
 							{/if}
+							<!-- El Rewind solo deja marcar los canales del top; aquí llega
+							     cualquiera que hayas visto. -->
+							{#if c.content_type === 'youtube' && c.author}
+								{@const marked = isMarked(c.author)}
+								<button
+									class="btn btn-hide"
+									class:on={marked}
+									title={`${marked ? t('privacy.unmarkChannel') : t('privacy.markChannel')} · ${c.author}`}
+									aria-label={`${marked ? t('privacy.unmarkChannel') : t('privacy.markChannel')} · ${c.author}`}
+									onclick={() => toggleChannel(c.author!)}
+								>
+									<Icon name={marked ? 'eyeOff' : 'eye'} size={14} />
+								</button>
+							{/if}
 						</div>
 					</div>
 				</div>
 			{/each}
 		</div>
+	{/if}
 
-		{#if contents.length < total}
-			<div class="center mt16">
-				<button class="btn btn-lg" onclick={loadMore} disabled={loadingMore}>
-					{loadingMore ? t('consumed.loading') : t('consumed.loadMore', { remaining: total - contents.length })}
-				</button>
-			</div>
-		{/if}
+	<!-- Fuera del grid: si toda la página cargada está oculta, aún hace falta
+	     poder pedir la siguiente. -->
+	{#if !loading && contents.length < total}
+		<div class="center mt16">
+			<button class="btn btn-lg" onclick={loadMore} disabled={loadingMore}>
+				{loadingMore ? t('consumed.loading') : t('consumed.loadMore', { remaining: total - contents.length })}
+			</button>
+		</div>
 	{/if}
 {/if}
 
 <style>
+	/* ── Canales ocultos ── */
+	.hide-toggle { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+	.hide-toggle.on { border-color: var(--primary); color: var(--primary); }
+	.btn-hide {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 5px 8px;
+		color: var(--text-dim);
+	}
+	.btn-hide:hover { color: var(--text); }
+	.btn-hide.on { border-color: var(--youtube); color: var(--youtube); }
+
 	.date-btn {
 		all: unset;
 		cursor: pointer;

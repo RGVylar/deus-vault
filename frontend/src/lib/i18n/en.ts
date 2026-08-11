@@ -758,10 +758,11 @@ export const en = {
 	'privacy.hidingCount_one': 'Hiding {count} channel',
 	'privacy.hidingCount_other': 'Hiding {count} channels',
 	'privacy.hiddenChannels': 'Hidden channels',
-	'privacy.hiddenChannelsHint': 'Mark channels from the Rewind. The switch makes them vanish from the page and the shared image; turn it off and they come back.',
+	'privacy.hiddenChannelsHint': 'Mark channels from the Rewind or from Consumed. The switch makes them vanish from the page and the shared image; turn it off and they come back.',
 	'privacy.hiddenChannelsEmpty': "You haven't marked any channel.",
 	'privacy.hiddenDeviceOnly': 'This list only lives on this device.',
 	'privacy.remove': 'Remove',
+	'privacy.allHiddenHere': 'Everything loaded here belongs to hidden channels.',
 
 	// ── errors ──
 	'errors.generic': 'Error',

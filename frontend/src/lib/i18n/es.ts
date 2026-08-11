@@ -759,10 +759,11 @@ export const es = {
 	'privacy.hidingCount_one': 'Ocultando {count} canal',
 	'privacy.hidingCount_other': 'Ocultando {count} canales',
 	'privacy.hiddenChannels': 'Canales ocultos',
-	'privacy.hiddenChannelsHint': 'Marca canales desde el Rewind. El interruptor los hace desaparecer de la página y de la imagen que compartes; al apagarlo vuelven.',
+	'privacy.hiddenChannelsHint': 'Marca canales desde el Rewind o desde Consumido. El interruptor los hace desaparecer de la página y de la imagen que compartes; al apagarlo vuelven.',
 	'privacy.hiddenChannelsEmpty': 'No has marcado ningún canal.',
 	'privacy.hiddenDeviceOnly': 'Esta lista solo vive en este dispositivo.',
 	'privacy.remove': 'Quitar',
+	'privacy.allHiddenHere': 'Todo lo cargado aquí es de canales ocultos.',
 
 	// ── errors ──
 	'errors.generic': 'Error',
