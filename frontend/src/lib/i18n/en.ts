@@ -449,6 +449,9 @@ export const en = {
 	'rewind.labels.ofYourConsumption': 'of your consumption',
 	'rewind.whatContentType': 'What type of content',
 	'rewind.mostWatchedChannels': 'Most watched channels',
+	'rewind.refreshAvatar': 'Refresh channel avatar',
+	'rewind.avatarRefreshed': '{channel} avatar updated.',
+	'rewind.avatarRefreshFailed': "Couldn't refresh the avatar.",
 	'rewind.byTime': 'By time',
 	'rewind.byVideoCount': 'By video count',
 	'rewind.videosTotal': '{duration} total',
@@ -677,6 +680,8 @@ export const en = {
 	'home.detail.notes': 'Notes',
 	'home.detail.trailerSection': 'Trailer',
 	'home.detail.duration': 'Duration',
+	'home.detail.stepUp': 'Next chapter or episode',
+	'home.detail.stepDown': 'Previous chapter or episode',
 
 	// ── types (content type labels) ──
 	'types.all': 'All',
@@ -787,6 +792,8 @@ export const en = {
 	'errors.trackNotFound': 'Track not found on Spotify',
 	'errors.unsupportedBookUrl': 'Unsupported book URL',
 	'errors.videoNotFound': 'Video not found',
+	'errors.channelNotFound': 'That channel is no longer in your vault',
+	'errors.channelAvatarFailed': "YouTube wouldn't hand over the avatar. Try again in a bit.",
 	'errors.invalidYoutubeUrl': 'Invalid YouTube URL',
 	'errors.invalidSteamUrl': 'Invalid Steam URL',
 	'errors.gameNotFound': 'Game not found',

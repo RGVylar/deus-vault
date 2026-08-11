@@ -1256,6 +1256,62 @@ async def _fetch_watch_html(video_id: str) -> str:
         return ""
 
 
+async def _fetch_channel_avatar(video_id: str) -> str:
+    """Channel avatar taken from the channel page instead of the watch page.
+
+    Scraping the watch page is a lottery: the owner's avatar sits in the same
+    payload as every sidebar recommendation, so a miss lands on a neighbour's
+    face -- and the URLs it looks for (yt3.ggpht.com/ytc/) barely appear in the
+    current layout, which is why stored avatars end up wrong or empty. The
+    channel page publishes the avatar as og:image, where there is nothing else
+    to confuse it with.
+
+    Returns "" when the channel can't be resolved; the caller decides.
+    """
+    # oEmbed hands over the channel URL in one small request and keeps working
+    # when plain watch-page fetches get thrown a 429.
+    channel_url = ""
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            resp = await client.get(
+                "https://www.youtube.com/oembed",
+                params={"url": f"https://www.youtube.com/watch?v={video_id}", "format": "json"},
+                follow_redirects=True,
+            )
+        if resp.status_code == 200:
+            channel_url = (resp.json() or {}).get("author_url") or ""
+    except Exception:
+        channel_url = ""
+
+    if not channel_url:
+        # oEmbed unavailable: dig the channel id out of the watch page instead.
+        match = re.search(r'"channelId":"(UC[\w-]{22})"', await _fetch_watch_html(video_id))
+        if not match:
+            return ""
+        channel_url = f"https://www.youtube.com/channel/{match.group(1)}"
+
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            resp = await client.get(
+                channel_url,
+                headers={"User-Agent": "Mozilla/5.0"},
+                # Channel pages bounce EU visitors to consent.youtube.com, which
+                # has no og:image. SOCS says the cookie choice is already made.
+                cookies={"SOCS": "CAI"},
+                follow_redirects=True,
+            )
+        if resp.status_code != 200:
+            return ""
+    except Exception:
+        return ""
+
+    avatar = _extract_meta_content(resp.text, "og:image")
+    if not avatar or "=s" not in avatar:
+        return avatar
+    # Comes as =s900; the cards draw it at ~40px, so ask for a sane size.
+    return re.sub(r"=s\d+", "=s176", avatar, count=1)
+
+
 async def _lookup_youtube_fallback(url: str, video_id: str) -> dict:
     """Fallback: oEmbed + HTML scraping (used when yt-dlp fails or times out)."""
     watch_url = f"https://www.youtube.com/watch?v={video_id}"

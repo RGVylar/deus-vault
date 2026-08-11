@@ -450,6 +450,9 @@ export const es = {
 	'rewind.labels.ofYourConsumption': 'de tu consumo',
 	'rewind.whatContentType': 'Qué tipo de contenido',
 	'rewind.mostWatchedChannels': 'Canales más vistos',
+	'rewind.refreshAvatar': 'Refrescar avatar del canal',
+	'rewind.avatarRefreshed': 'Avatar de {channel} actualizado.',
+	'rewind.avatarRefreshFailed': 'No se pudo refrescar el avatar.',
 	'rewind.byTime': 'Por tiempo',
 	'rewind.byVideoCount': 'Por nº de vídeos',
 	'rewind.videosTotal': '{duration} totales',
@@ -678,6 +681,8 @@ export const es = {
 	'home.detail.notes': 'Notas',
 	'home.detail.trailerSection': 'Tráiler',
 	'home.detail.duration': 'Duración',
+	'home.detail.stepUp': 'Siguiente capítulo o episodio',
+	'home.detail.stepDown': 'Capítulo o episodio anterior',
 
 	// ── types (content type labels) ──
 	'types.all': 'Todos',
@@ -788,6 +793,8 @@ export const es = {
 	'errors.trackNotFound': 'Canción no encontrada en Spotify',
 	'errors.unsupportedBookUrl': 'URL de libro no soportada',
 	'errors.videoNotFound': 'Vídeo no encontrado',
+	'errors.channelNotFound': 'Ese canal ya no está en tu bóveda',
+	'errors.channelAvatarFailed': 'YouTube no soltó el avatar. Inténtalo de nuevo en un rato.',
 	'errors.invalidYoutubeUrl': 'URL de YouTube inválida',
 	'errors.invalidSteamUrl': 'URL de Steam inválida',
 	'errors.gameNotFound': 'Juego no encontrado',

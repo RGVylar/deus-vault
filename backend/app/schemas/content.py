@@ -150,6 +150,18 @@ class TopAuthor(BaseModel):
     thumbnail: str | None = None
 
 
+class ChannelRefresh(BaseModel):
+    """Which YouTube channel to re-fetch the avatar for."""
+
+    author: str
+
+
+class ChannelRefreshResult(BaseModel):
+    name: str
+    thumbnail: str
+    updated: int
+
+
 class StreamingPlatform(BaseModel):
     name: str
     count: int

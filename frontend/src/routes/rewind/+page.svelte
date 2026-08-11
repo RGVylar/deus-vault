@@ -205,6 +205,37 @@
 	const visibleItems = $derived(stats ? filterYoutubeItems(stats.items as Content[]) : []);
 	const markedCount = $derived(privacy.channels.length);
 
+	// ── Avatares de canal ─────────────────────────────────────────
+	// El avatar se guardó rascando la página del vídeo, donde convive con el de
+	// cada recomendación de la barra lateral, así que muchos salieron cambiados.
+	// Este botón lo vuelve a pedir desde la página del canal y reescribe todos
+	// los vídeos de ese canal (el ranking usa el primero que encuentra).
+	let refreshingChannel = $state<string | null>(null);
+	let avatarMsg = $state<{ text: string; err: boolean } | null>(null);
+
+	async function refreshAvatar(name: string) {
+		if (refreshingChannel) return;
+		refreshingChannel = name;
+		avatarMsg = null;
+		try {
+			const res = await api.post<{ name: string; thumbnail: string; updated: number }>(
+				'/contents/refresh-channel-thumbnail',
+				{ author: name }
+			);
+			const key = name.trim().toLowerCase();
+			for (const list of [stats?.top_youtube_channels, stats?.top_youtube_channels_by_count]) {
+				for (const ch of list ?? []) {
+					if (ch.name.trim().toLowerCase() === key) ch.thumbnail = res.thumbnail;
+				}
+			}
+			avatarMsg = { text: t('rewind.avatarRefreshed', { channel: name }), err: false };
+		} catch (e: any) {
+			avatarMsg = { text: e?.message ?? t('rewind.avatarRefreshFailed'), err: true };
+		} finally {
+			refreshingChannel = null;
+		}
+	}
+
 	// ── Zona YouTube ──────────────────────────────────────────────
 	const ytStats = $derived(stats?.by_type['youtube'] ?? null);
 	// Solo los vídeos con duración conocida: los de 0min hundirían la media
@@ -617,6 +648,9 @@
 	<!-- Canales más vistos -->
 	<section class="rewind-section">
 		<h2><span class="hico"><Icon name="play" size={15} /></span> {t('rewind.mostWatchedChannels')}</h2>
+		{#if avatarMsg}
+			<p class="share-msg" class:err={avatarMsg.err}>{avatarMsg.text}</p>
+		{/if}
 		<div class="channels-dual">
 			<div class="channels-col">
 				<div class="channels-col-head"><Icon name="clock" size={13} /> {t('rewind.byTime')}</div>
@@ -627,6 +661,9 @@
 							{#if ch.thumbnail}<img class="ch-avatar" src={ch.thumbnail} alt={ch.name} />{:else}<div class="ch-avatar">{ch.name[0]?.toUpperCase() ?? '?'}</div>{/if}
 							<div class="ch-info"><div class="ch-name">{ch.name}</div><div class="ch-meta">{tc('rewind.videosSuffix', ch.count)}</div></div>
 							<div class="ch-time">{formatDuration(ch.minutes)}</div>
+							<button class="ch-refresh" class:spin={refreshingChannel === ch.name} disabled={refreshingChannel !== null} title={t('rewind.refreshAvatar')} aria-label={t('rewind.refreshAvatar')} onclick={() => refreshAvatar(ch.name)}>
+								<Icon name="refresh" size={14} />
+							</button>
 							<button class="ch-hide" title={isMarked(ch.name) ? t('privacy.unmarkChannel') : t('privacy.markChannel')} aria-label={isMarked(ch.name) ? t('privacy.unmarkChannel') : t('privacy.markChannel')} onclick={() => toggleChannel(ch.name)}>
 								<Icon name={isMarked(ch.name) ? 'eyeOff' : 'eye'} size={14} />
 							</button>
@@ -643,6 +680,9 @@
 							{#if ch.thumbnail}<img class="ch-avatar" src={ch.thumbnail} alt={ch.name} />{:else}<div class="ch-avatar">{ch.name[0]?.toUpperCase() ?? '?'}</div>{/if}
 							<div class="ch-info"><div class="ch-name">{ch.name}</div><div class="ch-meta">{t('rewind.videosTotal', { duration: formatDuration(ch.minutes) })}</div></div>
 							<div class="ch-time">{tc('rewind.videosSuffix', ch.count)}</div>
+							<button class="ch-refresh" class:spin={refreshingChannel === ch.name} disabled={refreshingChannel !== null} title={t('rewind.refreshAvatar')} aria-label={t('rewind.refreshAvatar')} onclick={() => refreshAvatar(ch.name)}>
+								<Icon name="refresh" size={14} />
+							</button>
 							<button class="ch-hide" title={isMarked(ch.name) ? t('privacy.unmarkChannel') : t('privacy.markChannel')} aria-label={isMarked(ch.name) ? t('privacy.unmarkChannel') : t('privacy.markChannel')} onclick={() => toggleChannel(ch.name)}>
 								<Icon name={isMarked(ch.name) ? 'eyeOff' : 'eye'} size={14} />
 							</button>
@@ -1342,6 +1382,19 @@
 	}
 	.channel-card:hover .ch-hide, .ch-hide:focus-visible { opacity: 1; }
 	.ch-hide:hover { color: var(--primary); background: rgba(255,255,255,0.06); }
+
+	/* Refrescar avatar: mismo sitio que el ojo, a su izquierda */
+	.ch-refresh {
+		position: absolute; top: 6px; right: 34px; display: grid; place-items: center;
+		width: 26px; height: 26px; padding: 0; border: none; border-radius: 8px;
+		background: transparent; color: var(--text-muted); cursor: pointer; opacity: 0;
+		transition: opacity 0.15s, color 0.15s;
+	}
+	.channel-card:hover .ch-refresh, .ch-refresh:focus-visible { opacity: 1; }
+	.ch-refresh:hover:not(:disabled) { color: var(--primary); background: rgba(255,255,255,0.06); }
+	.ch-refresh:disabled { cursor: default; }
+	.ch-refresh.spin { opacity: 1; color: var(--primary); animation: ch-spin 0.9s linear infinite; }
+	@keyframes ch-spin { to { transform: rotate(360deg); } }
 	/* Un canal marcado se ve siempre marcado, aunque no pases el ratón */
 	.channel-card.ch-marked .ch-hide { opacity: 1; color: var(--primary); }
 	.share-msg { margin-top: 10px; font-size: 12px; color: var(--text-muted); }

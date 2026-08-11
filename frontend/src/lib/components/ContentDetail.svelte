@@ -16,12 +16,25 @@
 		onDelete: (id: number) => void;
 		onRefresh: (c: Content) => void;
 		onTogglePin: (c: Content) => void;
+		onProgress: (c: Content, delta: number) => void;
 		canRefresh: (c: Content) => boolean;
 		refreshingId: number | null;
 	}
-	let { content, onClose, onEdit, onConsume, onAbandon, onDelete, onRefresh, onTogglePin, canRefresh, refreshingId }: Props = $props();
+	let { content, onClose, onEdit, onConsume, onAbandon, onDelete, onRefresh, onTogglePin, onProgress, canRefresh, refreshingId }: Props = $props();
 
 	let confirmingDelete = $state(false);
+
+	// Por dónde vamos. Solo en lo que se cuenta de uno en uno: series y manga.
+	// Páginas o minutos no se mueven a golpe de botón.
+	const STEPPABLE = ['series', 'manga'];
+	const steppable = $derived(STEPPABLE.includes(content.content_type));
+	const step = $derived(content.progress ?? 0);
+	const stepMax = $derived(content.episode_count && content.episode_count > 0 ? content.episode_count : null);
+	const stepLabel = $derived(
+		content.content_type === 'manga'
+			? (stepMax ? t('home.progressMangaTotal', { ep: step, total: stepMax }) : t('home.progressManga', { ep: step }))
+			: (stepMax ? t('home.progressSeriesTotal', { ep: step, total: stepMax }) : t('home.progressSeries', { ep: step }))
+	);
 
 	const accent = $derived(TYPE_COLOR[content.content_type] ?? 'var(--primary)');
 	const icon = $derived(TYPE_ICONS[content.content_type] ?? '📄');
@@ -166,6 +179,13 @@
 			{#if consumeUrl}
 				<a href={consumeUrl} target="_blank" rel="noopener"><button class="btn">{t('consumed.open')}</button></a>
 			{/if}
+			{#if steppable}
+				<span class="d-step">
+					<button class="btn d-step-btn" onclick={() => onProgress(content, -1)} disabled={step <= 0} title={t('home.detail.stepDown')} aria-label={t('home.detail.stepDown')}>−</button>
+					<span class="d-step-val">{stepLabel}</span>
+					<button class="btn d-step-btn" onclick={() => onProgress(content, 1)} disabled={stepMax !== null && step >= stepMax} title={t('home.detail.stepUp')} aria-label={t('home.detail.stepUp')}>+</button>
+				</span>
+			{/if}
 			<span class="d-cold-actions">
 				<button class="btn" class:pin-active={content.pinned} onclick={() => onTogglePin(content)} title={content.pinned ? t('home.removePriority') : t('home.markPriority')} style="opacity:{content.pinned ? 1 : 0.5};">{content.pinned ? '📌' : '📍'}</button>
 				<button class="btn" onclick={() => onEdit(content)} title={t('common.edit')}>✏️</button>
@@ -294,4 +314,21 @@
 	.d-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 22px 20px 0; }
 	.btn-primary { background: color-mix(in oklab, var(--card-accent) 30%, var(--glass-bg)); border-color: color-mix(in oklab, var(--card-accent) 50%, transparent); font-weight: 700; }
 	.d-cold-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+
+	/* Capítulo / episodio por el que vamos */
+	.d-step {
+		display: inline-flex; align-items: center; gap: 4px;
+		padding: 2px; border-radius: var(--radius-xs);
+		background: var(--glass-bg-weak); border: 1px solid var(--glass-border);
+	}
+	.d-step-btn {
+		min-width: 28px; padding: 4px 8px; font-size: 15px; font-weight: 800; line-height: 1;
+		border-color: transparent; background: transparent;
+	}
+	.d-step-btn:hover:not(:disabled) { border-color: var(--glass-border-bright); }
+	.d-step-btn:disabled { opacity: 0.35; cursor: default; }
+	.d-step-val {
+		font-size: 12px; font-weight: 700; color: var(--card-accent, var(--primary));
+		min-width: 62px; text-align: center; white-space: nowrap;
+	}
 </style>

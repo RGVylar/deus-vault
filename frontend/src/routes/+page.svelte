@@ -710,6 +710,20 @@ $effect(() => {
 		const updated = contents.find(x => x.id === c.id);
 		if (updated) detailItem = updated;
 	}
+	/** Subir o bajar capítulo desde la ficha, sin pasar por el editor de progreso. */
+	async function detailProgress(c: Content, delta: number) {
+		const max = c.episode_count && c.episode_count > 0 ? c.episode_count : null;
+		const current = c.progress ?? 0;
+		let val = current + delta;
+		val = Math.max(0, max !== null ? Math.min(val, max) : val);
+		if (val === current) return;
+		contents = contents.map(x => x.id === c.id ? { ...x, progress: val } : x);
+		detailItem = contents.find(x => x.id === c.id) ?? detailItem;
+		await api.patch(`/contents/${c.id}`, { progress: val });
+		// La deuda pendiente cambia con cada capítulo
+		api.get<VaultStats>('/contents/stats').then(s => { stats = s; });
+	}
+
 	async function detailRefresh(c: Content) {
 		await refresh(c);
 		const updated = contents.find(x => x.id === c.id);
@@ -1321,6 +1335,7 @@ $effect(() => {
 			onDelete={detailDelete}
 			onRefresh={detailRefresh}
 			onTogglePin={detailTogglePin}
+			onProgress={detailProgress}
 			{canRefresh}
 			{refreshingId}
 		/>

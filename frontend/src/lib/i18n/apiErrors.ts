@@ -22,6 +22,8 @@ const EXACT: Record<string, TKey> = {
 	'Track not found on Spotify': 'errors.trackNotFound',
 	'Unsupported book URL': 'errors.unsupportedBookUrl',
 	'Video not found': 'errors.videoNotFound',
+	'Channel not found': 'errors.channelNotFound',
+	'Could not fetch channel avatar': 'errors.channelAvatarFailed',
 	'Invalid YouTube URL': 'errors.invalidYoutubeUrl',
 	'Invalid Steam URL': 'errors.invalidSteamUrl',
 	'Game not found': 'errors.gameNotFound',

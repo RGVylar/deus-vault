@@ -15,6 +15,8 @@ from app.deps import get_admin_user, get_current_user
 from app.models.content import Content, ContentType
 from app.models.user import User
 from app.schemas.content import (
+    ChannelRefresh,
+    ChannelRefreshResult,
     ContentCreate,
     ContentOut,
     ContentUpdate,
@@ -899,6 +901,58 @@ def list_genres(
             if g:
                 genre_set.add(g)
     return sorted(genre_set)
+
+
+@router.post("/refresh-channel-thumbnail", response_model=ChannelRefreshResult)
+async def refresh_channel_thumbnail(
+    payload: ChannelRefresh,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ChannelRefreshResult:
+    """Re-fetch one channel's avatar and stamp it on every video of that channel.
+
+    Writing it to all of them is the point: the Rewind shows the first avatar it
+    finds for an author, so touching a single row would leave the wrong face in
+    place. Tries a handful of videos because a deleted or private one resolves
+    to nothing.
+    """
+    from app.routers.lookup import _fetch_channel_avatar
+
+    name = payload.author.strip()
+    if not name:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Missing channel")
+
+    items = list(
+        db.scalars(
+            select(Content).where(
+                Content.user_id == user.id,
+                Content.content_type == ContentType.youtube,
+                func.lower(func.trim(Content.author)) == name.lower(),
+            )
+        ).all()
+    )
+    if not items:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Channel not found")
+
+    thumbnail = ""
+    for item in [c for c in items if c.source_id][:3]:
+        thumbnail = await _fetch_channel_avatar(item.source_id)
+        if thumbnail:
+            break
+
+    if not thumbnail:
+        logger.warning("refresh avatar: no luck for channel %r (user %s)", name, user.id)
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Could not fetch channel avatar")
+
+    updated = 0
+    for item in items:
+        if item.channel_thumbnail != thumbnail:
+            item.channel_thumbnail = thumbnail
+            updated += 1
+    db.commit()
+
+    logger.info("refresh avatar: %r -> %s (%d rows)", name, thumbnail, updated)
+    return ChannelRefreshResult(name=items[0].author or name, thumbnail=thumbnail, updated=updated)
 
 
 @router.post("/backfill-channel-thumbnails")
