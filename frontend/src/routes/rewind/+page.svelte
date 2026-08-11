@@ -101,7 +101,10 @@
 		api.get<RewindStats>(`/contents/rewind?year=${_year}`)
 			.then(r => {
 				stats = r;
-				const hasMissing = r.top_youtube_channels.some(ch => !ch.thumbnail);
+				// Solo los que se ven: la lista trae cola de sobra para tapar
+				// huecos de canales ocultos, y ahí abajo casi siempre falta algún
+				// avatar, que dispararía el backfill en cada carga.
+				const hasMissing = r.top_youtube_channels.slice(0, TOP_CHANNELS).some(ch => !ch.thumbnail);
 				if (hasMissing) {
 					api.post('/contents/backfill-channel-thumbnails')
 						.then(() => api.get<RewindStats>(`/contents/rewind?year=${_year}`))
@@ -199,8 +202,12 @@
 	// ── Canales ocultos ───────────────────────────────────────────
 	// Con el interruptor encendido desaparecen de todo lo que los nombre. Los
 	// agregados (minutos, % del año, heatmap) no se tocan a propósito.
-	const ytChannels = $derived(stats ? filterChannels(stats.top_youtube_channels) : []);
-	const ytChannelsByCount = $derived(stats ? filterChannels(stats.top_youtube_channels_by_count) : []);
+	// El backend manda más de cinco canales para que, al ocultar uno, suba el
+	// siguiente en vez de quedar un hueco. El recorte a cinco se hace aquí,
+	// después de filtrar.
+	const TOP_CHANNELS = 5;
+	const ytChannels = $derived(stats ? filterChannels(stats.top_youtube_channels).slice(0, TOP_CHANNELS) : []);
+	const ytChannelsByCount = $derived(stats ? filterChannels(stats.top_youtube_channels_by_count).slice(0, TOP_CHANNELS) : []);
 	const ytTopVideos = $derived(stats ? filterYoutubeItems((stats.top_items_by_type['youtube'] ?? []).map(v => ({ ...v, content_type: 'youtube' }))) : []);
 	const visibleItems = $derived(stats ? filterYoutubeItems(stats.items as Content[]) : []);
 	const markedCount = $derived(privacy.channels.length);

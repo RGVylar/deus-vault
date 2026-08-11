@@ -39,6 +39,11 @@ router = APIRouter(prefix="/contents", tags=["contents"])
 
 PAGE_LIMIT = 20
 
+# The Rewind shows five channels but asks for more: hidden channels are filtered
+# in the browser (the list never leaves the device), so without spare ranks a
+# hidden channel just leaves a hole instead of promoting the next one up.
+CHANNEL_RANK_DEPTH = 20
+
 # Buckets for missing metadata. The frontend localizes both.
 UNCATEGORIZED_GENRE = "__uncategorized__"
 UNKNOWN_PLATFORM = "__unknown__"
@@ -352,11 +357,11 @@ def rewind(
                 yt_authors[key]["thumbnail"] = c.channel_thumbnail
     top_youtube_channels = [
         TopAuthor(**v)
-        for v in sorted(yt_authors.values(), key=lambda x: x["minutes"], reverse=True)[:5]
+        for v in sorted(yt_authors.values(), key=lambda x: x["minutes"], reverse=True)[:CHANNEL_RANK_DEPTH]
     ]
     top_youtube_channels_by_count = [
         TopAuthor(**v)
-        for v in sorted(yt_authors.values(), key=lambda x: x["count"], reverse=True)[:5]
+        for v in sorted(yt_authors.values(), key=lambda x: x["count"], reverse=True)[:CHANNEL_RANK_DEPTH]
     ]
 
     # Top 3 items per content type (by effective duration)
