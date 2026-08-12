@@ -11,7 +11,7 @@
 	 */
 	import { onMount } from 'svelte';
 	import type { Content } from '$lib/types';
-	import { t, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
+	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
 	import { formatDuration, typeLabel } from '$lib/utils';
 	import Icon from './Icon.svelte';
 
@@ -32,16 +32,20 @@
 	};
 	const LS_KEY = 'rw-timeline-view';
 	const LS_EXTRA_KEY = 'rw-timeline-extra';
+	type ViewMode = 'grouped' | 'mixed' | 'explore';
 
-	let mixed = $state(false);
+	let viewMode = $state<ViewMode>('grouped');
 	let showExtra = $state(true);
 	onMount(() => {
-		try { mixed = localStorage.getItem(LS_KEY) === 'mixed'; } catch { /* ignore */ }
+		try {
+			const v = localStorage.getItem(LS_KEY);
+			if (v === 'mixed' || v === 'explore') viewMode = v;
+		} catch { /* ignore */ }
 		try { showExtra = localStorage.getItem(LS_EXTRA_KEY) !== 'off'; } catch { /* ignore */ }
 	});
-	function setView(m: boolean) {
-		mixed = m;
-		try { localStorage.setItem(LS_KEY, m ? 'mixed' : 'grouped'); } catch { /* ignore */ }
+	function setViewMode(mode: ViewMode) {
+		viewMode = mode;
+		try { localStorage.setItem(LS_KEY, mode); } catch { /* ignore */ }
 	}
 	function toggleExtra() {
 		showExtra = !showExtra;
@@ -146,6 +150,76 @@
 	/** Todas revueltas, en orden cronológico de inicio. */
 	const chrono = $derived([...allBars].sort((a, b) => a.startPct - b.startPct || (b.endPct - b.startPct) - (a.endPct - a.startPct)));
 
+	// ── Explorar: minimapa del año entero + ventana que arrastras para enfocar un tramo ──
+	// Arranca cubriendo el año completo — nada se oculta hasta que el usuario decide acotar.
+	let winStart = $state(0);
+	let winEnd = $state(100);
+	let minimapEl: HTMLDivElement | undefined = $state();
+	let dragMode: 'move' | 'left' | 'right' | null = null;
+	let dragStartX = 0;
+	let dragStartWin = { start: 0, end: 100 };
+
+	function monthAt(pct: number): string {
+		const idx = Math.min(months.length - 1, Math.max(0, Math.floor(pct / 100 * months.length)));
+		return months[idx];
+	}
+
+	function overlapsWindow(b: Bar): boolean {
+		const s = b.hasSpan ? b.startPct : b.endPct;
+		return b.endPct >= winStart && s <= winEnd;
+	}
+	const exploreBars = $derived(allBars.filter(overlapsWindow));
+	const exploreGrouped = $derived.by(() => {
+		return CAMPAIGN
+			.map(type => ({
+				type,
+				rows: exploreBars.filter(b => b.type === type).sort((a, b) => a.startPct - b.startPct || b.endPct - a.endPct),
+			}))
+			.filter(g => g.rows.length > 0);
+	});
+
+	function beginDrag(mode: 'move' | 'left' | 'right', ev: PointerEvent) {
+		ev.preventDefault();
+		ev.stopPropagation();
+		dragMode = mode;
+		dragStartX = ev.clientX;
+		dragStartWin = { start: winStart, end: winEnd };
+		window.addEventListener('pointermove', onDrag);
+		window.addEventListener('pointerup', endDrag);
+	}
+	function onDrag(ev: PointerEvent) {
+		if (!dragMode || !minimapEl) return;
+		const rect = minimapEl.getBoundingClientRect();
+		const deltaPct = (ev.clientX - dragStartX) / rect.width * 100;
+		if (dragMode === 'move') {
+			const width = dragStartWin.end - dragStartWin.start;
+			const start = Math.max(0, Math.min(100 - width, dragStartWin.start + deltaPct));
+			winStart = start;
+			winEnd = start + width;
+		} else if (dragMode === 'left') {
+			winStart = Math.min(dragStartWin.end - 4, Math.max(0, dragStartWin.start + deltaPct));
+		} else if (dragMode === 'right') {
+			winEnd = Math.max(dragStartWin.start + 4, Math.min(100, dragStartWin.end + deltaPct));
+		}
+	}
+	function endDrag() {
+		dragMode = null;
+		window.removeEventListener('pointermove', onDrag);
+		window.removeEventListener('pointerup', endDrag);
+	}
+	/** Clic fuera de la ventana: la recentra ahí sin cambiar su anchura. */
+	function minimapClick(ev: PointerEvent) {
+		const target = ev.target as HTMLElement;
+		if (target.closest('.mm-window')) return;
+		if (!minimapEl) return;
+		const rect = minimapEl.getBoundingClientRect();
+		const pct = Math.min(100, Math.max(0, (ev.clientX - rect.left) / rect.width * 100));
+		const width = winEnd - winStart;
+		const start = Math.max(0, Math.min(100 - width, pct - width / 2));
+		winStart = start;
+		winEnd = start + width;
+	}
+
 	const movies = $derived(
 		items
 			.filter(c => c.content_type === 'movie' && yearPct(c.consumed_at) !== null)
@@ -176,7 +250,7 @@
 	{@const tag = b.kind === 'abandoned' ? `${formatDuration(b.minutes)} · ${t('rewind.timelineAbandonedTag')}` : b.kind === 'progress' ? t('rewind.timelineProgressTag') : ''}
 	<div class="tl-row" class:extra-row={b.kind !== 'done'} title="{b.title} · {formatDuration(b.minutes)} · {b.when}">
 		<span class="tl-name" class:tl-name-abandoned={b.kind === 'abandoned'}>
-			{#if mixed}<i class="tl-chip" style="background:{b.color}"></i>{/if}
+			{#if viewMode === 'mixed'}<i class="tl-chip" style="background:{b.color}"></i>{/if}
 			{#if b.kind === 'abandoned'}<Icon name="ban" size={11} />{/if}
 			{b.title}
 		</span>
@@ -203,8 +277,9 @@
 		<span class="hico"><Icon name="activity" size={15} /></span>
 		{t('rewind.yearTimeline')}
 		<div class="tl-toggle" role="group" aria-label={t('rewind.timelineViewLabel')}>
-			<button type="button" aria-pressed={!mixed} onclick={() => setView(false)}>{t('rewind.timelineGrouped')}</button>
-			<button type="button" aria-pressed={mixed} onclick={() => setView(true)}>{t('rewind.timelineMixed')}</button>
+			<button type="button" aria-pressed={viewMode === 'grouped'} onclick={() => setViewMode('grouped')}>{t('rewind.timelineGrouped')}</button>
+			<button type="button" aria-pressed={viewMode === 'mixed'} onclick={() => setViewMode('mixed')}>{t('rewind.timelineMixed')}</button>
+			<button type="button" aria-pressed={viewMode === 'explore'} onclick={() => setViewMode('explore')}>{t('rewind.timelineExplore')}</button>
 		</div>
 		{#if hasExtra}
 			<button type="button" class="tl-extra-toggle" class:on={showExtra} aria-pressed={showExtra} onclick={toggleExtra}>
@@ -217,20 +292,91 @@
 	<div class="surface tl-surface">
 		<div class="tl-scroll">
 			<div class="tl-body">
-				<div class="tl-lines" aria-hidden="true">
-					{#each months as _m}<span></span>{/each}
-				</div>
+				{#if viewMode !== 'explore'}
+					<div class="tl-lines" aria-hidden="true">
+						{#each months as _m}<span></span>{/each}
+					</div>
 
-				<div class="tl-axis">
-					<span class="tl-axis-label">{t('rewind.timelineAxis')}</span>
-					{#each months as m}<span>{m.slice(0, 1)}</span>{/each}
-				</div>
+					<div class="tl-axis">
+						<span class="tl-axis-label">{t('rewind.timelineAxis')}</span>
+						{#each months as m}<span>{m.slice(0, 1)}</span>{/each}
+					</div>
+				{/if}
 
-				{#if mixed}
+				{#if viewMode === 'mixed'}
 					<div class="tl-group">
 						{#each chrono as b (`${b.kind}-${b.id}`)}
 							{@render barRow(b)}
 						{/each}
+					</div>
+				{:else if viewMode === 'explore'}
+					<div class="mm-wrap">
+						<div class="mm-caption">
+							<span>{t('rewind.timelineExploreHint')}</span>
+							<span><b>{monthAt(winStart)} – {monthAt(winEnd)}</b> · {tc('rewind.timelineExploreCount', exploreBars.length, { total: allBars.length })}</span>
+						</div>
+						<div
+							class="minimap"
+							bind:this={minimapEl}
+							onpointerdown={minimapClick}
+							role="slider"
+							tabindex="0"
+							aria-label={t('rewind.timelineExploreHint')}
+							aria-valuemin={0}
+							aria-valuemax={100}
+							aria-valuenow={Math.round((winStart + winEnd) / 2)}
+							aria-valuetext="{monthAt(winStart)} – {monthAt(winEnd)}"
+						>
+							<div class="mm-months" aria-hidden="true">
+								{#each months as _m}<span></span>{/each}
+							</div>
+							<div class="mm-bands">
+								{#each grouped as g (g.type)}
+									<div class="mm-band">
+										{#each g.rows as b (`${b.kind}-${b.id}`)}
+											{#if b.hasSpan}
+												<i
+													class="mm-bar"
+													class:mm-bar-abandoned={b.kind === 'abandoned'}
+													class:mm-bar-progress={b.kind === 'progress'}
+													style="left:{b.startPct}%; width:{Math.max(b.endPct - b.startPct, 0.4)}%; background:{b.color}"
+												></i>
+											{:else}
+												<i class="mm-dot" style="left:{b.endPct}%; background:{b.color}"></i>
+											{/if}
+										{/each}
+									</div>
+								{/each}
+							</div>
+							<div class="mm-window" style="left:{winStart}%; width:{winEnd - winStart}%" role="button" tabindex="0" onpointerdown={(ev) => beginDrag('move', ev)}>
+								<div class="mm-handle mm-handle-left" role="button" tabindex="0" onpointerdown={(ev) => beginDrag('left', ev)}></div>
+								<div class="mm-handle mm-handle-right" role="button" tabindex="0" onpointerdown={(ev) => beginDrag('right', ev)}></div>
+							</div>
+						</div>
+						<div class="mm-axis">
+							{#each months as m}<span>{m.slice(0, 1)}</span>{/each}
+						</div>
+
+						{#if exploreGrouped.length === 0}
+							<div class="tl-explore-empty">{t('rewind.timelineExploreEmpty')}</div>
+						{:else}
+							<div class="tl-explore-scroll">
+								<div class="tl-explore-axis">
+									<span class="tl-axis-label">{t('rewind.timelineAxis')}</span>
+									{#each months as m}<span>{m.slice(0, 1)}</span>{/each}
+								</div>
+								{#each exploreGrouped as g (g.type)}
+									<div class="tl-group">
+										<div class="tl-glabel" style="color:{COLORS[g.type]}">
+											{typeLabel(g.type)} <span class="c">{g.rows.length}</span>
+										</div>
+										{#each g.rows as b (`${b.kind}-${b.id}`)}
+											{@render barRow(b)}
+										{/each}
+									</div>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				{:else}
 					{#each grouped as g (g.type)}
@@ -429,6 +575,56 @@
 		        mask-image: linear-gradient(to right, black 55%, transparent 100%);
 	}
 	.tl-legend .lg-hint { color: var(--text-dim); opacity: 0.75; font-style: italic; }
+
+	/* ── Explorar: minimapa + ventana arrastrable ────────────────────── */
+	.mm-wrap { position: relative; z-index: 1; }
+	.mm-caption {
+		display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 14px;
+		font-size: 10.5px; color: var(--text-dim); margin-bottom: 8px;
+	}
+	.mm-caption b { color: var(--text); font-weight: 800; }
+
+	.minimap {
+		position: relative; height: 78px; background: var(--glass-bg-strong);
+		border: 1px solid var(--glass-border); border-radius: 10px; overflow: hidden;
+		touch-action: none; user-select: none;
+	}
+	.mm-months { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(12, 1fr); pointer-events: none; }
+	.mm-months span { border-right: 1px solid var(--glass-border); opacity: 0.5; }
+	.mm-months span:last-child { border-right: 0; }
+
+	.mm-bands { position: absolute; inset: 7px 0; display: flex; flex-direction: column; gap: 3px; }
+	.mm-band { position: relative; flex: 1; }
+	.mm-bar { position: absolute; top: 50%; height: 60%; margin-top: -30%; border-radius: 2px; opacity: 0.6; display: block; }
+	.mm-bar-abandoned {
+		opacity: 0.85;
+		background: repeating-linear-gradient(115deg, var(--danger, #e0556b) 0 2px, rgba(224,85,107,0.35) 2px 4px) !important;
+	}
+	.mm-bar-progress { opacity: 0.9; }
+	.mm-dot { position: absolute; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%; opacity: 0.7; display: block; }
+
+	.mm-window {
+		position: absolute; top: 0; bottom: 0; background: rgba(139,127,240,0.18);
+		border-left: 2px solid var(--primary); border-right: 2px solid var(--primary); cursor: grab;
+	}
+	.mm-window:active { cursor: grabbing; }
+	.mm-handle { position: absolute; top: 0; bottom: 0; width: 16px; cursor: ew-resize; }
+	.mm-handle.mm-handle-left { left: -9px; }
+	.mm-handle.mm-handle-right { right: -9px; }
+
+	.mm-axis { display: grid; grid-template-columns: repeat(12, 1fr); margin: 5px 0 12px; }
+	.mm-axis span { font-size: 9px; font-weight: 800; color: var(--text-dim); text-align: center; letter-spacing: 0.08em; text-transform: uppercase; }
+
+	.tl-explore-empty { padding: 30px 10px; text-align: center; color: var(--text-dim); font-size: 12px; font-style: italic; }
+
+	.tl-explore-scroll { max-height: 420px; overflow-y: auto; position: relative; }
+	.tl-explore-axis {
+		position: sticky; top: 0; z-index: 2; background: var(--glass-bg);
+		display: grid; grid-template-columns: var(--tl-label, 190px) repeat(12, 1fr);
+		padding-bottom: 7px; border-bottom: 1px solid var(--glass-border);
+	}
+	.tl-explore-axis span { font-size: 9px; font-weight: 800; letter-spacing: 0.1em; color: var(--text-dim); text-align: center; text-transform: uppercase; }
+	.tl-explore-axis .tl-axis-label { text-align: left; letter-spacing: 0.16em; }
 
 	@media (max-width: 640px) {
 		.tl-body { --tl-label: 120px; }
