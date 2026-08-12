@@ -32,20 +32,26 @@
 	};
 	const LS_KEY = 'rw-timeline-view';
 	const LS_EXTRA_KEY = 'rw-timeline-extra';
-	type ViewMode = 'grouped' | 'mixed' | 'explore';
+	const LS_EXPLORE_KEY = 'rw-timeline-explore';
 
-	let viewMode = $state<ViewMode>('grouped');
+	// Cómo se ordena la lista (categoría/mezclado) y si además está acotada a
+	// un tramo del año (explorar) son dos ejes distintos — no compiten entre
+	// sí, así que cada uno vive en su propio interruptor.
+	let mixed = $state(false);
+	let exploring = $state(false);
 	let showExtra = $state(true);
 	onMount(() => {
-		try {
-			const v = localStorage.getItem(LS_KEY);
-			if (v === 'mixed' || v === 'explore') viewMode = v;
-		} catch { /* ignore */ }
+		try { mixed = localStorage.getItem(LS_KEY) === 'mixed'; } catch { /* ignore */ }
+		try { exploring = localStorage.getItem(LS_EXPLORE_KEY) === 'on'; } catch { /* ignore */ }
 		try { showExtra = localStorage.getItem(LS_EXTRA_KEY) !== 'off'; } catch { /* ignore */ }
 	});
-	function setViewMode(mode: ViewMode) {
-		viewMode = mode;
-		try { localStorage.setItem(LS_KEY, mode); } catch { /* ignore */ }
+	function setArrangement(m: boolean) {
+		mixed = m;
+		try { localStorage.setItem(LS_KEY, m ? 'mixed' : 'grouped'); } catch { /* ignore */ }
+	}
+	function toggleExplore() {
+		exploring = !exploring;
+		try { localStorage.setItem(LS_EXPLORE_KEY, exploring ? 'on' : 'off'); } catch { /* ignore */ }
 	}
 	function toggleExtra() {
 		showExtra = !showExtra;
@@ -177,6 +183,7 @@
 			}))
 			.filter(g => g.rows.length > 0);
 	});
+	const exploreChrono = $derived([...exploreBars].sort((a, b) => a.startPct - b.startPct || (b.endPct - b.startPct) - (a.endPct - a.startPct)));
 
 	function beginDrag(mode: 'move' | 'left' | 'right', ev: PointerEvent) {
 		ev.preventDefault();
@@ -250,7 +257,7 @@
 	{@const tag = b.kind === 'abandoned' ? `${formatDuration(b.minutes)} · ${t('rewind.timelineAbandonedTag')}` : b.kind === 'progress' ? t('rewind.timelineProgressTag') : ''}
 	<div class="tl-row" class:extra-row={b.kind !== 'done'} title="{b.title} · {formatDuration(b.minutes)} · {b.when}">
 		<span class="tl-name" class:tl-name-abandoned={b.kind === 'abandoned'}>
-			{#if viewMode === 'mixed'}<i class="tl-chip" style="background:{b.color}"></i>{/if}
+			{#if mixed}<i class="tl-chip" style="background:{b.color}"></i>{/if}
 			{#if b.kind === 'abandoned'}<Icon name="ban" size={11} />{/if}
 			{b.title}
 		</span>
@@ -277,10 +284,13 @@
 		<span class="hico"><Icon name="activity" size={15} /></span>
 		{t('rewind.yearTimeline')}
 		<div class="tl-toggle" role="group" aria-label={t('rewind.timelineViewLabel')}>
-			<button type="button" aria-pressed={viewMode === 'grouped'} onclick={() => setViewMode('grouped')}>{t('rewind.timelineGrouped')}</button>
-			<button type="button" aria-pressed={viewMode === 'mixed'} onclick={() => setViewMode('mixed')}>{t('rewind.timelineMixed')}</button>
-			<button type="button" aria-pressed={viewMode === 'explore'} onclick={() => setViewMode('explore')}>{t('rewind.timelineExplore')}</button>
+			<button type="button" aria-pressed={!mixed} onclick={() => setArrangement(false)}>{t('rewind.timelineGrouped')}</button>
+			<button type="button" aria-pressed={mixed} onclick={() => setArrangement(true)}>{t('rewind.timelineMixed')}</button>
 		</div>
+		<button type="button" class="tl-extra-toggle" class:on={exploring} aria-pressed={exploring} onclick={toggleExplore}>
+			<Icon name="activity" size={12} />
+			{t('rewind.timelineExplore')}
+		</button>
 		{#if hasExtra}
 			<button type="button" class="tl-extra-toggle" class:on={showExtra} aria-pressed={showExtra} onclick={toggleExtra}>
 				<Icon name={showExtra ? 'eye' : 'eyeOff'} size={12} />
@@ -292,24 +302,7 @@
 	<div class="surface tl-surface">
 		<div class="tl-scroll">
 			<div class="tl-body">
-				{#if viewMode !== 'explore'}
-					<div class="tl-lines" aria-hidden="true">
-						{#each months as _m}<span></span>{/each}
-					</div>
-
-					<div class="tl-axis">
-						<span class="tl-axis-label">{t('rewind.timelineAxis')}</span>
-						{#each months as m}<span>{m.slice(0, 1)}</span>{/each}
-					</div>
-				{/if}
-
-				{#if viewMode === 'mixed'}
-					<div class="tl-group">
-						{#each chrono as b (`${b.kind}-${b.id}`)}
-							{@render barRow(b)}
-						{/each}
-					</div>
-				{:else if viewMode === 'explore'}
+				{#if exploring}
 					<div class="mm-wrap">
 						<div class="mm-caption">
 							<span>{t('rewind.timelineExploreHint')}</span>
@@ -357,7 +350,7 @@
 							{#each months as m}<span>{m.slice(0, 1)}</span>{/each}
 						</div>
 
-						{#if exploreGrouped.length === 0}
+						{#if (mixed ? exploreChrono.length : exploreGrouped.length) === 0}
 							<div class="tl-explore-empty">{t('rewind.timelineExploreEmpty')}</div>
 						{:else}
 							<div class="tl-explore-scroll">
@@ -365,30 +358,55 @@
 									<span class="tl-axis-label">{t('rewind.timelineAxis')}</span>
 									{#each months as m}<span>{m.slice(0, 1)}</span>{/each}
 								</div>
-								{#each exploreGrouped as g (g.type)}
+								{#if mixed}
 									<div class="tl-group">
-										<div class="tl-glabel" style="color:{COLORS[g.type]}">
-											{typeLabel(g.type)} <span class="c">{g.rows.length}</span>
-										</div>
-										{#each g.rows as b (`${b.kind}-${b.id}`)}
+										{#each exploreChrono as b (`${b.kind}-${b.id}`)}
 											{@render barRow(b)}
 										{/each}
 									</div>
-								{/each}
+								{:else}
+									{#each exploreGrouped as g (g.type)}
+										<div class="tl-group">
+											<div class="tl-glabel" style="color:{COLORS[g.type]}">
+												{typeLabel(g.type)} <span class="c">{g.rows.length}</span>
+											</div>
+											{#each g.rows as b (`${b.kind}-${b.id}`)}
+												{@render barRow(b)}
+											{/each}
+										</div>
+									{/each}
+								{/if}
 							</div>
 						{/if}
 					</div>
 				{:else}
-					{#each grouped as g (g.type)}
+					<div class="tl-lines" aria-hidden="true">
+						{#each months as _m}<span></span>{/each}
+					</div>
+
+					<div class="tl-axis">
+						<span class="tl-axis-label">{t('rewind.timelineAxis')}</span>
+						{#each months as m}<span>{m.slice(0, 1)}</span>{/each}
+					</div>
+
+					{#if mixed}
 						<div class="tl-group">
-							<div class="tl-glabel" style="color:{COLORS[g.type]}">
-								{typeLabel(g.type)} <span class="c">{g.rows.length}</span>
-							</div>
-							{#each g.rows as b (`${b.kind}-${b.id}`)}
+							{#each chrono as b (`${b.kind}-${b.id}`)}
 								{@render barRow(b)}
 							{/each}
 						</div>
-					{/each}
+					{:else}
+						{#each grouped as g (g.type)}
+							<div class="tl-group">
+								<div class="tl-glabel" style="color:{COLORS[g.type]}">
+									{typeLabel(g.type)} <span class="c">{g.rows.length}</span>
+								</div>
+								{#each g.rows as b (`${b.kind}-${b.id}`)}
+									{@render barRow(b)}
+								{/each}
+							</div>
+						{/each}
+					{/if}
 				{/if}
 
 				{#if movies.length > 0}
