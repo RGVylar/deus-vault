@@ -11,8 +11,9 @@ chrome.runtime.onMessage.addListener(handleMessage);
 chrome.notifications.onButtonClicked.addListener(handleNotifButton);
 chrome.notifications.onClicked.addListener(handleNotifClick);
 chrome.notifications.onClosed.addListener((notifId) => pendingNotifs.delete(notifId));
-chrome.runtime.onStartup.addListener(reinjectContentScripts);
-chrome.runtime.onInstalled.addListener(reinjectContentScripts);
+chrome.alarms.onAlarm.addListener(handleAlarm);
+chrome.runtime.onStartup.addListener(bootstrap);
+chrome.runtime.onInstalled.addListener(bootstrap);
 
 // --- In-memory state (reset when SW suspends, that's OK) ---
 const pendingNotifs = new Map(); // notifId → { videoId, url, existingId, senderTabId }
@@ -20,6 +21,19 @@ let distFlushing = false;        // prevents concurrent distraction flushes
 
 // --- Constants ---
 const DEFAULT_API = 'https://content.mugrelore.com/api';
+
+const FOCUS_END_ALARM   = 'dv-focus-end';
+const FOCUS_TICK_ALARM  = 'dv-focus-tick';
+const FOCUS_MAX_MINUTES = 12 * 60;
+
+// Pages a focus session blocks — mirrors content/focus.js
+const FOCUS_MATCHES = [
+  'https://www.youtube.com/*',
+  'https://*.tiktok.com/*',
+  'https://x.com/*',
+  'https://twitter.com/*',
+  'https://*.instagram.com/*',
+];
 
 // Mirrors manifest.json's "content_scripts" — kept in sync manually.
 // Needed because declarative content_scripts only fire on fresh navigations;
@@ -32,13 +46,12 @@ const CONTENT_SCRIPT_GROUPS = [
     css: ['content/youtube.css'],
   },
   {
-    matches: [
-      'https://www.youtube.com/*',
-      'https://*.tiktok.com/*',
-      'https://x.com/*',
-      'https://twitter.com/*',
-      'https://*.instagram.com/*',
-    ],
+    matches: FOCUS_MATCHES,
+    js: ['content/focus.js'],
+    css: ['content/focus.css'],
+  },
+  {
+    matches: FOCUS_MATCHES,
     js: ['content/distraction.js'],
   },
   {
@@ -85,6 +98,134 @@ async function reinjectContentScripts() {
         // Tab doesn't allow injection (chrome://, PDF viewer, etc.) — ignore
       }
     }
+  }
+}
+
+async function bootstrap() {
+  await restoreFocus();
+  await reinjectContentScripts();
+}
+
+// ================================================================
+// Focus mode
+//
+// A session is an end timestamp in storage.local. Everything else
+// (alarms, badge, overlay) is derived from it, so the session
+// survives the service worker suspending, the browser closing, and
+// the extension being disabled and re-enabled.
+//
+// By design there is no way to end a session early.
+// ================================================================
+
+async function getFocusUntil() {
+  const { focusUntil = 0 } = await chrome.storage.local.get('focusUntil');
+  return Number(focusUntil) || 0;
+}
+
+async function startFocus(minutes) {
+  const mins = Math.round(Number(minutes));
+  if (!Number.isFinite(mins) || mins <= 0) {
+    throw new Error('Duración inválida');
+  }
+  if (mins > FOCUS_MAX_MINUTES) {
+    throw new Error(`Máximo ${FOCUS_MAX_MINUTES / 60} horas`);
+  }
+
+  // Extend from the current end, never from now: starting a session
+  // while one is running must not be a way to shorten it.
+  const now     = Date.now();
+  const current = await getFocusUntil();
+  const base    = current > now ? current : now;
+  const focusUntil = base + mins * 60_000;
+
+  await chrome.storage.local.set({ focusUntil });
+  await scheduleFocusAlarms(focusUntil);
+  await updateFocusBadge(focusUntil);
+  await enforceFocusOnOpenTabs();
+  return focusUntil;
+}
+
+async function scheduleFocusAlarms(focusUntil) {
+  await chrome.alarms.clear(FOCUS_END_ALARM);
+  await chrome.alarms.clear(FOCUS_TICK_ALARM);
+  chrome.alarms.create(FOCUS_END_ALARM,  { when: focusUntil });
+  chrome.alarms.create(FOCUS_TICK_ALARM, { periodInMinutes: 1 });
+}
+
+async function endFocus() {
+  // Guard against an alarm firing early (clock skew, extension reload)
+  const focusUntil = await getFocusUntil();
+  if (focusUntil > Date.now()) {
+    await scheduleFocusAlarms(focusUntil);
+    return;
+  }
+
+  await chrome.storage.local.remove('focusUntil');
+  await chrome.alarms.clear(FOCUS_END_ALARM);
+  await chrome.alarms.clear(FOCUS_TICK_ALARM);
+  await setBadge(null, 'clear');
+
+  if (focusUntil) {
+    chrome.notifications.create(`dv-focus-${Date.now()}`, {
+      type:    'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon48.svg'),
+      title:   'Deus Vault — sesión completada 🎯',
+      message: 'Se acabó el modo concentración. Las redes vuelven a estar disponibles.',
+    });
+  }
+}
+
+// Called on startup: re-arm the alarms, which do not survive a
+// browser restart even though the timestamp in storage does.
+async function restoreFocus() {
+  const focusUntil = await getFocusUntil();
+  if (!focusUntil) return;
+  if (focusUntil <= Date.now()) {
+    await endFocus();
+    return;
+  }
+  await scheduleFocusAlarms(focusUntil);
+  await updateFocusBadge(focusUntil);
+}
+
+async function updateFocusBadge(known = null) {
+  const focusUntil = known ?? await getFocusUntil();
+  const left = focusUntil - Date.now();
+  if (left <= 0) {
+    await endFocus();
+    return;
+  }
+  const mins = Math.ceil(left / 60_000);
+  const text = mins >= 60 ? `${Math.ceil(mins / 60)}h` : `${mins}m`;
+  try {
+    await chrome.action.setBadgeText({ text });
+    await chrome.action.setBadgeBackgroundColor({ color: '#7c6fe0' });
+  } catch (_) { /* action unavailable */ }
+}
+
+// Apply the block to tabs that were already open when the session
+// started, so the user does not just keep scrolling the current one.
+async function enforceFocusOnOpenTabs() {
+  let tabs;
+  try {
+    tabs = await chrome.tabs.query({ url: FOCUS_MATCHES });
+  } catch (_) {
+    return;
+  }
+  for (const tab of tabs) {
+    if (!tab.id) continue;
+    try {
+      await chrome.scripting.insertCSS({ target: { tabId: tab.id }, files: ['content/focus.css'] });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content/focus.js'] });
+    } catch (_) { /* tab closed or not injectable */ }
+  }
+}
+
+function handleAlarm(alarm) {
+  if (alarm.name === FOCUS_END_ALARM) {
+    endFocus().catch(console.error);
+  } else if (alarm.name === FOCUS_TICK_ALARM) {
+    updateFocusBadge().catch(console.error);
   }
 }
 
@@ -416,6 +557,18 @@ async function processMessage(msg, sender) {
     }
 
     // ----------------------------------------------------------
+    case 'GET_FOCUS': {
+      const focusUntil = await getFocusUntil();
+      return { focusUntil, active: focusUntil > Date.now() };
+    }
+
+    // ----------------------------------------------------------
+    case 'START_FOCUS': {
+      const focusUntil = await startFocus(msg.minutes);
+      return { focusUntil, active: true };
+    }
+
+    // ----------------------------------------------------------
     case 'ADD_TO_WISHLIST': {
       const { product } = msg;
       await apiPost('/wishlist', {
@@ -519,3 +672,12 @@ function handleNotifClick(notifId) {
   chrome.notifications.clear(notifId);
   pendingNotifs.delete(notifId);
 }
+
+// ================================================================
+// Boot
+// ================================================================
+
+// Runs every time the service worker starts, not just on
+// startup/install: re-enabling the extension mid-session gives us no
+// event, and the focus alarms must be re-armed regardless.
+restoreFocus().catch(console.error);

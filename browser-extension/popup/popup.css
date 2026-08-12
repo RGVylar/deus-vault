@@ -130,6 +130,7 @@ body {
 input[type="email"],
 input[type="password"],
 input[type="url"],
+input[type="number"],
 input[type="text"] {
   width: 100%;
   padding: 9px 12px;
@@ -411,6 +412,103 @@ input::placeholder { color: var(--text-dim); }
 }
 
 /* ── Distraction block ─────────────────────────────────────────── */
+
+/* ── Focus mode ────────────────────────────────────────────── */
+
+.focus-block {
+  padding: 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--glass);
+}
+
+.focus-block-on {
+  border-color: rgba(124, 111, 224, 0.45);
+  background: var(--primary-dim);
+  text-align: center;
+}
+
+.focus-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.focus-block-on .focus-head {
+  justify-content: center;
+}
+
+.focus-msg {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.focus-presets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.btn-preset {
+  padding: 7px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.14s, color 0.14s;
+}
+
+.btn-preset:hover,
+.btn-preset.selected {
+  border-color: var(--primary);
+  color: var(--text);
+}
+
+.focus-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.focus-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.focus-countdown {
+  margin-top: 14px;
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: #a99bff;
+}
+
+.focus-label {
+  margin-top: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+}
+
+.focus-note {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
 
 .distraction-block {
   padding: 14px;

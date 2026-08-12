@@ -42,6 +42,36 @@
   <!-- Main screen (logged in) -->
   <div id="screen-main" class="screen hidden">
 
+    <!-- Focus mode: idle (start a session) -->
+    <div id="focus-idle" class="focus-block hidden">
+      <div class="focus-head">
+        <span>🎯</span>
+        <span>Modo concentración</span>
+      </div>
+      <div class="focus-msg">Bloquea Shorts, TikTok, Twitter y Reels. Una vez empieza, no se puede cancelar.</div>
+      <div class="focus-presets">
+        <button class="focus-preset btn-preset" data-min="25">25m</button>
+        <button class="focus-preset btn-preset" data-min="50">50m</button>
+        <button class="focus-preset btn-preset" data-min="90">90m</button>
+      </div>
+      <div class="focus-row">
+        <input id="focus-minutes" type="number" min="1" max="720" step="1" placeholder="minutos" />
+        <button id="focus-start" class="btn btn-primary">Empezar</button>
+      </div>
+      <div id="focus-error" class="error-msg hidden"></div>
+    </div>
+
+    <!-- Focus mode: running -->
+    <div id="focus-active" class="focus-block focus-block-on hidden">
+      <div class="focus-head">
+        <span>🔒</span>
+        <span>Concentración activa</span>
+      </div>
+      <div id="focus-countdown" class="focus-countdown">--:--</div>
+      <div class="focus-label">restante</div>
+      <div class="focus-note">No se puede cancelar. Termina sola.</div>
+    </div>
+
     <!-- Current content block -->
     <div id="content-block" class="content-block hidden">
       <div id="content-thumb-wrap" class="thumb-wrap hidden">

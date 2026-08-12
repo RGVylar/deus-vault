@@ -69,6 +69,14 @@ const productActionBar = $('product-action-bar');
 const btnAddWishlist   = $('btn-add-wishlist');
 const productAddedMsg  = $('product-added-msg');
 
+// Focus mode
+const focusIdle      = $('focus-idle');
+const focusActive    = $('focus-active');
+const focusMinutes   = $('focus-minutes');
+const focusStart     = $('focus-start');
+const focusError     = $('focus-error');
+const focusCountdown = $('focus-countdown');
+
 const footer      = $('footer');
 const footerUser  = $('footer-user');
 const logoutBtn   = $('logout-btn');
@@ -211,6 +219,8 @@ async function init() {
   show(screens.main);
   screens.loading.classList.add('hidden');
 
+  await loadFocus();
+
   try {
     await loadCurrentTabContent(auth);
   } catch (err) {
@@ -278,6 +288,86 @@ async function loadCurrentTabContent(auth) {
     }
   }
 }
+
+// ── Focus mode ───────────────────────────────────────────────────
+
+let focusUntil   = 0;
+let focusTimerId = null;
+
+function fmtClock(ms) {
+  const total = Math.ceil(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const p = (n) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
+}
+
+function renderFocus() {
+  const left = focusUntil - Date.now();
+
+  if (left > 0) {
+    hide(focusIdle);
+    show(focusActive);
+    focusCountdown.textContent = fmtClock(left);
+    if (!focusTimerId) focusTimerId = setInterval(renderFocus, 1000);
+    return;
+  }
+
+  if (focusTimerId) { clearInterval(focusTimerId); focusTimerId = null; }
+  focusUntil = 0;
+  hide(focusActive);
+  show(focusIdle);
+}
+
+async function loadFocus() {
+  try {
+    const state = await sw('GET_FOCUS');
+    focusUntil = state?.focusUntil || 0;
+  } catch (_) {
+    focusUntil = 0;
+  }
+  renderFocus();
+}
+
+for (const btn of document.querySelectorAll('.focus-preset')) {
+  btn.addEventListener('click', () => {
+    focusMinutes.value = btn.dataset.min;
+    for (const b of document.querySelectorAll('.focus-preset')) {
+      b.classList.toggle('selected', b === btn);
+    }
+    hideError(focusError);
+  });
+}
+
+focusStart.addEventListener('click', async () => {
+  const minutes = parseInt(focusMinutes.value, 10);
+  if (!minutes || minutes <= 0) {
+    showError(focusError, 'Escribe cuántos minutos');
+    return;
+  }
+  // Last chance to back out — after this there is no cancel button.
+  const label = minutes >= 60
+    ? `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ''}`
+    : `${minutes} minutos`;
+  if (!confirm(`Vas a bloquear las redes durante ${label}.\n\nNo se puede cancelar. ¿Seguro?`)) return;
+
+  hideError(focusError);
+  focusStart.disabled    = true;
+  focusStart.textContent = '…';
+  try {
+    const state = await sw('START_FOCUS', { minutes });
+    focusUntil = state.focusUntil;
+    renderFocus();
+  } catch (err) {
+    showError(focusError, err.message);
+  } finally {
+    focusStart.disabled    = false;
+    focusStart.textContent = 'Empezar';
+  }
+});
+
+focusMinutes.addEventListener('keydown', (e) => { if (e.key === 'Enter') focusStart.click(); });
 
 // ── Distraction state ────────────────────────────────────────────
 
@@ -633,6 +723,7 @@ loginBtn.addEventListener('click', async () => {
     showScreen('main');
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     currentTab = tab;
+    await loadFocus();
     await loadCurrentTabContent({ loggedIn: true, user: data.user });
   } catch (err) {
     showError(loginError, err.message);

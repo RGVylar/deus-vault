@@ -8,7 +8,8 @@
     "notifications",
     "activeTab",
     "tabs",
-    "scripting"
+    "scripting",
+    "alarms"
   ],
   "host_permissions": [
     "https://www.youtube.com/*",
@@ -50,6 +51,22 @@
         "content/youtube.css"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://*.tiktok.com/*",
+        "https://x.com/*",
+        "https://twitter.com/*",
+        "https://*.instagram.com/*"
+      ],
+      "js": [
+        "content/focus.js"
+      ],
+      "css": [
+        "content/focus.css"
+      ],
+      "run_at": "document_start"
     },
     {
       "matches": [
