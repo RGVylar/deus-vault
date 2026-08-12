@@ -210,6 +210,8 @@
 	const ytChannelsByCount = $derived(stats ? filterChannels(stats.top_youtube_channels_by_count).slice(0, TOP_CHANNELS) : []);
 	const ytTopVideos = $derived(stats ? filterYoutubeItems((stats.top_items_by_type['youtube'] ?? []).map(v => ({ ...v, content_type: 'youtube' }))) : []);
 	const visibleItems = $derived(stats ? filterYoutubeItems(stats.items as Content[]) : []);
+	const visibleAbandoned = $derived(stats ? filterYoutubeItems(stats.abandoned_items as Content[]) : []);
+	const visibleInProgress = $derived(stats ? filterYoutubeItems(stats.in_progress_items as Content[]) : []);
 	const markedCount = $derived(privacy.channels.length);
 
 	// ── Avatares de canal ─────────────────────────────────────────
@@ -579,7 +581,7 @@
 
 {#if stats.items.length > 0}
 <Chapter id="linea-tiempo" label={t('rewind.chapter.timeline')} icon="activity">
-	<YearTimeline items={visibleItems} {year} months={MONTHS} />
+	<YearTimeline items={visibleItems} abandonedItems={visibleAbandoned} inProgressItems={visibleInProgress} {year} months={MONTHS} />
 </Chapter>
 {/if}
 

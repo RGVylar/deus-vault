@@ -207,6 +207,8 @@ class RewindStats(BaseModel):
     by_month: list[MonthStats]
     calendar: dict[str, DayStats]  # "YYYY-MM-DD" -> DayStats
     items: list[ContentOut]
+    abandoned_items: list[ContentOut]    # abandoned this year, for the timeline
+    in_progress_items: list[ContentOut]  # started this year, still neither consumed nor abandoned
     # Enhanced stats
     streak_max: int
     streak_current: int

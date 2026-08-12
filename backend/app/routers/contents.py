@@ -341,6 +341,23 @@ def rewind(
     if total_finished > 0:
         completion_rate = round(len(items) / total_finished * 100, 1)
 
+    # Still going: started this year, not yet consumed or abandoned — the
+    # timeline draws these with an open (fading) end instead of a hard stop.
+    in_progress_items = list(
+        db.scalars(
+            select(Content)
+            .where(
+                Content.user_id == user.id,
+                Content.consumed == False,  # noqa: E712
+                Content.abandoned == False,  # noqa: E712
+                Content.started_at != None,  # noqa: E711
+                Content.started_at >= start,
+                Content.started_at < end,
+            )
+            .order_by(Content.started_at.desc())
+        ).all()
+    )
+
     # --- Deep stats ---
 
     # Top YouTube channels (by author, minutes watched)
@@ -517,6 +534,8 @@ def rewind(
         by_month=by_month,
         calendar=calendar,
         items=[ContentOut.model_validate(c) for c in items],
+        abandoned_items=[ContentOut.model_validate(c) for c in abandoned_items_year],
+        in_progress_items=[ContentOut.model_validate(c) for c in in_progress_items],
         streak_max=streak_max,
         streak_current=streak_current,
         best_month=best_month,

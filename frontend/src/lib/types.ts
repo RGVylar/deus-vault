@@ -193,6 +193,8 @@ export interface RewindStats {
 	by_month: MonthStats[];
 	calendar: Record<string, DayStats>;
 	items: Content[];
+	abandoned_items: Content[];
+	in_progress_items: Content[];
 	streak_max: number;
 	streak_current: number;
 	best_month: number | null;
