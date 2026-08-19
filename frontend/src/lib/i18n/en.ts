@@ -643,6 +643,8 @@ export const en = {
 	'home.titleLabel': 'Title',
 	'home.authorLabel': 'Author / Channel / Studio',
 	'home.urlLabel': 'URL',
+	'home.urlChapterHint': 'Put {n} in the URL and it becomes the chapter you are on (use {nnn} for 007)',
+	'home.urlChapterPreview': 'Opens: {url}',
 	'home.durationLabel': 'Duration (minutes)',
 	'home.durationPerEpisodeLabel': 'Duration per episode (minutes)',
 	'home.pagesLabel': 'Pages',

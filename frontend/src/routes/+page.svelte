@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration, TYPE_ICONS, TYPE_COLOR, PROVIDER_LABELS, typeLabel, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate, isLandscape, resolveProvider, shortProviderName, providerNameToKey } from '$lib/utils';
+	import { formatDuration, TYPE_ICONS, TYPE_COLOR, PROVIDER_LABELS, typeLabel, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate, isLandscape, resolveProvider, shortProviderName, providerNameToKey, hasChapterToken, fillChapterToken } from '$lib/utils';
 	import { buildEnrichPatch, enrichContentInBackground as enrichContentInBackgroundShared } from '$lib/contentEnrich';
 	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
 	import ContentDetail from '$lib/components/ContentDetail.svelte';
@@ -91,6 +91,8 @@
 	let editPinned = $state(false);
 	let editStartedAt = $state('');
 	let editError = $state('');
+	// Tipos que avanzan de uno en uno: son los únicos donde `{n}` en la URL tiene sentido.
+	const CHAPTER_TOKEN_TYPES = ['manga', 'series', 'book'];
 
 	// Settings
 	let showSettings = $state(false);
@@ -1359,6 +1361,11 @@ $effect(() => {
 				<div class="field">
 					<label for="edit-url">{t('home.urlLabel')}</label>
 					<input id="edit-url" class="text" bind:value={editUrl} placeholder="https://…" />
+					{#if hasChapterToken(editUrl)}
+						<p class="url-token-hint">{t('home.urlChapterPreview', { url: fillChapterToken(editUrl, { content_type: editingItem.content_type, progress: editingItem.progress, episode_count: editEpisodeCount, page_count: editPageCount }) })}</p>
+					{:else if CHAPTER_TOKEN_TYPES.includes(editingItem.content_type)}
+						<p class="url-token-hint">{t('home.urlChapterHint')}</p>
+					{/if}
 				</div>
 				<div class="field">
 					<label for="edit-duration">{editingItem.content_type === 'series' ? t('home.durationPerEpisodeLabel') : editingItem.content_type === 'manga' ? t('home.durationPerChapterLabel') : t('home.durationLabel')}</label>
@@ -1703,6 +1710,13 @@ $effect(() => {
 	}
 	.rolodex-board-single {
 		justify-content: center;
+	}
+
+	.url-token-hint {
+		font-size: 11px;
+		color: var(--text-dim);
+		margin: 4px 0 0;
+		word-break: break-all;
 	}
 
 	.progress-track-btn {

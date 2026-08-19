@@ -142,10 +142,43 @@ function isStremioUrl(url: string): boolean {
 	return url.startsWith('stremio://') || url.includes('strem.io') || url.includes('stremio.com');
 }
 
+/** Marcador de capítulo en la URL guardada.
+ *  `{n}` se sustituye por el capítulo/episodio/página que toca; `{nn}` y `{nnn}`
+ *  hacen lo mismo rellenando con ceros a la izquierda (`{nnn}` → `007`).
+ */
+const CHAPTER_TOKEN = /\{(n+)\}/g;
+
+export function hasChapterToken(url: string | null | undefined): boolean {
+	return !!url && /\{n+\}/.test(url);
+}
+
+/** El número que toca abrir: lo leído + 1, sin pasarse del total conocido.
+ *  En libros el total son páginas; en series y manga, episodios o capítulos. */
+function nextUnit(content: ChapterAware): number {
+	const done = Math.max(0, Math.floor(content.progress ?? 0));
+	const total = content.content_type === 'book' ? content.page_count : content.episode_count;
+	return total && total > 0 ? Math.min(done + 1, total) : done + 1;
+}
+
+type ChapterAware = {
+	content_type: string;
+	progress?: number | null;
+	episode_count?: number | null;
+	page_count?: number | null;
+};
+
+/** Rellena `{n}` en una URL con el capítulo por el que va el contenido.
+ *  Si no hay marcador devuelve la URL tal cual. */
+export function fillChapterToken(url: string, content: ChapterAware): string {
+	if (!hasChapterToken(url)) return url;
+	const n = nextUnit(content);
+	return url.replace(CHAPTER_TOKEN, (_m, pad: string) => String(n).padStart(pad.length, '0'));
+}
+
 /** Build the best "open" URL for a content item.
  *  Priority: TMDB page > IMDb page > non-Stremio stored URL > YouTube > Steam > Stremio (last resort)
  */
-export function buildConsumeUrl(content: { content_type: string; url: string | null; source_id: string | null }): string | null {
+export function buildConsumeUrl(content: ChapterAware & { url: string | null; source_id: string | null }): string | null {
 	// TMDB source_id → TMDB page (much more useful than Stremio)
 	if (content.source_id?.startsWith('tmdb:')) {
 		const parts = content.source_id.split(':'); // tmdb:movie:12345 or tmdb:tv:12345
@@ -160,7 +193,7 @@ export function buildConsumeUrl(content: { content_type: string; url: string | n
 	}
 	// Stored URL — skip Stremio URLs, use everything else
 	if (content.url && !isStremioUrl(content.url)) {
-		return content.url;
+		return fillChapterToken(content.url, content);
 	}
 	// YouTube
 	if (content.content_type === 'youtube' && content.source_id) {

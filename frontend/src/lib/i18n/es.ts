@@ -644,6 +644,8 @@ export const es = {
 	'home.titleLabel': 'Título',
 	'home.authorLabel': 'Autor / Canal / Estudio',
 	'home.urlLabel': 'URL',
+	'home.urlChapterHint': 'Usa {n} en la URL y se sustituye por el capítulo que toca (usa {nnn} para 007)',
+	'home.urlChapterPreview': 'Abrirá: {url}',
 	'home.durationLabel': 'Duración (minutos)',
 	'home.durationPerEpisodeLabel': 'Duración por episodio (minutos)',
 	'home.pagesLabel': 'Páginas',
