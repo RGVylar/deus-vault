@@ -32,6 +32,9 @@
 	};
 	const LS_KEY = 'rw-timeline-view';
 	const LS_EXTRA_KEY = 'rw-timeline-extra';
+	const LS_DONE_KEY = 'rw-timeline-done';
+	const LS_PROGRESS_KEY = 'rw-timeline-progress';
+	const LS_ABANDONED_KEY = 'rw-timeline-abandoned';
 	const LS_EXPLORE_KEY = 'rw-timeline-explore';
 
 	// Cómo se ordena la lista (categoría/mezclado) y si además está acotada a
@@ -39,11 +42,21 @@
 	// sí, así que cada uno vive en su propio interruptor.
 	let mixed = $state(false);
 	let exploring = $state(false);
-	let showExtra = $state(true);
+	let showDone = $state(true);
+	let showProgress = $state(true);
+	let showAbandoned = $state(true);
 	onMount(() => {
 		try { mixed = localStorage.getItem(LS_KEY) === 'mixed'; } catch { /* ignore */ }
 		try { exploring = localStorage.getItem(LS_EXPLORE_KEY) === 'on'; } catch { /* ignore */ }
-		try { showExtra = localStorage.getItem(LS_EXTRA_KEY) !== 'off'; } catch { /* ignore */ }
+		// El interruptor unico de antes se parte en dos; si estaba apagado, ambos arrancan apagados.
+		try {
+			const legacyOff = localStorage.getItem(LS_EXTRA_KEY) === 'off';
+			const progress = localStorage.getItem(LS_PROGRESS_KEY);
+			const abandoned = localStorage.getItem(LS_ABANDONED_KEY);
+			showDone = localStorage.getItem(LS_DONE_KEY) !== 'off';
+			showProgress = progress !== null ? progress !== 'off' : !legacyOff;
+			showAbandoned = abandoned !== null ? abandoned !== 'off' : !legacyOff;
+		} catch { /* ignore */ }
 	});
 	function setArrangement(m: boolean) {
 		mixed = m;
@@ -53,9 +66,17 @@
 		exploring = !exploring;
 		try { localStorage.setItem(LS_EXPLORE_KEY, exploring ? 'on' : 'off'); } catch { /* ignore */ }
 	}
-	function toggleExtra() {
-		showExtra = !showExtra;
-		try { localStorage.setItem(LS_EXTRA_KEY, showExtra ? 'on' : 'off'); } catch { /* ignore */ }
+	function toggleDone() {
+		showDone = !showDone;
+		try { localStorage.setItem(LS_DONE_KEY, showDone ? 'on' : 'off'); } catch { /* ignore */ }
+	}
+	function toggleProgress() {
+		showProgress = !showProgress;
+		try { localStorage.setItem(LS_PROGRESS_KEY, showProgress ? 'on' : 'off'); } catch { /* ignore */ }
+	}
+	function toggleAbandoned() {
+		showAbandoned = !showAbandoned;
+		try { localStorage.setItem(LS_ABANDONED_KEY, showAbandoned ? 'on' : 'off'); } catch { /* ignore */ }
 	}
 
 	/** Índice de mes 0-11 dentro del año mostrado; null si la fecha cae fuera. */
@@ -140,8 +161,14 @@
 		return out;
 	});
 
-	/** Lo que se dibuja: siempre lo acabado, más abandonados/en curso si el interruptor está encendido. */
-	const allBars = $derived(showExtra ? [...bars, ...abandonedBars, ...inProgressBars] : bars);
+	/** Lo que se dibuja: cada estado entra o no según su interruptor, así que
+	    se puede ver el año entero o quedarse solo con lo abandonado, o solo con
+	    lo que sigue abierto. */
+	const allBars = $derived([
+		...(showDone ? bars : []),
+		...(showAbandoned ? abandonedBars : []),
+		...(showProgress ? inProgressBars : []),
+	]);
 
 	/** Agrupadas por tipo (juego, serie, libro), cada grupo ordenado por inicio. */
 	const grouped = $derived.by(() => {
@@ -250,6 +277,8 @@
 
 	const missingStart = $derived(bars.filter(b => !b.hasSpan).length);
 	const hasExtra = $derived(abandonedBars.length > 0 || inProgressBars.length > 0);
+	/** Los tres interruptores apagados: hay datos, pero el usuario los ha escondido todos. */
+	const nothingShown = $derived(allBars.length === 0 && !(showDone && (movies.length > 0 || noise.count > 0)));
 	const hasAnything = $derived(bars.length > 0 || movies.length > 0 || noise.count > 0 || hasExtra);
 </script>
 
@@ -291,10 +320,22 @@
 			<Icon name="activity" size={12} />
 			{t('rewind.timelineExplore')}
 		</button>
-		{#if hasExtra}
-			<button type="button" class="tl-extra-toggle" class:on={showExtra} aria-pressed={showExtra} onclick={toggleExtra}>
-				<Icon name={showExtra ? 'eye' : 'eyeOff'} size={12} />
-				{t('rewind.timelineShowExtra')}
+		{#if bars.length > 0 || movies.length > 0 || noise.count > 0}
+			<button type="button" class="tl-extra-toggle" class:on={showDone} aria-pressed={showDone} onclick={toggleDone}>
+				<Icon name={showDone ? 'eye' : 'eyeOff'} size={12} />
+				{t('rewind.timelineShowDone')}
+			</button>
+		{/if}
+		{#if inProgressBars.length > 0}
+			<button type="button" class="tl-extra-toggle" class:on={showProgress} aria-pressed={showProgress} onclick={toggleProgress}>
+				<Icon name={showProgress ? 'eye' : 'eyeOff'} size={12} />
+				{t('rewind.timelineShowProgress')}
+			</button>
+		{/if}
+		{#if abandonedBars.length > 0}
+			<button type="button" class="tl-extra-toggle tl-t-abandoned" class:on={showAbandoned} aria-pressed={showAbandoned} onclick={toggleAbandoned}>
+				<Icon name={showAbandoned ? 'eye' : 'eyeOff'} size={12} />
+				{t('rewind.timelineShowAbandoned')}
 			</button>
 		{/if}
 	</h2>
@@ -409,7 +450,7 @@
 					{/if}
 				{/if}
 
-				{#if movies.length > 0}
+				{#if showDone && movies.length > 0}
 					<div class="tl-group">
 						<div class="tl-glabel" style="color:{COLORS.movie}">
 							{typeLabel('movie')} <span class="c">{movies.length}</span>
@@ -425,7 +466,7 @@
 					</div>
 				{/if}
 
-				{#if noise.count > 0}
+				{#if showDone && noise.count > 0}
 					<div class="tl-group">
 						<div class="tl-glabel" style="color:{COLORS.youtube}">
 							{t('rewind.timelineNoise')} <span class="c">{noise.count}</span>
@@ -449,13 +490,16 @@
 		<div class="tl-legend">
 			<span><i class="lg-bar"></i> {t('rewind.timelineLegendSpan')}</span>
 			<span><i class="lg-dot"></i> {t('rewind.timelineLegendDot')}</span>
-			{#if showExtra && abandonedBars.length > 0}
+			{#if showAbandoned && abandonedBars.length > 0}
 				<span><i class="lg-abandon"></i> {t('rewind.timelineLegendAbandoned')}</span>
 			{/if}
-			{#if showExtra && inProgressBars.length > 0}
+			{#if showProgress && inProgressBars.length > 0}
 				<span><i class="lg-progress"></i> {t('rewind.timelineLegendProgress')}</span>
 			{/if}
-			{#if missingStart > 0}
+			{#if nothingShown}
+				<span class="lg-hint">{t('rewind.timelineAllHidden')}</span>
+			{/if}
+			{#if showDone && missingStart > 0}
 				<span class="lg-hint">{t('rewind.timelineNoStartHint', { count: missingStart })}</span>
 			{/if}
 		</div>
@@ -488,7 +532,8 @@
 		padding: 5px 10px; border: 1px solid var(--glass-border); border-radius: 8px;
 		background: var(--glass-bg-strong); color: var(--text-dim); cursor: pointer; font-family: inherit;
 	}
-	.tl-extra-toggle.on { color: var(--text); border-color: var(--danger, #e0556b); }
+	.tl-extra-toggle.on { color: var(--text); border-color: var(--primary); }
+	.tl-extra-toggle.tl-t-abandoned.on { border-color: var(--danger, #e0556b); }
 	.tl-extra-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 
 	.tl-surface { padding: 16px 18px 14px; }
