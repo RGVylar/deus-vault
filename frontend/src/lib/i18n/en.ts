@@ -30,6 +30,8 @@ export const en = {
 	'layout.extBanner.text': 'Track YouTube automatically without opening the vault.',
 	'layout.extBanner.install': 'Install',
 	'layout.extBanner.close': 'Close',
+	'paste.duplicate': '⚠️ That link is already pending in your vault.',
+	'paste.duplicateItem': '⚠️ Already pending in your vault: “{title}”',
 
 	// ── login ──
 	'login.tagline': 'A vault of content to consume before you die. Movies, books, games, videos. Whatever you left pending.',

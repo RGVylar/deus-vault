@@ -9,7 +9,7 @@
  */
 
 import { api } from './api';
-import type { ContentType } from './types';
+import type { Content, ContentType } from './types';
 
 function readReadingPrefs(): { wpm: number; wordsPerPage: number } {
 	try {
@@ -100,10 +100,24 @@ export async function enrichContentInBackground(
 	contentId: number,
 	url: string,
 	initialType: string,
-	existingFetch?: Promise<any> | null
+	existingFetch?: Promise<any> | null,
+	opts?: { dropIfDuplicate?: boolean }
 ): Promise<boolean> {
 	try {
 		const data = existingFetch ? await existingFetch : await fetchAutoLookup(url);
+		// Pegar (Ctrl+V) crea el item antes de saber su source_id, así que la
+		// comprobación por URL de createContentFromUrl no ve los duplicados que
+		// llegan por otra URL del mismo título (youtu.be/ID vs watch?v=ID, la
+		// ficha de Steam con y sin slug…). Ahora que hay source_id, se mira otra
+		// vez: si ya había uno pendiente, se borra el recién creado.
+		if (opts?.dropIfDuplicate && data.source_id) {
+			const twin = await findDuplicate({ sourceId: data.source_id, excludeId: contentId });
+			if (twin && !twin.consumed && !twin.abandoned) {
+				await api.del(`/contents/${contentId}`);
+				notifyDuplicate(twin);
+				return false;
+			}
+		}
 		const patch = buildEnrichPatch(data, initialType);
 		if (Object.keys(patch).length) {
 			await api.patch(`/contents/${contentId}`, patch);
@@ -116,15 +130,58 @@ export async function enrichContentInBackground(
 	}
 }
 
+/** Busca en la bóveda un item con la misma URL o el mismo source_id. */
+export async function findDuplicate(
+	params: { url?: string; sourceId?: string; excludeId?: number }
+): Promise<Content | null> {
+	const qs = new URLSearchParams();
+	if (params.sourceId) qs.set('source_id', params.sourceId);
+	else if (params.url) qs.set('url', params.url);
+	else return null;
+	if (params.excludeId != null) qs.set('exclude_id', String(params.excludeId));
+	try {
+		return await api.get<Content | null>(`/contents/check-duplicate?${qs.toString()}`);
+	} catch {
+		return null;
+	}
+}
+
 /** Le dice a la página de la bóveda (si está montada) que recargue la lista. */
 function notifyContentAdded() {
 	try { window.dispatchEvent(new CustomEvent('deus_vault_content_added')); } catch { /* SSR */ }
 }
 
+/** Avisa de que el enlace pegado ya estaba en la bóveda (lo recoge el layout). */
+function notifyDuplicate(existing: Content | null) {
+	try {
+		window.dispatchEvent(new CustomEvent('deus_vault_content_duplicate', { detail: existing }));
+	} catch { /* SSR */ }
+}
+
+export type CreateFromUrlResult =
+	| { status: 'created'; id: number }
+	| { status: 'duplicate'; existing: Content | null }
+	| { status: 'error' };
+
+/** URLs con un pegado en vuelo: dos Ctrl+V seguidos no deben crear dos items. */
+const creatingUrls = new Set<string>();
+
 /** Crea el item al instante con lo mínimo y lanza la pesca de metadatos en segundo plano. */
-export async function createContentFromUrl(url: string): Promise<{ id: number } | null> {
+export async function createContentFromUrl(url: string): Promise<CreateFromUrlResult> {
+	if (creatingUrls.has(url)) {
+		notifyDuplicate(null);
+		return { status: 'duplicate', existing: null };
+	}
+	creatingUrls.add(url);
 	const type = guessTypeFromUrl(url);
 	try {
+		// Solo bloquea si sigue pendiente: lo ya consumido o abandonado se puede
+		// volver a añadir, igual que en el modal "Añadir contenido".
+		const existing = await findDuplicate({ url });
+		if (existing && !existing.consumed && !existing.abandoned) {
+			notifyDuplicate(existing);
+			return { status: 'duplicate', existing };
+		}
 		const created = await api.post<{ id: number }>('/contents', {
 			title: '',
 			content_type: type,
@@ -132,10 +189,12 @@ export async function createContentFromUrl(url: string): Promise<{ id: number } 
 		});
 		notifyContentAdded();
 		if (created?.id) {
-			void enrichContentInBackground(created.id, url, type);
+			void enrichContentInBackground(created.id, url, type, null, { dropIfDuplicate: true });
 		}
-		return created;
+		return { status: 'created', id: created.id };
 	} catch {
-		return null;
+		return { status: 'error' };
+	} finally {
+		creatingUrls.delete(url);
 	}
 }

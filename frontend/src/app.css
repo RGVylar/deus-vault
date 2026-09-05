@@ -1700,6 +1700,35 @@ h2 {
 }
 .ext-banner-close:hover { color: var(--text); }
 
+/* Aviso efímero del pegado global (Ctrl+V) */
+.paste-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: min(90vw, 420px);
+  padding: 10px 16px;
+  border-radius: var(--radius-xs);
+  background: oklch(0.22 0.06 290 / 0.92);
+  border: 1px solid oklch(0.55 0.18 290 / 0.45);
+  backdrop-filter: blur(12px);
+  color: var(--text);
+  font-size: 13px;
+  text-align: center;
+  /* Solo desplazamiento: si el navegador congela animaciones (pestaña en
+     segundo plano) el aviso sigue viéndose, que es lo que importa. */
+  animation: paste-toast-in 0.18s ease-out;
+}
+@keyframes paste-toast-in {
+  from { transform: translate(-50%, 8px); }
+  to   { transform: translate(-50%, 0); }
+}
+/* Por debajo de 1024px la barra de pestañas ocupa el pie: el aviso sube. */
+@media (max-width: 1023px) {
+  .paste-toast { bottom: calc(88px + env(safe-area-inset-bottom)); }
+}
+
 /* ============================================================
    AZAR — Rediseño · CSS a AÑADIR a frontend/src/app.css
    ------------------------------------------------------------

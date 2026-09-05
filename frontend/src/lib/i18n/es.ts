@@ -29,6 +29,8 @@ export const es = {
 	'layout.extBanner.text': 'Rastrea YouTube automáticamente sin abrir la bóveda.',
 	'layout.extBanner.install': 'Instalar',
 	'layout.extBanner.close': 'Cerrar',
+	'paste.duplicate': '⚠️ Ese enlace ya está pendiente en tu bóveda.',
+	'paste.duplicateItem': '⚠️ Ya está pendiente en tu bóveda: «{title}»',
 
 	// ── login ──
 	'login.tagline': 'Una bóveda de contenido por consumir antes de morir. Películas, libros, juegos, vídeos. Lo que sea que dejaste pendiente.',

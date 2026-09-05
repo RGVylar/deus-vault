@@ -30,6 +30,8 @@ export const pt = {
 	'layout.extBanner.text': 'Rastreie o YouTube automaticamente sem abrir o cofre.',
 	'layout.extBanner.install': 'Instalar',
 	'layout.extBanner.close': 'Fechar',
+	'paste.duplicate': '⚠️ Esse link já está pendente no seu cofre.',
+	'paste.duplicateItem': '⚠️ Já está pendente no seu cofre: “{title}”',
 
 	// ── login ──
 	'login.tagline': 'Um cofre de conteúdo para consumir antes de morrer. Filmes, livros, jogos, vídeos. O que quer que você tenha deixado pendente.',

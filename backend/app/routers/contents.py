@@ -615,10 +615,15 @@ def list_providers(
 def check_duplicate(
     source_id: str | None = Query(None),
     url: str | None = Query(None),
+    exclude_id: int | None = Query(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Content | None:
-    """Return the first matching pending/consumed item for this user by source_id or url."""
+    """Return the first matching pending/consumed item for this user by source_id or url.
+
+    `exclude_id` skips one item — used when checking an already created item
+    against the rest of the vault, so it doesn't match itself.
+    """
     if not source_id and not url:
         return None
     q = select(Content).where(Content.user_id == user.id)
@@ -626,6 +631,8 @@ def check_duplicate(
         q = q.where(Content.source_id == source_id)
     else:
         q = q.where(Content.url == url)
+    if exclude_id is not None:
+        q = q.where(Content.id != exclude_id)
     return db.scalars(q.limit(1)).first()
 
 

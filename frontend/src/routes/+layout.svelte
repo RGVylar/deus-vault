@@ -57,6 +57,16 @@
 
 	let showExtBanner = $state(false);
 
+	// Aviso efímero para el pegado global: sin él, un Ctrl+V rechazado por
+	// duplicado no se distingue de uno que no ha llegado a la app.
+	let pasteNotice = $state('');
+	let pasteNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+	function showPasteNotice(msg: string) {
+		pasteNotice = msg;
+		if (pasteNoticeTimer) clearTimeout(pasteNoticeTimer);
+		pasteNoticeTimer = setTimeout(() => { pasteNotice = ''; }, 4000);
+	}
+
 	onMount(() => {
 		applyPrefs();
 		const extInstalled = document.documentElement.hasAttribute('data-dv-ext');
@@ -74,14 +84,27 @@
 			ev.preventDefault();
 			// createContentFromUrl notifies the vault page itself once the item exists
 			// and again once enrichment lands, so no need to wait for it here.
+			// Si ya estaba en la bóveda avisa por 'deus_vault_content_duplicate'.
 			void createContentFromUrl(text);
 			if (page.url.pathname !== '/') goto('/');
 		};
 		window.addEventListener('paste', pasteHandler);
 
+		const duplicateHandler = (ev: Event) => {
+			const existing = (ev as CustomEvent).detail as { title?: string } | null;
+			showPasteNotice(
+				existing?.title
+					? t('paste.duplicateItem', { title: existing.title })
+					: t('paste.duplicate')
+			);
+		};
+		window.addEventListener('deus_vault_content_duplicate', duplicateHandler);
+
 			return () => {
 			window.removeEventListener('deus_vault_appearance_changed', applyPrefs);
 			window.removeEventListener('paste', pasteHandler);
+			window.removeEventListener('deus_vault_content_duplicate', duplicateHandler);
+			if (pasteNoticeTimer) clearTimeout(pasteNoticeTimer);
 		};
 	});
 </script>
@@ -165,6 +188,10 @@
 			{@render children()}
 		</div>
 	</div>
+
+	{#if pasteNotice}
+		<div class="paste-toast" role="status">{pasteNotice}</div>
+	{/if}
 
 	<!-- Mobile tab bar (hidden on desktop via CSS) -->
 	{#if auth.isLoggedIn}
