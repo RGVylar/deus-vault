@@ -187,7 +187,10 @@ caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1
     || die "Generated Caddyfile is invalid"
 
 systemctl daemon-reload
-systemctl enable --now deus-vault-backend.service >/dev/null
+systemctl enable deus-vault-backend.service >/dev/null
+# `enable --now` solo arranca lo que estaba parado: en una reinstalacion sobre
+# un backend ya corriendo no hacia nada y seguia sirviendo el codigo anterior.
+systemctl restart deus-vault-backend.service
 systemctl reload caddy
 ok "Services up"
 

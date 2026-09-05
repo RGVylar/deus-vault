@@ -112,7 +112,10 @@ export async function enrichContentInBackground(
 		// vez: si ya había uno pendiente, se borra el recién creado.
 		if (opts?.dropIfDuplicate && data.source_id) {
 			const twin = await findDuplicate({ sourceId: data.source_id, excludeId: contentId });
-			if (twin && !twin.consumed && !twin.abandoned) {
+			// El `twin.id !== contentId` no sobra: un backend antiguo ignora
+			// exclude_id y devuelve el propio item recien creado — sin esta
+			// comprobacion se borraria a si mismo al pegarlo.
+			if (twin && twin.id !== contentId && !twin.consumed && !twin.abandoned) {
 				await api.del(`/contents/${contentId}`);
 				notifyDuplicate(twin);
 				return false;
