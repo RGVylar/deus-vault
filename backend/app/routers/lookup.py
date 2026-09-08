@@ -1624,6 +1624,7 @@ def _anilist_to_content(media: dict) -> dict:
 
     return {
         "anilist_id": media.get("id"),
+        "mal_id": None,
         "title": title,
         "native_title": titles.get("native") or "",
         "thumbnail": (media.get("coverImage") or {}).get("large") or "",
@@ -1646,24 +1647,105 @@ def _anilist_to_content(media: dict) -> dict:
     }
 
 
+# ── Manga (MyAnimeList, de reserva) ──────────────────────────────────────
+#
+# AniList se cae: en septiembre de 2026 su API respondió 403 "temporarily
+# disabled" durante días, y con ella el buscador de manga entero se quedaba
+# vacío. Jikan es la API pública de MyAnimeList, también gratis y sin clave, y
+# trae los mismos datos que hacen falta aquí: capítulos, tomos y autoría. Solo
+# se consulta cuando AniList no devuelve nada, así que en condiciones normales
+# la fuente sigue siendo AniList.
+
+JIKAN_URL = "https://api.jikan.moe/v4"
+
+
+async def _jikan(path: str, params: dict | None = None):
+    """Una llamada a Jikan. Devuelve `data` (lista o ficha) o None si algo falla."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(f"{JIKAN_URL}/{path}", params=params)
+        if resp.status_code != 200:
+            return None
+        return resp.json().get("data")
+    except Exception:
+        return None
+
+
+def _jikan_author(media: dict) -> str:
+    """MyAnimeList escribe la autoría como "Oku, Hiroya"; aquí se devuelve al derecho."""
+    for person in media.get("authors") or []:
+        name = (person.get("name") or "").strip()
+        if not name:
+            continue
+        if "," in name:
+            last, _, first = name.partition(",")
+            return f"{first.strip()} {last.strip()}".strip()
+        return name
+    return ""
+
+
+def _jikan_to_content(media: dict) -> dict:
+    """Traduce una obra de Jikan al mismo dict que `_anilist_to_content`."""
+    chapters = media.get("chapters")
+    volumes = media.get("volumes")
+    score = media.get("score")
+    # La sinopsis de MAL suele acabar con la coletilla de quién la reescribió.
+    synopsis = re.sub(r"\s*\[Written by MAL Rewrite\]\s*$", "", media.get("synopsis") or "").strip() or None
+    # Los temas ("Gore", "Psychological") son género a efectos de la bóveda.
+    tags = [g.get("name") for g in (media.get("genres") or []) + (media.get("themes") or []) if g.get("name")]
+    images = (media.get("images") or {}).get("jpg") or {}
+
+    return {
+        "anilist_id": None,
+        "mal_id": media.get("mal_id"),
+        "title": media.get("title_english") or media.get("title") or "",
+        "native_title": media.get("title_japanese") or "",
+        "thumbnail": images.get("large_image_url") or images.get("image_url") or "",
+        "author": _jikan_author(media),
+        "episode_count": chapters,
+        "seasons": volumes,
+        "duration_minutes": _chapter_minutes(chapters, volumes),
+        "pages_per_chapter": round(_pages_per_chapter(chapters, volumes), 1),
+        "words_per_page": MANGA_WORDS_PER_PAGE,
+        "genres": ", ".join(tags) or None,
+        "synopsis": synopsis,
+        # MAL puntúa sobre 10, igual que la bóveda: no hay que reescalar.
+        "rating": round(score, 1) if score else None,
+        "status": media.get("status"),
+        "format": media.get("type"),
+        "year": (((media.get("published") or {}).get("prop") or {}).get("from") or {}).get("year"),
+        "source_id": f"mal:{media.get('mal_id')}",
+        "suggested_content_type": "manga",
+    }
+
+
 @router.get("/manga")
 async def search_manga(q: str = Query(..., min_length=2)) -> list[dict]:
     """Busca una obra en AniList. Devuelve la colección, no un tomo suelto."""
     data = await _anilist(_ANILIST_SEARCH, {"s": q})
-    if not data:
-        return []
-    media = ((data.get("Page") or {}).get("media")) or []
-    return [_anilist_to_content(m) for m in media]
+    media = ((data or {}).get("Page") or {}).get("media") or []
+    if media:
+        return [_anilist_to_content(m) for m in media]
+    found = await _jikan("manga", {"q": q, "limit": 6})
+    return [_jikan_to_content(m) for m in (found or [])]
 
 
 @router.get("/manga-detail")
-async def lookup_manga_detail(anilist_id: int) -> dict:
-    """Ficha completa de una obra ya elegida en el buscador."""
-    data = await _anilist(_ANILIST_BY_ID, {"id": anilist_id})
-    media = (data or {}).get("Media")
-    if not media:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Manga not found on AniList")
-    return _anilist_to_content(media)
+async def lookup_manga_detail(anilist_id: int | None = None, mal_id: int | None = None) -> dict:
+    """Ficha completa de una obra ya elegida en el buscador.
+    El id que llega dice de qué fuente salió la fila."""
+    if anilist_id:
+        data = await _anilist(_ANILIST_BY_ID, {"id": anilist_id})
+        media = (data or {}).get("Media")
+        if not media:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Manga not found on AniList")
+        return _anilist_to_content(media)
+    if mal_id:
+        media = await _jikan(f"manga/{mal_id}")
+        if not media:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Manga not found on MyAnimeList")
+        return _jikan_to_content(media)
+    raise HTTPException(status.HTTP_400_BAD_REQUEST, "anilist_id or mal_id required")
 
 
 @router.get("/search")

@@ -140,7 +140,8 @@
 
 	// Title search (TMDB dropdown when no URL)
 	// El buscador del título tiene dos fuentes: TMDB para cine y TV, AniList
-	// para manga (ni TMDB ni OpenLibrary saben qué es una colección de manga).
+	// para manga (ni TMDB ni OpenLibrary saben qué es una colección de manga);
+	// cuando AniList no responde, el manga llega desde MyAnimeList.
 	// `kind` decide de dónde vino cada fila y a qué detalle se pide la ficha.
 	type TmdbSearchResult = {
 		kind: 'tmdb' | 'manga';
@@ -152,8 +153,9 @@
 		tmdb_id?: number;
 		media_type?: string;
 		watch_providers?: Array<{provider_name: string; logo_path: string}>;
-		// AniList
+		// Manga: viene uno de los dos, según de qué fuente salió la fila
 		anilist_id?: number;
+		mal_id?: number;
 		author?: string;
 		episode_count?: number | null;
 		seasons?: number | null;
@@ -435,6 +437,7 @@ $effect(() => {
 						thumbnail: m.thumbnail,
 						source_id: m.source_id,
 						anilist_id: m.anilist_id,
+						mal_id: m.mal_id,
 						author: m.author,
 						episode_count: m.episode_count,
 						seasons: m.seasons,
@@ -454,7 +457,7 @@ $effect(() => {
 		return () => { if (titleSearchTimer) clearTimeout(titleSearchTimer); };
 	});
 
-	/** Rellena el formulario con una obra de AniList: capítulos, tomos y autoría. */
+	/** Rellena el formulario con una obra de AniList o MyAnimeList: capítulos, tomos y autoría. */
 	async function selectMangaResult(result: TmdbSearchResult) {
 		showTitleDropdown = false;
 		titleSearchResults = [];
@@ -464,8 +467,12 @@ $effect(() => {
 		addSourceId = result.source_id;
 		addType = 'manga';
 
+		// La ficha se pide a la fuente de la que salió la fila.
+		const detailQuery = result.anilist_id
+			? `anilist_id=${result.anilist_id}`
+			: result.mal_id ? `mal_id=${result.mal_id}` : null;
 		try {
-			const detail = await api.get<any>(`/lookup/manga-detail?anilist_id=${result.anilist_id}`);
+			const detail = detailQuery ? await api.get<any>(`/lookup/manga-detail?${detailQuery}`) : {};
 			if (detail.episode_count) addEpisodeCount = detail.episode_count;
 			if (detail.seasons) addSeasons = detail.seasons;
 			// El servidor estima con su velocidad por defecto; aquí se rehace con
