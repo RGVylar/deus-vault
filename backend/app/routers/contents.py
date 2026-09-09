@@ -643,6 +643,7 @@ def list_contents(
     content_type: ContentType | None = Query(None),
     collection: str | None = Query(None, max_length=100),
     provider: str | None = Query(None, max_length=50),
+    in_progress: bool | None = Query(None),
     search: str | None = Query(None, max_length=200),
     sort: str = Query(default="recent", pattern="^(recent|duration_asc|duration_desc|title_asc|rating_desc|rating_asc)$"),
     limit: int = Query(default=PAGE_LIMIT, ge=1, le=500),
@@ -671,6 +672,13 @@ def list_contents(
             q = q.where(or_(Content.provider == provider, Content.author == author_label))
         else:
             q = q.where(Content.provider == provider)
+    if in_progress is not None:
+        # "Empezado" es lo que el usuario marca a mano con started_at, no progress:
+        # hay tipos (juegos, música) donde nunca se toca el progreso aunque estén
+        # a medias, y saldrían como sin empezar.
+        q = q.where(
+            Content.started_at != None if in_progress else Content.started_at == None  # noqa: E711
+        )
     if search and search.strip():
         term = f"%{search.strip().lower()}%"
         q = q.where(

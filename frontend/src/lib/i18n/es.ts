@@ -610,6 +610,7 @@ export const es = {
 	'home.groupBtn': '⊞ Agrupado',
 	'home.ungroupBtn': '☰ Desagrupado',
 	'home.rolodexBtn': '🗂️ Rolodex',
+	'home.inProgressFilter': 'En progreso',
 	'home.searchPlaceholder': 'Buscar en la bóveda…',
 	'home.sort.recent': '📅 Recientes',
 	'home.sort.durationAsc': '⏱ Duración ↑',

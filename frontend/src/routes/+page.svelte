@@ -56,6 +56,7 @@
 	let searchQuery = $state('');
 	let activeCollection = $state<string | null>(null);
 	let activeProvider = $state<string | null>(null);
+	let onlyInProgress = $state(false);
 	let collections: string[] = $state([]);
 	let availableProviders: string[] = $state([]);
 	let showAdd = $state(false);
@@ -243,13 +244,14 @@
 		};
 	});
 
-	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string, sort = 'recent', col: string | null = null, prov: string | null = null) {
+	function buildUrl(consumed: boolean, type: ContentType | 'all', off: number, search: string, sort = 'recent', col: string | null = null, prov: string | null = null, inProgress = false) {
 		const effectiveLimit = groupByType || rolodexView ? 500 : LIMIT;
 		let url = `/contents?consumed=${consumed}&limit=${effectiveLimit}&offset=${off}&sort=${sort}`;
 		if (type !== 'all') url += `&content_type=${type}`;
 		if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
 		if (col) url += `&collection=${encodeURIComponent(col)}`;
 		if (prov) url += `&provider=${encodeURIComponent(prov)}`;
+		if (inProgress) url += '&in_progress=true';
 		return url;
 	}
 
@@ -272,7 +274,7 @@
 			const [[s, p]] = await Promise.all([
 				Promise.all([
 					api.get<VaultStats>('/contents/stats'),
-					api.get<PaginatedContents>(buildUrl(false, filter, 0, searchQuery, sortOrder, activeCollection))
+					api.get<PaginatedContents>(buildUrl(false, filter, 0, searchQuery, sortOrder, activeCollection, activeProvider, onlyInProgress))
 				] as const),
 				loadCollections(),
 				loadProviders()
@@ -287,7 +289,7 @@
 		loadingMore = true;
 		const newOffset = offset + LIMIT;
 		try {
-			const p = await api.get<PaginatedContents>(buildUrl(false, filter, newOffset, searchQuery, sortOrder, activeCollection, activeProvider));
+			const p = await api.get<PaginatedContents>(buildUrl(false, filter, newOffset, searchQuery, sortOrder, activeCollection, activeProvider, onlyInProgress));
 			contents = [...contents, ...p.items];
 			total = p.total;
 			offset = newOffset;
@@ -301,10 +303,11 @@
 		const _sort = sortOrder;
 		const _col = activeCollection;
 		const _prov = activeProvider;
+		const _prog = onlyInProgress;
 		if (!controlsMounted) { controlsMounted = true; return; }
 		if (!auth.isLoggedIn) return;
 		offset = 0;
-		api.get<PaginatedContents>(buildUrl(false, _filter, 0, searchQuery, _sort, _col, _prov)).then(p => {
+		api.get<PaginatedContents>(buildUrl(false, _filter, 0, searchQuery, _sort, _col, _prov, _prog)).then(p => {
 			contents = p.items;
 			total = p.total;
 		});
@@ -317,7 +320,7 @@
 		searchTimer = setTimeout(() => {
 			if (!auth.isLoggedIn) return;
 			offset = 0;
-			api.get<PaginatedContents>(buildUrl(false, filter, 0, q, sortOrder, activeCollection, activeProvider)).then(p => {
+			api.get<PaginatedContents>(buildUrl(false, filter, 0, q, sortOrder, activeCollection, activeProvider, onlyInProgress)).then(p => {
 				contents = p.items;
 				total = p.total;
 			});
@@ -970,6 +973,12 @@ $effect(() => {
 			<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮 {t('types.game')}</button>
 		</div>
 		{/if}
+
+		<!-- Estado "empezado": es ortogonal al tipo, así que va en su propio grupo y
+		     sigue visible cuando agrupar por tipo esconde las pestañas de arriba. -->
+		<div class="tabs tabs-compact">
+			<button class="tab" class:active={onlyInProgress} onclick={() => onlyInProgress = !onlyInProgress}>▶️ {t('home.inProgressFilter')}</button>
+		</div>
 
 		<!-- Search + sort (now shown on all screen sizes in filter zone) -->
 		<div class="search-row">

@@ -609,6 +609,7 @@ export const pt = {
 	'home.groupBtn': '⊞ Agrupado',
 	'home.ungroupBtn': '☰ Desagrupado',
 	'home.rolodexBtn': '🗂️ Rolodex',
+	'home.inProgressFilter': 'Em progresso',
 	'home.searchPlaceholder': 'Buscar no cofre…',
 	'home.sort.recent': '📅 Recentes',
 	'home.sort.durationAsc': '⏱ Duração ↑',

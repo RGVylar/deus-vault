@@ -609,6 +609,7 @@ export const en = {
 	'home.groupBtn': '⊞ Grouped',
 	'home.ungroupBtn': '☰ Ungrouped',
 	'home.rolodexBtn': '🗂️ Rolodex',
+	'home.inProgressFilter': 'In progress',
 	'home.searchPlaceholder': 'Search the vault…',
 	'home.sort.recent': '📅 Recent',
 	'home.sort.durationAsc': '⏱ Duration ↑',
