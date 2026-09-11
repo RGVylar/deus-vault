@@ -164,6 +164,8 @@
 	// ── Bóveda compartida ──
 	let partners = $state<VaultPartner[]>([]);
 	let inviteState = $state<'idle' | 'creating' | 'shared' | 'copied' | 'error'>('idle');
+	// "Solo esta noche": el enlace se rompe solo pasadas estas horas desde que aceptan.
+	const NIGHT_HOURS = 12;
 	let inviteUrl = $state('');
 
 	async function loadPartners() {
@@ -173,10 +175,10 @@
 	/** Crea una invitación de un solo uso y la abre en la hoja de compartir del
 	 *  móvil (WhatsApp, Telegram…). Sin Web Share (escritorio) la copia al
 	 *  portapapeles y la deja visible por si el portapapeles tampoco está. */
-	async function inviteByLink() {
+	async function inviteByLink(hours?: number) {
 		inviteState = 'creating';
 		try {
-			const invite = await linksApi.createInvite();
+			const invite = await linksApi.createInvite(hours);
 			inviteUrl = `${WEB_ORIGIN}/link/${invite.token}`;
 			const text = `${t('settings.link.shareText')} ${inviteUrl}`;
 			if (navigator.share) {
@@ -195,6 +197,12 @@
 		} catch {
 			inviteState = 'error';
 		}
+	}
+
+	/** "caduca en 9 h" / "caduca en 40 min" para los enlaces de una noche. */
+	function expiresIn(iso: string): string {
+		const mins = Math.max(1, Math.round((new Date(iso).getTime() - Date.now()) / 60000));
+		return mins >= 60 ? `${Math.round(mins / 60)} h` : `${mins} min`;
 	}
 
 	async function unlinkPartner(id: number) {
@@ -680,7 +688,7 @@
 						{#each partners as p (p.id)}
 							<div class="hc-row">
 								<span class="cx-av cx-av-sm">{p.name.charAt(0).toUpperCase()}</span>
-								<span class="hc-name">{p.name} <span class="cx-hint">· {t('settings.link.since', { date: fmtDate(new Date(p.linked_at), { day: 'numeric', month: 'short', year: 'numeric' }) })}</span></span>
+								<span class="hc-name">{p.name} <span class="cx-hint">· {p.expires_at ? '🌙 ' + t('settings.link.expiresIn', { time: expiresIn(p.expires_at) }) : t('settings.link.since', { date: fmtDate(new Date(p.linked_at), { day: 'numeric', month: 'short', year: 'numeric' }) })}</span></span>
 								<button class="btn" onclick={() => unlinkPartner(p.id)} style="opacity:0.7; font-size:12px;">{t('settings.link.unlink')}</button>
 							</div>
 						{/each}
@@ -688,9 +696,15 @@
 				{/if}
 				<div class="cx-link-invite">
 					<p>{t('settings.link.explain')}</p>
-					<button class="btn btn-primary" onclick={inviteByLink} disabled={inviteState === 'creating'} style="justify-content:center;">
-						{inviteState === 'creating' ? t('settings.link.creating') : t('settings.link.invite')}
-					</button>
+					<div style="display:flex; gap:8px; flex-wrap:wrap;">
+						<button class="btn btn-primary" onclick={() => inviteByLink()} disabled={inviteState === 'creating'} style="flex:1; justify-content:center;">
+							{inviteState === 'creating' ? t('settings.link.creating') : t('settings.link.invite')}
+						</button>
+						<button class="btn" onclick={() => inviteByLink(NIGHT_HOURS)} disabled={inviteState === 'creating'} style="flex:1; justify-content:center;">
+							{inviteState === 'creating' ? t('settings.link.creating') : t('settings.link.inviteNight')}
+						</button>
+					</div>
+					<p class="cx-hint">{t('settings.link.nightHint', { hours: NIGHT_HOURS })}</p>
 					{#if inviteState === 'shared'}
 						<p class="cx-hint" style="color:var(--game);">✅ {t('settings.link.shared')}</p>
 					{:else if inviteState === 'copied'}

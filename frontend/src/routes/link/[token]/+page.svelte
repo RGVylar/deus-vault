@@ -61,6 +61,7 @@
 		{:else if invite}
 			<p class="link-prompt">{@html t('link.prompt', { name: invite.inviter_name })}</p>
 			<p class="muted link-explain">{t('link.explain')}</p>
+			{#if invite.hours}<p class="link-night">🌙 {t('link.night', { hours: invite.hours })}</p>{/if}
 
 			{#if !auth.isLoggedIn}
 				<p class="muted">{t('link.needLogin')}</p>
@@ -94,6 +95,11 @@
 		margin: 0; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px;
 		background: color-mix(in oklab, var(--danger) 12%, var(--glass-bg-weak));
 		border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
+	}
+	.link-night {
+		margin: 0; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.5;
+		background: color-mix(in oklab, var(--series) 10%, var(--glass-bg-weak));
+		border: 1px solid color-mix(in oklab, var(--series) 30%, transparent);
 	}
 	.link-card :global(.btn) { width: 100%; }
 </style>

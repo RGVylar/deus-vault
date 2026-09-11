@@ -17,6 +17,8 @@ class VaultLink(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_a_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     user_b_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    # None = para siempre. Con fecha, el enlace se rompe solo al pasar (una noche).
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -36,6 +38,8 @@ class VaultInvite(Base):
     inviter_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Cuánto dura el enlace que crea al aceptarse. None = para siempre.
+    link_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

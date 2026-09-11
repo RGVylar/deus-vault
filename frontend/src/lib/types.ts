@@ -10,6 +10,8 @@ export interface VaultPartner {
 	id: number;
 	name: string;
 	linked_at: string;
+	/** null = para siempre; con fecha, el enlace se rompe solo (una noche). */
+	expires_at: string | null;
 }
 
 export interface VaultInvite {
@@ -21,6 +23,8 @@ export interface VaultInvitePeek {
 	inviter_id: number;
 	inviter_name: string;
 	expires_at: string;
+	/** Duración del enlace que crea al aceptar; null = para siempre. */
+	hours: number | null;
 }
 
 export interface TokenResponse {

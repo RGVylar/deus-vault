@@ -72,7 +72,8 @@ export const wishlistApi = {
 
 export const linksApi = {
 	list: () => api.get<import('./types').VaultPartner[]>('/links'),
-	createInvite: () => api.post<import('./types').VaultInvite>('/links/invite'),
+	/** `hours` = duración del enlace una vez aceptado; sin él, para siempre. */
+	createInvite: (hours?: number) => api.post<import('./types').VaultInvite>('/links/invite', { hours: hours ?? null }),
 	peekInvite: (token: string) => api.get<import('./types').VaultInvitePeek>(`/links/invite/${encodeURIComponent(token)}`),
 	acceptInvite: (token: string) => api.post<import('./types').VaultPartner>(`/links/invite/${encodeURIComponent(token)}/accept`),
 	unlink: (partnerId: number) => api.del<void>(`/links/${partnerId}`),
