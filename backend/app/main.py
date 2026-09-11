@@ -51,3 +51,4 @@ app.include_router(wishlist.router, prefix=api_prefix)
 app.include_router(distractions.router, prefix=api_prefix)
 app.include_router(proxy.router, prefix=api_prefix)
 app.include_router(links.router, prefix=api_prefix)
+app.include_router(links.page_router)  # /link/{token}: fuera de /api a propósito

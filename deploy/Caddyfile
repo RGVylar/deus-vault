@@ -6,6 +6,13 @@
 		reverse_proxy 127.0.0.1:__BACKEND_PORT__
 	}
 
+	# Invitaciones de bóveda: el backend devuelve el mismo index.html del build
+	# pero con las OpenGraph de esa invitación, para que WhatsApp/Telegram
+	# muestren "X quiere enlazar su bóveda contigo" y no la tarjeta genérica.
+	handle /link/* {
+		reverse_proxy 127.0.0.1:__BACKEND_PORT__
+	}
+
 	# Static SvelteKit build
 	handle {
 		root * __APP_DIR__/frontend/build

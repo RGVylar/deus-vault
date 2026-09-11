@@ -179,7 +179,8 @@
 		inviteState = 'creating';
 		try {
 			const invite = await linksApi.createInvite(hours);
-			inviteUrl = `${WEB_ORIGIN}/link/${invite.token}`;
+			// ?l= sólo cuando no es español: el backend lo usa para la tarjeta OG.
+			inviteUrl = `${WEB_ORIGIN}/link/${invite.token}${i18n.locale === 'es' ? '' : `?l=${i18n.locale}`}`;
 			const text = `${t('settings.link.shareText')} ${inviteUrl}`;
 			if (navigator.share) {
 				try {

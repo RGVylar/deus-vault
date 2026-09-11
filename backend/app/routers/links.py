@@ -1,10 +1,15 @@
+import html
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import HTMLResponse
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.deps import get_current_user
 from app.models.user import User
@@ -12,6 +17,9 @@ from app.models.vault_link import VaultInvite, VaultLink
 from app.schemas.links import VaultInviteCreate, VaultInviteOut, VaultInvitePeek, VaultPartner
 
 router = APIRouter(prefix="/links", tags=["links"])
+# Fuera de /api: Caddy manda /link/* aquí para que el enlace compartido lleve
+# su propia tarjeta (título con el nombre, imagen grande) en vez de la genérica.
+page_router = APIRouter(tags=["links"])
 
 INVITE_TTL = timedelta(hours=48)
 
@@ -143,3 +151,91 @@ def unlink(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Link not found")
     db.delete(link)
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# /link/{token} — el index.html del build con las OpenGraph de la invitación
+# ---------------------------------------------------------------------------
+
+_OG_TEXT = {
+    "es": {
+        "title": "{name} quiere enlazar su bóveda contigo",
+        "desc": "Acepta y en Azar podréis tirar de las dos bóvedas a la vez. Un solo uso.",
+        "night": " Solo por esta noche.",
+        "dead_title": "Deus Vault · Enlace caducado",
+        "dead_desc": "Este enlace ya no vale: o caducó, o ya se usó.",
+    },
+    "en": {
+        "title": "{name} wants to link vaults with you",
+        "desc": "Accept and in Random you can both roll over the two vaults at once. Single use.",
+        "night": " Just for tonight.",
+        "dead_title": "Deus Vault · Link expired",
+        "dead_desc": "This link no longer works: it expired or was already used.",
+    },
+    "pt": {
+        "title": "{name} quer vincular o cofre com você",
+        "desc": "Aceite e em Aleatório vocês podem girar sobre os dois cofres ao mesmo tempo. Uso único.",
+        "night": " Só por esta noite.",
+        "dead_title": "Deus Vault · Link expirado",
+        "dead_desc": "Este link já não vale: expirou ou já foi usado.",
+    },
+}
+
+_FALLBACK_HTML = """<!doctype html><html lang="es"><head><meta charset="utf-8">
+<title>Deus Vault</title>
+<meta property="og:title" content="Deus Vault">
+<meta property="og:description" content="">
+<meta property="og:image" content="">
+<meta property="og:url" content="">
+<meta name="twitter:card" content="summary_large_image">
+</head><body><a href="/">Deus Vault</a></body></html>"""
+
+
+def _index_html() -> str:
+    p = Path(settings.frontend_build_dir) / "index.html"
+    try:
+        return p.read_text(encoding="utf-8")
+    except OSError:
+        # Sin build (dev): una cáscara mínima con las mismas etiquetas.
+        return _FALLBACK_HTML
+
+
+def _set_meta(doc: str, key: str, value: str) -> str:
+    """Sustituye el content de <meta property|name="key"> (o lo añade si no está)."""
+    safe = html.escape(value, quote=True)
+    pat = re.compile(r'(<meta\s+(?:property|name)="' + re.escape(key) + r'"\s+content=")[^"]*(")')
+    if pat.search(doc):
+        return pat.sub(lambda m: m.group(1) + safe + m.group(2), doc, count=1)
+    attr = "name" if key.startswith("twitter:") else "property"
+    return doc.replace("</head>", f'<meta {attr}="{key}" content="{safe}" />\n</head>', 1)
+
+
+@page_router.get("/link/{token}", response_class=HTMLResponse, include_in_schema=False)
+def invite_page(token: str, request: Request, l: str = "es", db: Session = Depends(get_db)) -> HTMLResponse:
+    text = _OG_TEXT.get(l, _OG_TEXT["es"])
+    # Tras Cloudflare/Caddy el request llega en http; la URL pública es https.
+    proto = request.headers.get("x-forwarded-proto", "https")
+    origin = f"{proto}://{request.headers.get('host', request.url.hostname)}"
+    try:
+        invite = _live_invite(db, token)
+        title = text["title"].format(name=invite.inviter.name)
+        desc = text["desc"] + (text["night"] if invite.link_hours else "")
+        image = f"{origin}/og-link.jpg"
+    except HTTPException:
+        title, desc, image = text["dead_title"], text["dead_desc"], f"{origin}/og.jpg"
+
+    doc = _index_html()
+    doc = re.sub(r"<title>[^<]*</title>", f"<title>{html.escape(title)}</title>", doc, count=1)
+    for key, value in (
+        ("og:title", title),
+        ("og:description", desc),
+        ("og:image", image),
+        ("og:url", f"{origin}/link/{token}"),
+        ("twitter:card", "summary_large_image"),
+        ("twitter:title", title),
+        ("twitter:description", desc),
+        ("twitter:image", image),
+    ):
+        doc = _set_meta(doc, key, value)
+    # Igual que index.html en Caddy: los bots y el navegador deben pedirla siempre.
+    return HTMLResponse(doc, headers={"Cache-Control": "no-cache, must-revalidate"})

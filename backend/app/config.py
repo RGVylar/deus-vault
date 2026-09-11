@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     # Si se dejan vacíos, el backend auto-detecta la URL del request (recomendado en producción)
     steam_callback_url: str = ""
     steam_frontend_url: str = ""
+    # Build estático de SvelteKit. El backend sirve su index.html para /link/*
+    # con las etiquetas OpenGraph de la invitación (WhatsApp, Telegram…).
+    # Relativo al cwd del backend: vale en dev y en /opt/deus-vault/backend.
+    frontend_build_dir: str = "../frontend/build"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
