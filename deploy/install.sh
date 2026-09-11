@@ -179,12 +179,8 @@ install -m 644 "$APP_DIR/deploy/deus-vault-backend.service" /etc/systemd/system/
 # config vivia duplicada aqui en un heredoc, asi que editar deploy/Caddyfile
 # no cambiaba nada en produccion.
 msg "Configuring Caddy…"
-[[ -f "$APP_DIR/deploy/Caddyfile" ]] || die "Missing $APP_DIR/deploy/Caddyfile"
-sed -e "s|__BACKEND_PORT__|$BACKEND_PORT|g" \
-    -e "s|__APP_DIR__|$APP_DIR|g" \
-    "$APP_DIR/deploy/Caddyfile" > /etc/caddy/Caddyfile
-caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1 \
-    || die "Generated Caddyfile is invalid"
+APP_DIR="$APP_DIR" BACKEND_PORT="$BACKEND_PORT" bash "$APP_DIR/deploy/render-caddy.sh" \
+    || die "Could not render Caddyfile"
 
 systemctl daemon-reload
 systemctl enable deus-vault-backend.service >/dev/null

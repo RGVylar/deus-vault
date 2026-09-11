@@ -213,9 +213,12 @@ def _set_meta(doc: str, key: str, value: str) -> str:
 @page_router.get("/link/{token}", response_class=HTMLResponse, include_in_schema=False)
 def invite_page(token: str, request: Request, l: str = "es", db: Session = Depends(get_db)) -> HTMLResponse:
     text = _OG_TEXT.get(l, _OG_TEXT["es"])
-    # Tras Cloudflare/Caddy el request llega en http; la URL pública es https.
-    proto = request.headers.get("x-forwarded-proto", "https")
-    origin = f"{proto}://{request.headers.get('host', request.url.hostname)}"
+    # Tras Cloudflare/Caddy el request llega en http y Caddy pisa X-Forwarded-Proto
+    # con "http", así que no hay cabecera fiable: la URL pública es https siempre
+    # salvo en desarrollo local.
+    host = request.headers.get("host") or request.url.netloc
+    proto = "http" if host.split(":")[0] in ("localhost", "127.0.0.1") else "https"
+    origin = f"{proto}://{host}"
     try:
         invite = _live_invite(db, token)
         title = text["title"].format(name=invite.inviter.name)

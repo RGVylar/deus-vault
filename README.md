@@ -178,7 +178,7 @@ cd ../frontend &&
 sudo -u deusvault npm install --silent &&
 sudo -u deusvault npm run build --silent &&
 systemctl restart deus-vault-backend &&
-systemctl reload caddy
+bash deploy/render-caddy.sh
 '
 pct exec 210 -- bash -c "cd /opt/deus-vault/backend && bash test_bateria_lookup.sh"
 
@@ -194,7 +194,7 @@ cd ../frontend &&
 sudo -u deusvault npm install --silent &&
 sudo -u deusvault npm run build --silent &&
 systemctl restart deus-vault-backend &&
-systemctl reload caddy &&
+bash deploy/render-caddy.sh &&
 echo "Esperando backend..." &&
 until curl -sf http://127.0.0.1:8000/health > /dev/null 2>&1; do sleep 1; done &&
 echo "Backend listo ✓"
