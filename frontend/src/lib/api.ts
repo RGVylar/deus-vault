@@ -6,6 +6,12 @@ const BASE = Capacitor.isNativePlatform()
 	? (import.meta.env.VITE_API_URL || 'https://vault.mugrelore.com/api')
 	: '/api';
 
+/** Origen público de la web, para construir URLs que se comparten fuera de la app
+ *  (en nativo `location.origin` es el WebView, no el dominio). */
+export const WEB_ORIGIN = Capacitor.isNativePlatform()
+	? BASE.replace(/\/api\/?$/, '')
+	: (typeof location !== 'undefined' ? location.origin : '');
+
 async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 	const token = auth.token;
@@ -62,6 +68,14 @@ export const wishlistApi = {
 	gift: (id: number) => api.post<import('./types').WishlistItem>(`/wishlist/${id}/gift`),
 	ungift: (id: number) => api.post<import('./types').WishlistItem>(`/wishlist/${id}/ungift`),
 	delete: (id: number) => api.del<void>(`/wishlist/${id}`),
+};
+
+export const linksApi = {
+	list: () => api.get<import('./types').VaultPartner[]>('/links'),
+	createInvite: () => api.post<import('./types').VaultInvite>('/links/invite'),
+	peekInvite: (token: string) => api.get<import('./types').VaultInvitePeek>(`/links/invite/${encodeURIComponent(token)}`),
+	acceptInvite: (token: string) => api.post<import('./types').VaultPartner>(`/links/invite/${encodeURIComponent(token)}/accept`),
+	unlink: (partnerId: number) => api.del<void>(`/links/${partnerId}`),
 };
 
 export const distractionsApi = {

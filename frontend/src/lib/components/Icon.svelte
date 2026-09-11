@@ -35,6 +35,8 @@
 		zap:        { f: true, d: '<path d="M13.5 2L4 13.5h6L9.5 22 20 10.5h-6z"/>' },
 		activity:   { d: '<path d="M3 12h4l2.5 7 4-15 2.5 8H21"/>' },
 		trendingUp: { d: '<path d="M3 16.5l6-6 4 4 7.5-7.5"/><path d="M16 7h4.5v4.5"/>' },
+		// Dos personas: bóveda compartida / de quién es la carta
+		users:      { d: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18.5 13.5A6.5 6.5 0 0 1 21.5 20"/>' },
 		list:       { d: '<path d="M8.5 6H21M8.5 12H21M8.5 18H21M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>' },
 		mountain:   { d: '<path d="M3 19.5l6-11 4 6 2-3 6 8z"/>' },
 		check:      { d: '<path d="M5 12.5l4.5 4.5L19 6.5"/>' },

@@ -23,7 +23,10 @@
 				res = await api.post<TokenResponse>('/auth/login', { email, password });
 			}
 			auth.login(res.access_token, res.user);
-			goto('/');
+			// Un enlace de invitación (/link/…) manda aquí a quien no tiene sesión;
+			// al entrar vuelve a él. Sólo rutas internas: nada de redirigir fuera.
+			const next = new URLSearchParams(window.location.search).get('next');
+			goto(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
 		} catch (e: unknown) {
 			error = e instanceof Error ? e.message : t('errors.generic');
 		} finally {

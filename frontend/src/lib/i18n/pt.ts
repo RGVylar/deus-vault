@@ -38,6 +38,21 @@ export const pt = {
 	'login.tag': 'Seu cofre de conteúdo para consumir',
 	'login.signIn': 'Entrar',
 	'login.createAccount': 'Criar conta',
+
+	// ── link: aceptar invitación de bóveda ──
+	'link.title': 'Vincular cofres',
+	'link.loading': 'Verificando o link…',
+	'link.invalid': 'Este link já não vale: expirou ou já foi usado.',
+	'link.prompt': '<strong>{name}</strong> quer vincular o cofre dele(a) ao seu.',
+	'link.explain': 'Ao aceitar, em Aleatório vocês podem girar sobre os dois cofres ao mesmo tempo. Qualquer um dos dois pode desvincular quando quiser em Ajustes.',
+	'link.needLogin': 'Entre ou crie uma conta para aceitar.',
+	'link.loginButton': 'Entrar',
+	'link.accept': 'Aceitar e vincular',
+	'link.accepting': 'Vinculando…',
+	'link.own': 'Este link é seu: envie para a outra pessoa.',
+	'link.done': 'Pronto. Seu cofre agora está vinculado ao de <strong>{name}</strong>.',
+	'link.goRandom': 'Ir para Aleatório',
+	'link.decline': 'Agora não',
 	'login.name': 'Nome',
 	'login.email': 'Email',
 	'login.password': 'Senha',
@@ -132,6 +147,22 @@ export const pt = {
 	'settings.steam.connectButton': '🎮 Conectar com Steam',
 	'settings.steam.connectHint': 'Requer <code>STEAM_API_KEY</code> no servidor e perfil Steam público.',
 
+	// ── settings: bóveda compartida ──
+	'settings.link.title': 'Cofre compartilhado',
+	'settings.link.subtitle': 'Gire a roleta também com o cofre do seu par',
+	'settings.link.explain': 'Envie um link por WhatsApp, Telegram ou onde for. Quem abrir e aceitar fica vinculado a você, e em Aleatório vocês podem girar sobre os dois cofres ao mesmo tempo.',
+	'settings.link.invite': '🔗 Convidar com um link',
+	'settings.link.creating': '⏳ Criando link…',
+	'settings.link.shareTitle': 'Deus Vault',
+	'settings.link.shareText': 'Vincule seu cofre ao meu no Deus Vault e deixe o acaso escolher o que vemos juntos:',
+	'settings.link.copied': 'Link copiado. Expira em 48 h e só vale uma vez.',
+	'settings.link.shared': 'Link enviado. Expira em 48 h e só vale uma vez.',
+	'settings.link.error': '⚠ Não foi possível criar o link',
+	'settings.link.linkedWith': 'Vinculado com',
+	'settings.link.none': 'Nenhum cofre vinculado ainda.',
+	'settings.link.unlink': 'Desvincular',
+	'settings.link.since': 'desde {date}',
+
 	// ── settings.session ──
 	'settings.session.title': 'Sessão',
 	'settings.session.connectedAs': 'Conectado como {name}',
@@ -213,6 +244,10 @@ export const pt = {
 	'random.attention.level.mid': 'Você pensou',
 	'random.attention.level.low': 'Descarte rápido',
 	'random.attention.tuned': 'Afinado pela sua atenção',
+	'random.with.label': 'Com quem',
+	'random.with.me': 'Só eu',
+	'random.with.from': 'de {name}',
+	'random.with.notYours': 'É do cofre de {name}: é marcado como visto pela conta dele(a).',
 
 	// ── wasted ──
 	'wasted.title': 'Cofre do Perdido',

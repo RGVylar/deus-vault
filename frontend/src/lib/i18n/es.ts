@@ -37,6 +37,21 @@ export const es = {
 	'login.tag': 'Tu bóveda de contenido por consumir',
 	'login.signIn': 'Iniciar sesión',
 	'login.createAccount': 'Crear cuenta',
+
+	// ── link: aceptar invitación de bóveda ──
+	'link.title': 'Enlazar bóvedas',
+	'link.loading': 'Comprobando el enlace…',
+	'link.invalid': 'Este enlace ya no vale: o caducó, o ya se usó.',
+	'link.prompt': '<strong>{name}</strong> quiere enlazar su bóveda con la tuya.',
+	'link.explain': 'Al aceptar, en Azar podréis tirar de las dos bóvedas a la vez. Cualquiera de los dos puede desenlazar cuando quiera desde Ajustes.',
+	'link.needLogin': 'Inicia sesión o crea una cuenta para aceptar.',
+	'link.loginButton': 'Iniciar sesión',
+	'link.accept': 'Aceptar y enlazar',
+	'link.accepting': 'Enlazando…',
+	'link.own': 'Este enlace es tuyo: mándaselo a la otra persona.',
+	'link.done': 'Hecho. Tu bóveda ya está enlazada con la de <strong>{name}</strong>.',
+	'link.goRandom': 'Ir a Azar',
+	'link.decline': 'Ahora no',
 	'login.name': 'Nombre',
 	'login.email': 'Email',
 	'login.password': 'Contraseña',
@@ -131,6 +146,22 @@ export const es = {
 	'settings.steam.connectButton': '🎮 Conectar con Steam',
 	'settings.steam.connectHint': 'Requiere <code>STEAM_API_KEY</code> en el servidor y perfil de Steam público.',
 
+	// ── settings: bóveda compartida ──
+	'settings.link.title': 'Bóveda compartida',
+	'settings.link.subtitle': 'Tira de la ruleta con la bóveda de tu pareja',
+	'settings.link.explain': 'Envía un enlace por WhatsApp, Telegram o donde sea. Quien lo abra y acepte queda enlazado contigo, y en Azar podréis tirar de las dos bóvedas a la vez.',
+	'settings.link.invite': '🔗 Invitar con un enlace',
+	'settings.link.creating': '⏳ Creando enlace…',
+	'settings.link.shareTitle': 'Deus Vault',
+	'settings.link.shareText': 'Enlaza tu bóveda con la mía en Deus Vault y dejamos que el azar elija qué vemos juntos:',
+	'settings.link.copied': 'Enlace copiado. Caduca en 48 h y sólo vale una vez.',
+	'settings.link.shared': 'Enlace enviado. Caduca en 48 h y sólo vale una vez.',
+	'settings.link.error': '⚠ No se pudo crear el enlace',
+	'settings.link.linkedWith': 'Enlazado con',
+	'settings.link.none': 'Aún no tienes ninguna bóveda enlazada.',
+	'settings.link.unlink': 'Desenlazar',
+	'settings.link.since': 'desde {date}',
+
 	// ── settings.session ──
 	'settings.session.title': 'Sesión',
 	'settings.session.connectedAs': 'Conectado como {name}',
@@ -214,6 +245,10 @@ export const es = {
 	'random.attention.level.mid': 'Te lo pensaste',
 	'random.attention.level.low': 'Descarte rápido',
 	'random.attention.tuned': 'Afinado por tu atención',
+	'random.with.label': 'Con quién',
+	'random.with.me': 'Solo yo',
+	'random.with.from': 'de {name}',
+	'random.with.notYours': 'Es de la bóveda de {name}: se marca como visto desde su cuenta.',
 
 	// ── wasted ──
 	'wasted.title': 'Bóveda de lo Perdido',

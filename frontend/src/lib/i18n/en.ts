@@ -38,6 +38,21 @@ export const en = {
 	'login.tag': 'Your vault of content to consume',
 	'login.signIn': 'Sign in',
 	'login.createAccount': 'Create account',
+
+	// ── link: aceptar invitación de bóveda ──
+	'link.title': 'Link vaults',
+	'link.loading': 'Checking the link…',
+	'link.invalid': 'This link no longer works: it expired or was already used.',
+	'link.prompt': '<strong>{name}</strong> wants to link their vault with yours.',
+	'link.explain': 'Once accepted, in Random you can both roll over the two vaults at once. Either of you can unlink at any time from Settings.',
+	'link.needLogin': 'Sign in or create an account to accept.',
+	'link.loginButton': 'Sign in',
+	'link.accept': 'Accept and link',
+	'link.accepting': 'Linking…',
+	'link.own': 'This link is yours: send it to the other person.',
+	'link.done': 'Done. Your vault is now linked with <strong>{name}</strong>\'s.',
+	'link.goRandom': 'Go to Random',
+	'link.decline': 'Not now',
 	'login.name': 'Name',
 	'login.email': 'Email',
 	'login.password': 'Password',
@@ -132,6 +147,22 @@ export const en = {
 	'settings.steam.connectButton': '🎮 Connect with Steam',
 	'settings.steam.connectHint': 'Requires <code>STEAM_API_KEY</code> on the server and a public Steam profile.',
 
+	// ── settings: bóveda compartida ──
+	'settings.link.title': 'Shared vault',
+	'settings.link.subtitle': 'Roll the dice over your partner\'s vault too',
+	'settings.link.explain': 'Send a link over WhatsApp, Telegram or wherever. Whoever opens and accepts it gets linked to you, and in Random you can both roll over the two vaults at once.',
+	'settings.link.invite': '🔗 Invite with a link',
+	'settings.link.creating': '⏳ Creating link…',
+	'settings.link.shareTitle': 'Deus Vault',
+	'settings.link.shareText': 'Link your vault with mine on Deus Vault and let chance pick what we watch together:',
+	'settings.link.copied': 'Link copied. It expires in 48 h and works only once.',
+	'settings.link.shared': 'Link sent. It expires in 48 h and works only once.',
+	'settings.link.error': '⚠ Could not create the link',
+	'settings.link.linkedWith': 'Linked with',
+	'settings.link.none': 'No linked vaults yet.',
+	'settings.link.unlink': 'Unlink',
+	'settings.link.since': 'since {date}',
+
 	// ── settings.session ──
 	'settings.session.title': 'Session',
 	'settings.session.connectedAs': 'Signed in as {name}',
@@ -213,6 +244,10 @@ export const en = {
 	'random.attention.level.mid': 'You thought about it',
 	'random.attention.level.low': 'Quick pass',
 	'random.attention.tuned': 'Tuned by your attention',
+	'random.with.label': 'With whom',
+	'random.with.me': 'Just me',
+	'random.with.from': 'from {name}',
+	'random.with.notYours': 'It\'s from {name}\'s vault: it gets marked as done from their account.',
 
 	// ── wasted ──
 	'wasted.title': 'Vault of the Lost',

@@ -62,6 +62,9 @@ class ContentUpdate(BaseModel):
 
 class ContentOut(BaseModel):
     id: int
+    # Con la bóveda enlazada, la ruleta puede devolver contenido de otro usuario:
+    # el frontend lo usa para marcar de quién es y no ofrecer acciones ajenas.
+    user_id: int
     title: str
     content_type: ContentType
     url: str | None

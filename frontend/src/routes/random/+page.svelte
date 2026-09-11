@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { api } from '$lib/api';
+	import { api, linksApi } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, typeLabel, buildConsumeUrl, releaseYear } from '$lib/utils';
 	import Icon from '$lib/components/Icon.svelte';
@@ -12,7 +12,7 @@
 		setTuning, resetAttention, rankedItems, topTraits, attentionLevel, hasSignal, tuningActive,
 		pickTuned, suggestedFilters, formatAttention, TRAIT_KINDS, type TraitKind
 	} from '$lib/stores/attention.svelte';
-	import type { Content, ContentType } from '$lib/types';
+	import type { Content, ContentType, VaultPartner } from '$lib/types';
 
 	type TimePreset = { labelKey: TKey; min: number | null; max: number | null };
 	const TIME_PRESETS: TimePreset[] = [
@@ -53,6 +53,40 @@
 
 	let recent: Content[] = [];
 
+	// ── Bóveda compartida ──
+	// Con quién tiras: vacío = sólo tu bóveda. Se recuerda entre visitas porque
+	// quien tira en pareja lo hace casi siempre en pareja.
+	const WITH_KEY = 'deus_vault_random_with';
+	let partners = $state<VaultPartner[]>([]);
+	let withUsers = $state<number[]>([]);
+	const partnerById = $derived(new Map(partners.map(p => [p.id, p])));
+	/** Dueño de la carta que ha salido, si no es tuya. */
+	const pickOwner = $derived.by((): VaultPartner | null => {
+		const p: Content | null = pick;
+		if (!p || !auth.user || p.user_id === auth.user.id) return null;
+		return partnerById.get(p.user_id) ?? null;
+	});
+
+	function toggleWith(id: number) {
+		withUsers = withUsers.includes(id) ? withUsers.filter(x => x !== id) : [...withUsers, id];
+		try { localStorage.setItem(WITH_KEY, JSON.stringify(withUsers)); } catch {}
+	}
+
+	async function loadPartners() {
+		try {
+			partners = await linksApi.list();
+			// Un enlace roto desde Ajustes no debe seguir seleccionado: el backend
+			// lo rechazaría con 403 y la ruleta quedaría muda.
+			const valid = new Set(partners.map(p => p.id));
+			let saved: number[] = [];
+			try { saved = JSON.parse(localStorage.getItem(WITH_KEY) ?? '[]'); } catch {}
+			withUsers = saved.filter(id => valid.has(id));
+		} catch {
+			partners = [];
+			withUsers = [];
+		}
+	}
+
 	const hasResult = $derived(!!pick || !!error);
 	const pickYear = $derived(pick ? releaseYear(pick) : null);
 	const pickGenres = $derived((pick?.genres ?? '').split(',').map(g => g.trim()).filter(Boolean));
@@ -66,7 +100,8 @@
 	 */
 	async function loadGenres(retries = 2) {
 		try {
-			availableGenres = await api.get<string[]>('/contents/genres');
+			const qs = withUsers.map(id => `with_user=${id}`).join('&');
+			availableGenres = await api.get<string[]>(`/contents/genres${qs ? '?' + qs : ''}`);
 		} catch {
 			if (retries > 0) setTimeout(() => loadGenres(retries - 1), 1500);
 		}
@@ -74,7 +109,7 @@
 
 	onMount(() => {
 		if (!auth.isLoggedIn) { goto('/login'); return; }
-		loadGenres();
+		loadPartners().then(() => loadGenres());
 		// Cierra el tramo abierto al esconder la pestaña o al salir de Azar.
 		return attachAttentionLifecycle();
 	});
@@ -121,6 +156,7 @@
 			if (p.max != null) params.set('max_duration', String(p.max));
 		}
 		for (const g of selectedGenres) params.append('genre', g);
+		for (const id of withUsers) params.append('with_user', String(id));
 		// Skip the last few picks so re-rolling doesn't keep landing on the same item.
 		for (const c of recent.slice(0, 3)) params.append('exclude_id', String(c.id));
 		for (const id of extraExcludeIds) params.append('exclude_id', String(id));
@@ -129,8 +165,19 @@
 	}
 
 	$effect(() => {
-		selectedTypes; selectedGenres; selectedPreset; showCustom; customMin; customMax;
+		selectedTypes; selectedGenres; selectedPreset; showCustom; customMin; customMax; withUsers;
 		api.get<number>(`/contents/random/count${buildQuery()}`).then(n => matchCount = n).catch(() => matchCount = null);
+	});
+
+	// Los géneros disponibles cambian con el pool: al sumar o quitar una bóveda
+	// se recargan, y se descartan los seleccionados que ya no existan.
+	let genresPoolKey = '';
+	$effect(() => {
+		const key = withUsers.join(',');
+		if (key === genresPoolKey) return;
+		genresPoolKey = key;
+		if (partners.length === 0 && key === '') return;   // arranque: ya lo carga onMount
+		loadGenres().then(() => { selectedGenres = selectedGenres.filter(g => availableGenres.includes(g)); });
 	});
 
 	// Cuántas cartas visualmente distintas queremos en el mazo que se ve girar
@@ -246,6 +293,18 @@
 			{/if}
 		</div>
 
+		{#if partners.length > 0}
+			<div class="flt-block">
+				<p class="flt-label"><Icon name="users" size={14} /> {t('random.with.label')}</p>
+				<div class="chip-row">
+					<button class="tab" class:active={withUsers.length === 0} onclick={() => { withUsers = []; try { localStorage.setItem(WITH_KEY, '[]'); } catch {} }}>{t('random.with.me')}</button>
+					{#each partners as p (p.id)}
+						<button class="tab" class:active={withUsers.includes(p.id)} onclick={() => toggleWith(p.id)}>+ {p.name}</button>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
 		{#if availableGenres.length > 0}
 			<div class="flt-block">
 				<p class="flt-label"><Icon name="sparkles" size={14} /> {t('random.filters.genre')}</p>
@@ -304,6 +363,7 @@
 					<p class="result-kicker">
 						{t('random.nextContent')}
 						{#if tunedPick}<span class="tuned-tag"><Icon name="trendingUp" size={11} /> {t('random.attention.tuned')}</span>{/if}
+						{#if pickOwner}<span class="tuned-tag owner-tag"><Icon name="users" size={11} /> {t('random.with.from', { name: pickOwner.name })}</span>{/if}
 					</p>
 					<div class="c-card random-pick {landscape ? 'landscape' : 'portrait'}"
 						style="--card-accent:{TYPE_COLOR[item.content_type]}; --accent:{TYPE_COLOR[item.content_type]}">
@@ -338,7 +398,7 @@
 							<div class="actions" style="margin-top:10px;">
 								{#if link}<a href={link} target="_blank" rel="noopener" onclick={() => markLaunched(item.id)}><button class="btn btn-primary"><Icon name="zap" size={14} /> {t('random.goNow')}</button></a>{/if}
 								{#if pick?.trailer_url}<a href={pick.trailer_url} target="_blank" rel="noopener" onclick={() => markLaunched(item.id)}><button class="btn btn-trailer"><Icon name="play" size={14} /> {t('random.trailer')}</button></a>{/if}
-								<button class="btn btn-consume" onclick={() => consume(pick!.id)}><Icon name="check" size={14} /> {t('random.done')}</button>
+								{#if !pickOwner}<button class="btn btn-consume" onclick={() => consume(pick!.id)}><Icon name="check" size={14} /> {t('random.done')}</button>{/if}
 								<button class="btn" onclick={roll}><Icon name="refresh" size={14} /> {t('random.another')}</button>
 							</div>
 						</div>
@@ -347,8 +407,9 @@
 					<!-- Contexto para decidir sin abrir el detalle. Va fuera de la
 					     ficha a propósito: dentro, la columna de info se queda en
 					     175px en móvil y la sinopsis no se puede leer. -->
-					{#if pickGenres.length || item.synopsis}
+					{#if pickGenres.length || item.synopsis || pickOwner}
 						<div class="pick-about">
+							{#if pickOwner}<p class="pick-owner-note">{t('random.with.notYours', { name: pickOwner.name })}</p>{/if}
 							{#if pickGenres.length}
 								<div class="pick-genres">
 									{#each pickGenres.slice(0, 5) as g}<span class="pick-chip">{g}</span>{/each}

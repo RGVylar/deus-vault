@@ -14,6 +14,7 @@ from app.database import get_db
 from app.deps import get_admin_user, get_current_user
 from app.models.content import Content, ContentType
 from app.models.user import User
+from app.routers.links import linked_user_ids
 from app.schemas.content import (
     ChannelRefresh,
     ChannelRefreshResult,
@@ -833,6 +834,22 @@ def delete_content(
     db.commit()
 
 
+def _random_owner_ids(db: Session, user: User, with_user: list[int] | None) -> list[int]:
+    """La ruleta tira de tu bóveda y, si lo pides, de la de quien tengas
+    enlazada. Un id que no esté enlazado contigo es un 403, no un pool vacío:
+    así no se puede sondear la bóveda de un desconocido."""
+    owners = [user.id]
+    if with_user:
+        allowed = linked_user_ids(db, user.id)
+        for uid in with_user:
+            if uid == user.id:
+                continue
+            if uid not in allowed:
+                raise HTTPException(status.HTTP_403_FORBIDDEN, "Vault not linked")
+            owners.append(uid)
+    return owners
+
+
 def _apply_random_filters(
     items: list,
     genre: list[str] | None,
@@ -861,12 +878,13 @@ def random_count(
     min_duration: int | None = Query(None, ge=0),
     max_duration: int | None = Query(None, ge=0),
     genre: list[str] | None = Query(None),
+    with_user: list[int] | None = Query(None, description="Linked users whose vault joins the pool"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> int:
     """Count pending items matching the given filters (for the live counter in /random)."""
     q = select(Content).where(
-        Content.user_id == user.id,
+        Content.user_id.in_(_random_owner_ids(db, user, with_user)),
         Content.consumed == False,  # noqa: E712
         Content.abandoned == False,  # noqa: E712
     )
@@ -883,13 +901,15 @@ def random_pick(
     max_duration: int | None = Query(None, ge=0, description="Max remaining minutes"),
     genre: list[str] | None = Query(None, description="Filter by genre"),
     exclude_id: list[int] | None = Query(None, description="Item ids to skip — e.g. recently shown picks"),
+    with_user: list[int] | None = Query(None, description="Linked users whose vault joins the pool"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Content:
     """Pick a random pending content item, optionally filtered by available time.
-    Accepts multiple content_type and genre values. Pinned items have double weight."""
+    Accepts multiple content_type and genre values. Pinned items have double weight.
+    With `with_user`, linked vaults join the pool (see _random_owner_ids)."""
     q = select(Content).where(
-        Content.user_id == user.id,
+        Content.user_id.in_(_random_owner_ids(db, user, with_user)),
         Content.consumed == False,  # noqa: E712
         Content.abandoned == False,  # noqa: E712
     )
@@ -921,13 +941,14 @@ def random_pick(
 
 @router.get("/genres", response_model=list[str])
 def list_genres(
+    with_user: list[int] | None = Query(None, description="Linked users whose vault joins the pool"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[str]:
     """Return all distinct genres across pending content, sorted alphabetically."""
     items = db.scalars(
         select(Content).where(
-            Content.user_id == user.id,
+            Content.user_id.in_(_random_owner_ids(db, user, with_user)),
             Content.consumed == False,  # noqa: E712
             Content.abandoned == False,  # noqa: E712
             Content.genres.isnot(None),

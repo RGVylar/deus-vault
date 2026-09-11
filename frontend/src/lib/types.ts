@@ -5,6 +5,24 @@ export interface User {
 	steam_id: string | null;
 }
 
+/** Usuario con el que tienes la bóveda enlazada (ver /links). */
+export interface VaultPartner {
+	id: number;
+	name: string;
+	linked_at: string;
+}
+
+export interface VaultInvite {
+	token: string;
+	expires_at: string;
+}
+
+export interface VaultInvitePeek {
+	inviter_id: number;
+	inviter_name: string;
+	expires_at: string;
+}
+
 export interface TokenResponse {
 	access_token: string;
 	user: User;
@@ -14,6 +32,8 @@ export type ContentType = 'youtube' | 'movie' | 'series' | 'book' | 'game' | 'mu
 
 export interface Content {
 	id: number;
+	/** Dueño de la fila. Con la bóveda enlazada, la ruleta puede devolver contenido ajeno. */
+	user_id: number;
 	title: string;
 	content_type: ContentType;
 	url: string | null;

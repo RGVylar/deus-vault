@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { api } from '$lib/api';
+	import { api, linksApi, WEB_ORIGIN } from '$lib/api';
+	import type { VaultPartner } from '$lib/types';
 	import { onMount } from 'svelte';
-	import { t, tc, i18n, setLocale, fmtCurrency, type Locale, type TKey } from '$lib/i18n/index.svelte';
+	import { t, tc, i18n, setLocale, fmtCurrency, fmtDate, type Locale, type TKey } from '$lib/i18n/index.svelte';
 	import { privacy, toggleChannel } from '$lib/stores/privacy.svelte';
 	import { isFeatureEnabled, setFeatureEnabled } from '$lib/stores/features.svelte';
 
@@ -160,6 +161,49 @@
 		}
 	}
 
+	// ── Bóveda compartida ──
+	let partners = $state<VaultPartner[]>([]);
+	let inviteState = $state<'idle' | 'creating' | 'shared' | 'copied' | 'error'>('idle');
+	let inviteUrl = $state('');
+
+	async function loadPartners() {
+		try { partners = await linksApi.list(); } catch { partners = []; }
+	}
+
+	/** Crea una invitación de un solo uso y la abre en la hoja de compartir del
+	 *  móvil (WhatsApp, Telegram…). Sin Web Share (escritorio) la copia al
+	 *  portapapeles y la deja visible por si el portapapeles tampoco está. */
+	async function inviteByLink() {
+		inviteState = 'creating';
+		try {
+			const invite = await linksApi.createInvite();
+			inviteUrl = `${WEB_ORIGIN}/link/${invite.token}`;
+			const text = `${t('settings.link.shareText')} ${inviteUrl}`;
+			if (navigator.share) {
+				try {
+					await navigator.share({ title: t('settings.link.shareTitle'), text });
+					inviteState = 'shared';
+					return;
+				} catch (e) {
+					// Cerró la hoja sin enviar: no es un error, pero el enlace ya existe,
+					// así que lo dejamos copiado por si lo quiere pegar a mano.
+					if ((e as Error)?.name === 'AbortError') { inviteState = 'idle'; return; }
+				}
+			}
+			try { await navigator.clipboard.writeText(text); } catch {}
+			inviteState = 'copied';
+		} catch {
+			inviteState = 'error';
+		}
+	}
+
+	async function unlinkPartner(id: number) {
+		try {
+			await linksApi.unlink(id);
+			partners = partners.filter(p => p.id !== id);
+		} catch {}
+	}
+
 	async function steamDisconnect() {
 		try {
 			await api.del('/auth/steam/disconnect');
@@ -174,6 +218,8 @@
 		api.get<Record<string, BackfillEntry>>('/contents/maintenance-status')
 			.then(status => maintenanceStatus = status)
 			.catch(() => {});
+
+		loadPartners();
 
 		// Tras el callback de Steam, refrescar datos del usuario
 		const url = new URL(window.location.href);
@@ -618,6 +664,45 @@
 			</div>
 		</div>
 
+		<!-- Bóveda compartida (full width) -->
+		<div class="glass cx-card cx-span2" style="--accent: var(--series);">
+			<div class="cx-card-head">
+				<div class="cx-ico">🔗</div>
+				<div class="cx-htxt">
+					<div class="cx-title">{t('settings.link.title')}</div>
+					<div class="cx-sub">{t('settings.link.subtitle')}</div>
+				</div>
+				<span class="cx-dot" class:ok={partners.length > 0}>{partners.length > 0 ? t('settings.link.linkedWith') + ' ' + partners.map(p => p.name).join(', ') : t('settings.link.none')}</span>
+			</div>
+			<div class="cx-body">
+				{#if partners.length > 0}
+					<div class="hc-list">
+						{#each partners as p (p.id)}
+							<div class="hc-row">
+								<span class="cx-av cx-av-sm">{p.name.charAt(0).toUpperCase()}</span>
+								<span class="hc-name">{p.name} <span class="cx-hint">· {t('settings.link.since', { date: fmtDate(new Date(p.linked_at), { day: 'numeric', month: 'short', year: 'numeric' }) })}</span></span>
+								<button class="btn" onclick={() => unlinkPartner(p.id)} style="opacity:0.7; font-size:12px;">{t('settings.link.unlink')}</button>
+							</div>
+						{/each}
+					</div>
+				{/if}
+				<div class="cx-link-invite">
+					<p>{t('settings.link.explain')}</p>
+					<button class="btn btn-primary" onclick={inviteByLink} disabled={inviteState === 'creating'} style="justify-content:center;">
+						{inviteState === 'creating' ? t('settings.link.creating') : t('settings.link.invite')}
+					</button>
+					{#if inviteState === 'shared'}
+						<p class="cx-hint" style="color:var(--game);">✅ {t('settings.link.shared')}</p>
+					{:else if inviteState === 'copied'}
+						<p class="cx-hint" style="color:var(--game);">✅ {t('settings.link.copied')}</p>
+						<code class="cx-link-url">{inviteUrl}</code>
+					{:else if inviteState === 'error'}
+						<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.link.error')}</p>
+					{/if}
+				</div>
+			</div>
+		</div>
+
 		<!-- Canales ocultos -->
 		<div class="glass cx-card cx-span2" style="--accent: var(--youtube);">
 			<div class="cx-card-head">
@@ -941,6 +1026,21 @@
 	}
 	.cx-btn-steam:hover { filter: brightness(1.1); }
 	.steam-id { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+
+	/* ── Bóveda compartida ── */
+	.cx-link-invite {
+		display: flex; flex-direction: column; gap: 12px;
+		padding: 16px; border-radius: var(--radius-sm);
+		background: color-mix(in oklab, var(--series) 8%, transparent);
+		border: 1px solid color-mix(in oklab, var(--series) 22%, transparent);
+	}
+	.cx-link-invite p { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0; }
+	.cx-link-url {
+		display: block; font-size: 12px; padding: 8px 10px; border-radius: var(--radius-sm);
+		background: var(--glass-bg-weak); border: 1px solid var(--glass-border);
+		color: var(--text-muted); word-break: break-all; user-select: all;
+	}
+	.cx-av-sm { width: 30px; height: 30px; font-size: 13px; flex: none; }
 
 	/* ── Maintenance ── */
 	.cx-maint summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-muted); padding: 16px 18px; }

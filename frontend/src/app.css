@@ -2051,6 +2051,17 @@ h2 {
   color: var(--text);
 }
 .tuned-tag svg { width: 11px; height: 11px; }
+/* La carta viene de la bóveda enlazada: mismo formato que "afinado", otro color */
+.owner-tag {
+  background: color-mix(in oklab, var(--series) 18%, transparent);
+  border-color: color-mix(in oklab, var(--series) 40%, transparent);
+}
+.pick-owner-note {
+  margin: 0 0 9px; font-size: 12px; line-height: 1.5; color: var(--text-muted);
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--series) 8%, transparent);
+  border: 1px solid color-mix(in oklab, var(--series) 22%, transparent);
+}
 
 /* ── Desktop: split 340px / 1fr ── */
 @media (min-width: 1024px) {
