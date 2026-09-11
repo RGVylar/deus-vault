@@ -1478,10 +1478,18 @@ h2 {
     gap: 16px;
     flex-wrap: wrap;
   }
-  .filters-bar .tabs { flex: 1; min-width: 0; }
+  /* flex-basis auto (no `flex: 1`, que es basis 0): así la línea se parte por
+     el ancho natural de las pestañas y es el buscador el que baja de línea
+     cuando no cabe. Antes, con basis 0, siempre "cabía" y luego se recortaban
+     por la derecha con la barra de scroll oculta: parecían rotas. Y si ni
+     solas caben, saltan de línea en vez de scroll invisible: en escritorio no
+     hay dedo con el que arrastrarlas. */
+  .filters-bar .tabs { flex: 1 1 auto; min-width: 0; flex-wrap: wrap; overflow: visible; }
   .filters-bar .search-row { flex-shrink: 0; width: 320px; }
 }
 .tabs-compact { padding: 4px 2px !important; }
+/* Separador entre las pestañas de tipo y los filtros de estado de la misma fila */
+.tab-sep { flex: none; width: 1px; align-self: stretch; margin: 4px 4px; background: var(--glass-border); }
 
 /* ─── HERO → glass card on desktop when inside desk-hero-grid ─── */
 @media (min-width: 1024px) {

@@ -971,14 +971,18 @@ $effect(() => {
 			<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖 {t('types.book')}</button>
 			<button class="tab" class:active={filter === 'manga'} onclick={() => filter = 'manga'}>🗾 {t('types.manga')}</button>
 			<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮 {t('types.game')}</button>
+			<!-- Estado "empezado": ortogonal al tipo, pero comparte fila. En un
+			     .tabs aparte, el flex:1 de escritorio partía el ancho a medias
+			     con las pestañas de tipo y recortaba las últimas. -->
+			<span class="tab-sep" aria-hidden="true"></span>
+			<button class="tab" class:active={onlyInProgress} onclick={() => onlyInProgress = !onlyInProgress}>▶️ {t('home.inProgressFilter')}</button>
 		</div>
-		{/if}
-
-		<!-- Estado "empezado": es ortogonal al tipo, así que va en su propio grupo y
-		     sigue visible cuando agrupar por tipo esconde las pestañas de arriba. -->
+		{:else}
+		<!-- Agrupar por tipo esconde las pestañas de tipo; el filtro de empezados sigue. -->
 		<div class="tabs tabs-compact">
 			<button class="tab" class:active={onlyInProgress} onclick={() => onlyInProgress = !onlyInProgress}>▶️ {t('home.inProgressFilter')}</button>
 		</div>
+		{/if}
 
 		<!-- Search + sort (now shown on all screen sizes in filter zone) -->
 		<div class="search-row">
