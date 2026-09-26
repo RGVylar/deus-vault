@@ -1397,10 +1397,16 @@ async def lookup_steam(url: str) -> dict:
     if resp.status_code != 200:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Game not found")
     data = resp.json()
-    app_data = data.get(app_id, {})
+    # Steam a veces redirige el appid pedido a otro internamente (recatalogación
+    # de la ficha de tienda) y devuelve la respuesta bajo esa otra clave, no bajo
+    # el app_id que sacamos de la URL. Tomamos la única entrada que haya, sea cual sea.
+    app_data = data.get(app_id) or next(iter(data.values()), {})
     if not app_data.get("success"):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Game not found")
     info = app_data["data"]
+    # Usamos el steam_appid real que devuelve el payload (puede diferir del de la URL
+    # si Steam redirigió la ficha), para que source_id case con el que usa GetOwnedGames.
+    app_id = str(info.get("steam_appid") or app_id)
     duration_minutes = await _get_hltb_duration_minutes(info.get("name", ""))
 
     # Rating: Metacritic score /10, or Steam review percentage converted to /10
