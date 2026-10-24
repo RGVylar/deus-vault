@@ -175,7 +175,7 @@ cd backend &&
 sudo -u deusvault .venv/bin/pip install -e . &&
 sudo -u deusvault .venv/bin/alembic upgrade head &&
 cd ../frontend &&
-sudo -u deusvault npm install --silent &&
+sudo -u deusvault npm ci --silent &&
 sudo -u deusvault npm run build --silent &&
 systemctl restart deus-vault-backend &&
 bash deploy/render-caddy.sh
@@ -191,7 +191,7 @@ cd backend &&
 sudo -u deusvault .venv/bin/pip install -e . -q &&
 sudo -u deusvault .venv/bin/alembic upgrade head &&
 cd ../frontend &&
-sudo -u deusvault npm install --silent &&
+sudo -u deusvault npm ci --silent &&
 sudo -u deusvault npm run build --silent &&
 systemctl restart deus-vault-backend &&
 bash deploy/render-caddy.sh &&
