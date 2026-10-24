@@ -1,8 +1,9 @@
 import enum
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Enum,
     Float,
@@ -11,6 +12,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    false,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -86,5 +88,10 @@ class Content(Base):
     synopsis: Mapped[str | None] = mapped_column(Text, nullable=True)
     streaming_providers: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON: ["Netflix","Max"]
     imdb_id: Mapped[str | None] = mapped_column(String(20), nullable=True)  # tt1234567
+    # Lanzamiento: fecha si se conoce y `coming_soon` para lo anunciado sin fecha
+    # ("Por confirmarse" en Steam, NOT_YET_RELEASED en AniList). Con fecha, lo
+    # inédito se deduce comparándola con hoy, así que la marca caduca sola al salir.
+    release_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    coming_soon: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
 
     user: Mapped["User"] = relationship(back_populates="contents")  # noqa: F821

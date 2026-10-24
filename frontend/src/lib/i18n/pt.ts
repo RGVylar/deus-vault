@@ -665,6 +665,8 @@ export const pt = {
 	'home.nextEpisode': 'Próximo episódio',
 	'home.releaseDate': 'Data de estreia',
 	'home.upcomingRelease': 'Próxima estreia',
+	'home.comingSoon': 'Em breve',
+	'home.comingSoonTitle': 'Ainda não foi lançado',
 	'home.totalMinutes': '~{duration} no total',
 	'home.editProgress': 'Editar progresso',
 	'home.addProgress': 'Adicionar progresso',

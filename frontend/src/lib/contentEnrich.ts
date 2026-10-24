@@ -59,6 +59,12 @@ export function buildEnrichPatch(data: any, currentType: string): Record<string,
 	if (data.synopsis) patch.synopsis = data.synopsis;
 	if (data.rating != null) patch.rating = data.rating;
 	if (data.imdb_id) patch.imdb_id = data.imdb_id;
+	// Solo si el proveedor sabe de lanzamientos: YouTube o Spotify no traen la
+	// clave y no deben borrar una fecha puesta a mano.
+	if ('release_date' in data) {
+		patch.release_date = data.release_date ?? null;
+		patch.coming_soon = !!data.coming_soon;
+	}
 
 	if (type === 'book') {
 		const pageCount = Number(data.page_count) || 0;

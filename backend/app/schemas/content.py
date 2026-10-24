@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -29,6 +29,8 @@ class ContentCreate(BaseModel):
     synopsis: str | None = None
     streaming_providers: str | None = None
     imdb_id: str | None = None
+    release_date: date | None = None
+    coming_soon: bool = False
 
 
 class ContentUpdate(BaseModel):
@@ -58,6 +60,8 @@ class ContentUpdate(BaseModel):
     synopsis: str | None = None
     streaming_providers: str | None = None  # JSON: ["Netflix","Max"]
     imdb_id: str | None = None
+    release_date: date | None = None
+    coming_soon: bool | None = None
 
 
 class ContentOut(BaseModel):
@@ -96,6 +100,8 @@ class ContentOut(BaseModel):
     synopsis: str | None
     streaming_providers: str | None
     imdb_id: str | None
+    release_date: date | None
+    coming_soon: bool
 
     model_config = {"from_attributes": True}
 

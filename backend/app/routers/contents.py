@@ -1156,6 +1156,7 @@ async def _run_tmdb_backfill(user_id: int, force: bool) -> None:
         _fetch_trailer_url,
         _fetch_imdb_id,
         _fetch_director,
+        _tmdb_release_info,
     )
     from app.config import settings as cfg
     from app.database import SessionLocal
@@ -1229,6 +1230,8 @@ async def _run_tmdb_backfill(user_id: int, force: bool) -> None:
                     imdb = await _fetch_imdb_id(media_type, tmdb_id, api_key, details)
                     if imdb:
                         item.imdb_id = imdb
+
+                    _apply_release(item, _tmdb_release_info(media_type, details))
 
                     if media_type == "movie":
                         # Sustituye la productora que se guardaba antes en `author`
@@ -1343,8 +1346,15 @@ async def backfill_book_page_counts(
     return {"status": "started", "message": "Backfill de libros en curso — revisa los logs del servidor"}
 
 
+def _apply_release(item: Content, info: dict) -> None:
+    """Copia el payload común de lanzamiento de lookup.py al item."""
+    raw = info.get("release_date")
+    item.release_date = date.fromisoformat(raw) if raw else None
+    item.coming_soon = bool(info.get("coming_soon"))
+
+
 async def _run_game_backfill(user_id: int, force: bool) -> None:
-    """Background task: refreshes Steam metadata (genres/rating/synopsis) for game items.
+    """Background task: refreshes Steam metadata (genres/rating/synopsis/release) for game items.
 
     Deliberately never touches duration_minutes — HowLongToBeat matches are fuzzy and
     duration is hand-editable, so a bad match on re-fetch shouldn't clobber a user correction.
@@ -1394,6 +1404,7 @@ async def _run_game_backfill(user_id: int, force: bool) -> None:
                         item.thumbnail = info["thumbnail"]
                     if info.get("author") and not item.author:
                         item.author = info["author"]
+                    _apply_release(item, info)
 
                     updated += 1
                     logger.info("game-backfill: [OK] %s", item.title[:60])

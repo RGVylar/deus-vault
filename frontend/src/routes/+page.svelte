@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration, TYPE_ICONS, TYPE_COLOR, PROVIDER_LABELS, typeLabel, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate, isLandscape, resolveProvider, shortProviderName, providerNameToKey, hasChapterToken, fillChapterToken } from '$lib/utils';
+	import { formatDuration, TYPE_ICONS, TYPE_COLOR, PROVIDER_LABELS, typeLabel, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate, isLandscape, resolveProvider, shortProviderName, providerNameToKey, hasChapterToken, fillChapterToken, upcomingRelease } from '$lib/utils';
 	import { buildEnrichPatch, enrichContentInBackground as enrichContentInBackgroundShared } from '$lib/contentEnrich';
 	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
 	import ContentDetail from '$lib/components/ContentDetail.svelte';
@@ -134,6 +134,8 @@
 	let duplicateItem = $state<Content | null>(null);
 	let duplicateChecked = $state(false);
 	let addNextEpisodeDate = $state<string | null>(null);
+	let addReleaseDate = $state<string | null>(null);
+	let addComingSoon = $state(false);
 	let addWatchProviders = $state<Array<{provider_name: string; logo_path: string}>>([]);
 	let addTrailerUrl = $state<string | null>(null);
 	let addGenres = $state<string | null>(null);
@@ -385,6 +387,8 @@ $effect(() => {
 
 			// Parse new fields
 			addNextEpisodeDate = (addType === 'series' && data.next_episode_date) ? data.next_episode_date : null;
+			addReleaseDate = data.release_date ?? null;
+			addComingSoon = !!data.coming_soon;
 			addWatchProviders = data.watch_providers ?? [];
 			addRating = data.rating ?? null;
 			addProvider = data.provider ?? null;
@@ -491,6 +495,8 @@ $effect(() => {
 			if (detail.synopsis) addSynopsis = detail.synopsis;
 			if (detail.rating != null) addRating = detail.rating;
 			if (detail.thumbnail && !addThumbnail) addThumbnail = detail.thumbnail;
+			addReleaseDate = detail.release_date ?? null;
+			addComingSoon = !!detail.coming_soon;
 		} catch { /* nos quedamos con lo que trajo el buscador */ }
 
 		duplicateItem = null;
@@ -536,6 +542,8 @@ $effect(() => {
 			if (detail.rating != null) addRating = detail.rating;
 			if (detail.trailer_url) addTrailerUrl = detail.trailer_url;
 			if (detail.genres) addGenres = detail.genres;
+			addReleaseDate = detail.release_date ?? null;
+			addComingSoon = !!detail.coming_soon;
 		} catch { /* ignore, we already have basic info */ }
 
 		// Duplicate check
@@ -577,6 +585,8 @@ $effect(() => {
 				collection: addCollection.trim() || null, pinned: addPinned,
 				channel_thumbnail: addChannelThumbnail || null,
 				next_episode_date: addNextEpisodeDate || null,
+				release_date: addReleaseDate || null,
+				coming_soon: addComingSoon,
 				rating: addRating ?? null,
 				provider: addProvider || null,
 				trailer_url: addTrailerUrl || null,
@@ -630,6 +640,7 @@ $effect(() => {
 		addCollection = ''; addPinned = false; addAlreadyConsumed = false;
 		duplicateItem = null; duplicateChecked = false;
 		addNextEpisodeDate = null; addWatchProviders = [];
+		addReleaseDate = null; addComingSoon = false;
 		addRating = null; addProvider = null;
 		addTrailerUrl = null; addGenres = null; addSynopsis = null;
 		titleSearchResults = []; showTitleDropdown = false;
@@ -1092,6 +1103,12 @@ $effect(() => {
 						</div>
 						<div class="meta">
 							<span class="badge">{typeLabel(c.content_type)}</span>
+							{#if upcomingRelease(c)}
+								{@const up = upcomingRelease(c)}
+								<span class="soon-badge" title={t('home.comingSoonTitle')}>
+									🔜 {up instanceof Date ? fmtDateI18n(up, { day: 'numeric', month: 'short', year: 'numeric' }) : t('home.comingSoon')}
+								</span>
+							{/if}
 							{#if c.rating}
 								<span class="rating-badge">★ {c.rating.toFixed(1)}</span>
 							{/if}
@@ -1128,7 +1145,8 @@ $effect(() => {
 								{#if c.content_type === 'book' && c.page_count && Number(c.page_count) > 0}
 									<span>📚 {t('home.pagesAbbrev', { count: c.page_count })}</span>
 								{/if}
-								{#if c.content_type === 'movie' && c.next_episode_date}
+								<!-- Si aún no se ha estrenado, la fecha ya va en la marca de Próximamente -->
+								{#if c.content_type === 'movie' && c.next_episode_date && !upcomingRelease(c)}
 									{@const relDate = new Date(/^\d{4}-\d{2}-\d{2}$/.test(c.next_episode_date) ? c.next_episode_date + 'T12:00:00' : c.next_episode_date)}
 									{#if !isNaN(relDate.getTime())}
 										{@const released = relDate < new Date()}
@@ -2037,6 +2055,17 @@ $effect(() => {
 	}
 	.next-ep.aired {
 		color: var(--text-dim);
+	}
+	.soon-badge {
+		font-size: 10px;
+		font-weight: 700;
+		padding: 1px 6px;
+		border-radius: 999px;
+		/* Azul y no ámbar: el ámbar ya es el de la nota (★) y se confundían */
+		color: #38bdf8;
+		background: rgba(56, 189, 248, 0.12);
+		border: 1px solid rgba(56, 189, 248, 0.4);
+		white-space: nowrap;
 	}
 
 	/* Game started-at */

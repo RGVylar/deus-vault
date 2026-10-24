@@ -2,6 +2,7 @@ import re
 import json
 import math
 import asyncio
+from datetime import date
 from html import unescape
 from urllib.parse import unquote, urlparse
 
@@ -379,6 +380,8 @@ async def lookup_book(url: str) -> dict:
                     "suggested_content_type": "book",
                     "provider": provider,
                     "synopsis": gb_description,
+                    # publishedDate puede ser solo "2027": entonces no se marca nada
+                    **_release_info(info.get("publishedDate")),
                 }
             # API failed (403/429/etc.) — fall back to parsing the already-scraped HTML
             # Google Books pages have JSON-LD and og: tags with title/author
@@ -956,6 +959,7 @@ async def _tmdb_find_by_imdb(imdb_id: str, api_key: str) -> dict:
         "episode_count": episode_count,
         "seasons": seasons,
         "next_episode_date": next_episode_date,
+        **_tmdb_release_info(media_type, details),
         "watch_providers": watch_providers,
         "rating": rating,
         "trailer_url": trailer_url,
@@ -1196,6 +1200,7 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
         "episode_count": episode_count,
         "seasons": seasons,
         "next_episode_date": next_episode_date,
+        **_tmdb_release_info(media_type, details),
         "watch_providers": watch_providers,
         "rating": rating,
         "trailer_url": trailer_url,
@@ -1203,6 +1208,53 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
         "synopsis": details.get("overview") or None,
         "imdb_id": await _fetch_imdb_id(media_type, item_id, api_key, details),
     }
+
+
+# Meses abreviados tal y como los escribe Steam en español ("23 SEP 2026") y en
+# inglés ("23 Sep, 2026"), por si alguna ficha llega sin traducir.
+_MONTHS = {
+    "ene": 1, "jan": 1, "feb": 2, "mar": 3, "abr": 4, "apr": 4, "may": 5, "jun": 6,
+    "jul": 7, "ago": 8, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dic": 12, "dec": 12,
+}
+
+
+def _parse_release_date(raw: str | None) -> date | None:
+    """Fecha exacta a partir de "2026-09-23" o "23 SEP 2026". Lo vago ("2027",
+    "T1 2027", "Por confirmarse") devuelve None: sin día no se sabe si ya salió."""
+    if not raw:
+        return None
+    text = str(raw).strip()
+    try:
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        pass
+    m = re.match(r"(\d{1,2})\s+([A-Za-z]{3})[A-Za-z.]*,?\s+(\d{4})$", text)
+    if m and m.group(2).lower() in _MONTHS:
+        try:
+            return date(int(m.group(3)), _MONTHS[m.group(2).lower()], int(m.group(1)))
+        except ValueError:
+            return None
+    return None
+
+
+def _release_info(raw_date: str | None, coming_soon: bool = False) -> dict:
+    """Payload común de lanzamiento para todos los proveedores.
+
+    `coming_soon` solo queda a True cuando no hay fecha: con fecha, el frontend
+    ya sabe si es futura, y así la marca no se queda colgada cuando sale."""
+    parsed = _parse_release_date(raw_date)
+    return {
+        "release_date": parsed.isoformat() if parsed else None,
+        "coming_soon": bool(coming_soon) and parsed is None,
+    }
+
+
+def _tmdb_release_info(media_type: str, details: dict) -> dict:
+    """Estreno de una peli o primera emisión de una serie. Una serie anunciada
+    ("Planned", "In Production") aún no tiene first_air_date."""
+    if media_type == "movie":
+        return _release_info(details.get("release_date"), details.get("status") not in (None, "Released"))
+    return _release_info(details.get("first_air_date"), details.get("status") in ("Planned", "In Production"))
 
 
 def _normalize_game_name(name: str) -> str:
@@ -1434,6 +1486,7 @@ async def lookup_steam(url: str) -> dict:
         "source_id": app_id,
         "url": f"https://store.steampowered.com/app/{app_id}",
         "duration_minutes": duration_minutes,
+        **_release_info((info.get("release_date") or {}).get("date"), (info.get("release_date") or {}).get("coming_soon")),
         "suggested_content_type": "game",
         "provider": "steam",
         "rating": rating,
@@ -1529,6 +1582,8 @@ async def lookup_streaming(url: str, tmdb_api_key: str | None = None) -> dict:
         "suggested_content_type": suggested_type,
         "provider": provider,
         "next_episode_date": next_episode_date,
+        "release_date": tmdb.get("release_date") if tmdb else None,
+        "coming_soon": bool(tmdb.get("coming_soon")) if tmdb else False,
         "watch_providers": watch_providers,
         "rating": rating,
     }
@@ -1650,6 +1705,7 @@ def _anilist_to_content(media: dict) -> dict:
         "status": media.get("status"),
         "format": media.get("format"),
         "year": (media.get("startDate") or {}).get("year"),
+        **_release_info(None, media.get("status") == "NOT_YET_RELEASED"),
         "source_id": f"anilist:{media.get('id')}",
         "suggested_content_type": "manga",
     }
@@ -1722,6 +1778,7 @@ def _jikan_to_content(media: dict) -> dict:
         "status": media.get("status"),
         "format": media.get("type"),
         "year": (((media.get("published") or {}).get("prop") or {}).get("from") or {}).get("year"),
+        **_release_info(None, (media.get("status") or "").lower() == "not yet published"),
         "source_id": f"mal:{media.get('mal_id')}",
         "suggested_content_type": "manga",
     }
@@ -1878,6 +1935,7 @@ async def lookup_tmdb_detail(
         "episode_count": episode_count,
         "seasons": seasons,
         "next_episode_date": next_episode_date,
+        **_tmdb_release_info(media_type, details),
         "watch_providers": watch_providers,
         "source_id": f"tmdb:{media_type}:{tmdb_id}",
         "suggested_content_type": "series" if media_type == "tv" else "movie",

@@ -15,18 +15,33 @@ export function isLookupCandidate(url: string): boolean {
 	} catch { return false; }
 }
 
+type ReleaseAware = { content_type: string; next_episode_date?: string | null; release_date?: string | null; coming_soon?: boolean };
+
 /**
  * Año de estreno, cuando se puede saber.
  *
- * No hay campo de año en el modelo: en películas `next_episode_date` guarda la
- * fecha de estreno que devuelve TMDB, y en series ese mismo campo es la fecha
- * del próximo episodio — que no dice nada del año de la serie. Por eso solo
- * sale en películas. Si algún día hay una columna propia, este es el sitio.
+ * `release_date` es la columna propia; los items guardados antes de tenerla solo
+ * lo saben en películas, donde `next_episode_date` guardaba el estreno de TMDB
+ * (en series ese campo es el próximo episodio y no dice nada del año).
  */
-export function releaseYear(c: { content_type: string; next_episode_date?: string | null }): number | null {
-	if (c.content_type !== 'movie' || !c.next_episode_date) return null;
-	const year = Number(String(c.next_episode_date).slice(0, 4));
+export function releaseYear(c: ReleaseAware): number | null {
+	const raw = c.release_date || (c.content_type === 'movie' ? c.next_episode_date : null);
+	if (!raw) return null;
+	const year = Number(String(raw).slice(0, 4));
 	return Number.isFinite(year) && year >= 1900 && year <= 2100 ? year : null;
+}
+
+/**
+ * Fecha de lanzamiento si todavía no ha llegado; `true` si está anunciado sin
+ * fecha; `null` si ya ha salido o no se sabe. La comparación es con hoy, así que
+ * la marca de "Próximamente" se quita sola el día del estreno.
+ */
+export function upcomingRelease(c: ReleaseAware): Date | true | null {
+	if (c.release_date) {
+		const d = new Date(c.release_date + 'T00:00:00');
+		return d > new Date() ? d : null;
+	}
+	return c.coming_soon ? true : null;
 }
 
 export function formatDuration(minutes: number): string {

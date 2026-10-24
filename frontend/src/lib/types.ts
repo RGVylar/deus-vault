@@ -69,6 +69,8 @@ export interface Content {
 	synopsis?: string | null;
 	streaming_providers?: string | null;  // JSON: ["Netflix","Max"]
 	imdb_id?: string | null;
+	release_date?: string | null;  // YYYY-MM-DD
+	coming_soon?: boolean;
 }
 
 /** Effective duration for stats/display: series and manga multiply by episode/chapter count */
