@@ -1795,6 +1795,33 @@ async def search_manga(q: str = Query(..., min_length=2)) -> list[dict]:
     return [_jikan_to_content(m) for m in (found or [])]
 
 
+@router.get("/games")
+async def search_games(q: str = Query(..., min_length=2)) -> list[dict]:
+    """Busca juegos por nombre en la tienda de Steam.
+
+    Solo devuelve lo justo para el desplegable: al elegir uno, el frontend pide
+    la ficha completa por su URL (/lookup/auto), que ya trae duración y salida."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            "https://store.steampowered.com/api/storesearch/",
+            params={"term": q, "cc": "es", "l": "spanish"},
+        )
+    if resp.status_code != 200:
+        return []
+    return [
+        {
+            "title": it.get("name", ""),
+            "thumbnail": it.get("tiny_image", ""),
+            "source_id": str(it["id"]),
+            "url": f"https://store.steampowered.com/app/{it['id']}",
+        }
+        # storesearch también devuelve DLC y bandas sonoras como "app"; sin ficha
+        # no se distinguen, así que se quedan: el usuario ve el nombre y elige.
+        for it in (resp.json().get("items") or [])[:8]
+        if it.get("id")
+    ]
+
+
 @router.get("/manga-detail")
 async def lookup_manga_detail(anilist_id: int | None = None, mal_id: int | None = None) -> dict:
     """Ficha completa de una obra ya elegida en el buscador.

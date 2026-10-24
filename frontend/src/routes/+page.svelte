@@ -149,7 +149,7 @@
 	// cuando AniList no responde, el manga llega desde MyAnimeList.
 	// `kind` decide de dónde vino cada fila y a qué detalle se pide la ficha.
 	type TmdbSearchResult = {
-		kind: 'tmdb' | 'manga';
+		kind: 'tmdb' | 'manga' | 'game';
 		title: string;
 		year: string;
 		thumbnail: string;
@@ -164,6 +164,8 @@
 		author?: string;
 		episode_count?: number | null;
 		seasons?: number | null;
+		// Juego: la ficha de Steam, que luego se resuelve como si se hubiera pegado el enlace
+		url?: string;
 	};
 	let titleSearchResults = $state<TmdbSearchResult[]>([]);
 	let titleSearchLoading = $state(false);
@@ -451,6 +453,10 @@ $effect(() => {
 						episode_count: m.episode_count,
 						seasons: m.seasons,
 					}));
+				} else if (addType === 'game') {
+					// Un juego no está en TMDB: con el tipo Juego se busca en Steam
+					const found = await api.get<any[]>(`/lookup/games?${params.toString()}`);
+					titleSearchResults = (found ?? []).map(g => ({ ...g, kind: 'game' as const, year: '' }));
 				} else {
 					try {
 						const tmdbKey = localStorage.getItem('deus_vault_tmdb_api_key');
@@ -512,8 +518,21 @@ $effect(() => {
 		}
 	}
 
+	/** Un juego elegido se trata igual que pegar su enlace de Steam: así trae
+	 *  la duración de HowLongToBeat, la fecha de salida y todo lo demás. */
+	function selectGameResult(result: TmdbSearchResult) {
+		showTitleDropdown = false;
+		titleSearchResults = [];
+		titleSearchLocked = true;
+		addTitle = result.title;
+		addThumbnail = result.thumbnail;
+		addUrl = result.url ?? '';
+		if (addUrl) void lookupUrl(addUrl);
+	}
+
 	async function selectTmdbResult(result: TmdbSearchResult) {
 		if (result.kind === 'manga') return selectMangaResult(result);
+		if (result.kind === 'game') return selectGameResult(result);
 		showTitleDropdown = false;
 		titleSearchResults = [];
 		titleSearchLocked = true; // prevent the effect from re-searching
@@ -1570,11 +1589,13 @@ $effect(() => {
 									{#if result.thumbnail}
 										<img src={result.thumbnail} alt="" class="tmdb-thumb" />
 									{:else}
-										<div class="tmdb-thumb tmdb-thumb-ph"><TypeIcon type={result.kind === 'manga' ? 'manga' : result.media_type === 'tv' ? 'series' : 'movie'} /></div>
+										<div class="tmdb-thumb tmdb-thumb-ph"><TypeIcon type={result.kind === 'manga' ? 'manga' : result.kind === 'game' ? 'game' : result.media_type === 'tv' ? 'series' : 'movie'} /></div>
 									{/if}
 									<div class="tmdb-info">
 										<span class="tmdb-title">{result.title}</span>
-										{#if result.kind === 'manga'}
+										{#if result.kind === 'game'}
+											<span class="tmdb-meta">{t('types.game')} · Steam</span>
+										{:else if result.kind === 'manga'}
 											<span class="tmdb-meta">{[result.author, result.episode_count ? t('home.progressInputManga') + ' ' + result.episode_count : '', result.year].filter(Boolean).join(' · ')}</span>
 										{:else}
 											<span class="tmdb-meta">{result.media_type === 'tv' ? t('home.typeSingular.series') : t('home.typeSingular.movie')}{result.year ? ' · ' + result.year : ''}</span>
