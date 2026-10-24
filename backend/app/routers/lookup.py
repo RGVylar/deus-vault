@@ -1208,7 +1208,9 @@ async def _tmdb_fallback(query: str, provider: str | None = None, tmdb_api_key: 
 def _normalize_game_name(name: str) -> str:
     """Normalize game names to improve HowLongToBeat match rates."""
     normalized = re.sub(r"[™®©]", "", name)
-    normalized = re.sub(r"\s*:\s*", " ", normalized)
+    # HLTB no encuentra nada con " - " (p. ej. "Disco Elysium - The Final Cut"),
+    # así que el guion separador se trata igual que los dos puntos.
+    normalized = re.sub(r"\s*:\s*|\s+[-–—]\s+", " ", normalized)
     normalized = re.sub(r"\s+", " ", normalized)
     return normalized.title().strip()
 
