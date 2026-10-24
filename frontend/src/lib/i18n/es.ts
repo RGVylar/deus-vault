@@ -654,6 +654,8 @@ export const es = {
 	'home.sort.recent': 'Recientes',
 	'home.sort.durationAsc': 'Duración ↑',
 	'home.sort.durationDesc': 'Duración ↓',
+	'home.sort.remainingAsc': 'Restante ↑',
+	'home.sort.remainingDesc': 'Restante ↓',
 	'home.sort.titleAsc': 'Título A–Z',
 	'home.sort.ratingDesc': 'Puntuación ↓',
 	'home.sort.ratingAsc': 'Puntuación ↑',

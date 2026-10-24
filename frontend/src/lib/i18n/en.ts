@@ -653,6 +653,8 @@ export const en = {
 	'home.sort.recent': 'Recent',
 	'home.sort.durationAsc': 'Duration ↑',
 	'home.sort.durationDesc': 'Duration ↓',
+	'home.sort.remainingAsc': 'Remaining ↑',
+	'home.sort.remainingDesc': 'Remaining ↓',
 	'home.sort.titleAsc': 'Title A–Z',
 	'home.sort.ratingDesc': 'Rating ↓',
 	'home.sort.ratingAsc': 'Rating ↑',

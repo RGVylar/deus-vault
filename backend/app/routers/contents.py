@@ -7,7 +7,7 @@ import httpx
 
 logger = logging.getLogger("uvicorn.error")  # guaranteed visible in journalctl
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -637,6 +637,65 @@ def check_duplicate(
     return db.scalars(q.limit(1)).first()
 
 
+_EPISODIC = (ContentType.series, ContentType.manga)
+
+
+def _total_minutes_expr():
+    """Duración total real para ordenar: en series y manga `duration_minutes` es
+    por capítulo, así que hay que multiplicarlo por el número de capítulos o un
+    manga de 8 min/cap acaba delante de una peli de 1h45."""
+    return case(
+        (
+            and_(Content.content_type.in_(_EPISODIC), Content.episode_count > 0),
+            Content.duration_minutes * Content.episode_count,
+        ),
+        else_=Content.duration_minutes,
+    )
+
+
+def _remaining_minutes_expr():
+    """Minutos que faltan según el progreso; espeja `remainingMinutes` del frontend.
+    Todo con CASE para que funcione igual en SQLite y Postgres (sin LEAST/GREATEST)."""
+    progress = func.coalesce(Content.progress, 0)
+    total = _total_minutes_expr()
+    return case(
+        (progress <= 0, total),
+        # Series/manga: capítulos pendientes por duración de capítulo
+        (
+            and_(Content.content_type.in_(_EPISODIC), Content.episode_count > 0),
+            case(
+                (progress >= Content.episode_count, 0),
+                else_=(Content.episode_count - progress) * Content.duration_minutes,
+            ),
+        ),
+        # Sin número de capítulos el progreso no se puede convertir a minutos:
+        # cuenta entero, como hace la tarjeta (si no, restaría capítulos como minutos)
+        (Content.content_type.in_(_EPISODIC), total),
+        # Libros: progreso en páginas, proporcional al total de páginas
+        (
+            and_(Content.content_type == ContentType.book, Content.page_count > 0),
+            case(
+                (progress >= Content.page_count, 0),
+                else_=total * (Content.page_count - progress) / Content.page_count,
+            ),
+        ),
+        # Juegos: progreso en porcentaje
+        (
+            Content.content_type == ContentType.game,
+            case((progress >= 100, 0), else_=total * (100 - progress) / 100),
+        ),
+        # Vídeo y música: progreso en minutos
+        else_=case((progress >= total, 0), else_=total - progress),
+    )
+
+
+def _minutes_order(expr, descending: bool):
+    """Ordena por minutos dejando siempre al final lo que no tiene duración (0),
+    tanto en ascendente como en descendente: lo desconocido no es "lo más corto"."""
+    unknown_last = case((expr <= 0, 1), else_=0)
+    return (unknown_last.asc(), expr.desc() if descending else expr.asc())
+
+
 @router.get("", response_model=PaginatedContents)
 def list_contents(
     consumed: bool | None = Query(None),
@@ -646,7 +705,7 @@ def list_contents(
     provider: str | None = Query(None, max_length=50),
     in_progress: bool | None = Query(None),
     search: str | None = Query(None, max_length=200),
-    sort: str = Query(default="recent", pattern="^(recent|duration_asc|duration_desc|title_asc|rating_desc|rating_asc)$"),
+    sort: str = Query(default="recent", pattern="^(recent|duration_asc|duration_desc|remaining_asc|remaining_desc|title_asc|rating_desc|rating_asc)$"),
     limit: int = Query(default=PAGE_LIMIT, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
@@ -690,10 +749,18 @@ def list_contents(
         )
 
     # Pinned items always surface first (for pending vault)
-    if sort == "duration_asc":
-        q = q.order_by(Content.pinned.desc(), Content.duration_minutes.asc(), Content.created_at.desc())
-    elif sort == "duration_desc":
-        q = q.order_by(Content.pinned.desc(), Content.duration_minutes.desc(), Content.created_at.desc())
+    if sort in ("duration_asc", "duration_desc"):
+        q = q.order_by(
+            Content.pinned.desc(),
+            *_minutes_order(_total_minutes_expr(), sort == "duration_desc"),
+            Content.created_at.desc(),
+        )
+    elif sort in ("remaining_asc", "remaining_desc"):
+        q = q.order_by(
+            Content.pinned.desc(),
+            *_minutes_order(_remaining_minutes_expr(), sort == "remaining_desc"),
+            Content.created_at.desc(),
+        )
     elif sort == "title_asc":
         q = q.order_by(Content.pinned.desc(), func.lower(Content.title).asc())
     elif sort == "rating_desc":
