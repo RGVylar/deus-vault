@@ -3,7 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration, TYPE_ICONS, TYPE_COLOR, PROVIDER_LABELS, typeLabel, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate, isLandscape, resolveProvider, shortProviderName, providerNameToKey, hasChapterToken, fillChapterToken, upcomingRelease } from '$lib/utils';
+	import { formatDuration, TYPE_COLOR, PROVIDER_LABELS, typeLabel, buildConsumeUrl, buildTmdbRefreshUrl, isLookupCandidate, isLandscape, resolveProvider, shortProviderName, providerNameToKey, hasChapterToken, fillChapterToken, upcomingRelease } from '$lib/utils';
+	import TypeIcon from '$lib/components/TypeIcon.svelte';
+	import { AlarmClock, Ban, ChevronDown, ChevronRight, Info, LayoutGrid, Play, BookOpen, Calendar, CalendarClock, Check, CircleCheck, CircleDot, Clapperboard, Folder, Landmark, Layers, Library, List, Package, Pencil, Pin, RefreshCw, Search, Star, Timer, TriangleAlert, Tv, X } from '@lucide/svelte';
 	import { buildEnrichPatch, enrichContentInBackground as enrichContentInBackgroundShared } from '$lib/contentEnrich';
 	import { t, tc, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
 	import ContentDetail from '$lib/components/ContentDetail.svelte';
@@ -911,7 +913,7 @@ $effect(() => {
 					{#each Object.entries(stats.by_type).sort((a,b) => b[1]-a[1]) as [type, mins]}
 						{@const pct = totalByTypeMins > 0 ? (mins / totalByTypeMins) * 100 : 0}
 						<div class="dq-row">
-							<span class="lbl"><span>{TYPE_ICONS[type] || '📄'}</span>{typeLabel(type)}</span>
+							<span class="lbl"><span><TypeIcon {type} /></span>{typeLabel(type)}</span>
 							<div class="dq-bar"><div class="dq-bar-fill" style="width:{pct}%; --bar-color:{TYPE_COLOR[type] ?? 'var(--primary)'}"></div></div>
 							<span class="val">{formatDuration(mins)}</span>
 						</div>
@@ -928,10 +930,10 @@ $effect(() => {
 		<div class="mobile-only">
 			<div class="pill-row">
 				<div class="pill">
-					<span>📦</span> <span class="val">{stats.pending_count}</span> <span class="lbl">{t('home.pendingPill')}</span>
+					<span><Package /></span> <span class="val">{stats.pending_count}</span> <span class="lbl">{t('home.pendingPill')}</span>
 				</div>
 				<div class="pill">
-					<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">{t('home.consumedPill')}</span>
+					<span><CircleCheck /></span> <span class="val">{stats.consumed_count}</span> <span class="lbl">{t('home.consumedPill')}</span>
 				</div>
 			</div>
 			{#if Object.keys(stats.by_type).length > 0}
@@ -939,7 +941,7 @@ $effect(() => {
 					{#each Object.entries(stats.by_type) as [type, mins]}
 						{@const pct = totalByTypeMins > 0 ? (mins / totalByTypeMins) * 100 : 0}
 						<div class="pill pill-typed" style="--pill-color:{TYPE_COLOR[type] ?? 'var(--primary)'}">
-							<span>{TYPE_ICONS[type] || '📄'}</span>
+							<span><TypeIcon {type} /></span>
 							<span class="val">{formatDuration(mins)}</span>
 							{typeLabel(type)}
 							<span class="pill-bar" style="width:{pct}%"></span>
@@ -961,11 +963,11 @@ $effect(() => {
 		<div class="tabs view-mode-tabs">
 			<div class="seg-group">
 				<button class="tab" class:active={!rolodexView} onclick={() => setLayout('flat')}>{t('home.flatView')}</button>
-				<button class="tab" class:active={rolodexView} onclick={() => setLayout('rolodex')}>{t('home.rolodexBtn')}</button>
+				<button class="tab" class:active={rolodexView} onclick={() => setLayout('rolodex')}><Layers /> {t('home.rolodexBtn')}</button>
 			</div>
 			<div class="seg-group">
-				<button class="tab" class:active={!groupByType} onclick={() => setGrouping(false)}>{t('home.ungroupBtn')}</button>
-				<button class="tab" class:active={groupByType} onclick={() => setGrouping(true)}>{t('home.groupBtn')}</button>
+				<button class="tab" class:active={!groupByType} onclick={() => setGrouping(false)}><List /> {t('home.ungroupBtn')}</button>
+				<button class="tab" class:active={groupByType} onclick={() => setGrouping(true)}><LayoutGrid /> {t('home.groupBtn')}</button>
 			</div>
 		</div>
 	</div>
@@ -975,30 +977,30 @@ $effect(() => {
 		{#if !groupByType}
 		<div class="tabs desk-tabs">
 			<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>{t('common.all')}</button>
-			<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️ {t('types.youtube')}</button>
-			<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬 {t('types.movie')}</button>
-			<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺 {t('types.series')}</button>
-			<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>🎵 {t('types.music')}</button>
-			<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖 {t('types.book')}</button>
-			<button class="tab" class:active={filter === 'manga'} onclick={() => filter = 'manga'}>🗾 {t('types.manga')}</button>
-			<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮 {t('types.game')}</button>
+			<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}><TypeIcon type="youtube" /> {t('types.youtube')}</button>
+			<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}><TypeIcon type="movie" /> {t('types.movie')}</button>
+			<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}><TypeIcon type="series" /> {t('types.series')}</button>
+			<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}><TypeIcon type="music" /> {t('types.music')}</button>
+			<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}><TypeIcon type="book" /> {t('types.book')}</button>
+			<button class="tab" class:active={filter === 'manga'} onclick={() => filter = 'manga'}><TypeIcon type="manga" /> {t('types.manga')}</button>
+			<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}><TypeIcon type="game" /> {t('types.game')}</button>
 			<!-- Estado "empezado": ortogonal al tipo, pero comparte fila. En un
 			     .tabs aparte, el flex:1 de escritorio partía el ancho a medias
 			     con las pestañas de tipo y recortaba las últimas. -->
 			<span class="tab-sep" aria-hidden="true"></span>
-			<button class="tab" class:active={onlyInProgress} onclick={() => onlyInProgress = !onlyInProgress}>▶️ {t('home.inProgressFilter')}</button>
+			<button class="tab" class:active={onlyInProgress} onclick={() => onlyInProgress = !onlyInProgress}><Play /> {t('home.inProgressFilter')}</button>
 		</div>
 		{:else}
 		<!-- Agrupar por tipo esconde las pestañas de tipo; el filtro de empezados sigue. -->
 		<div class="tabs tabs-compact">
-			<button class="tab" class:active={onlyInProgress} onclick={() => onlyInProgress = !onlyInProgress}>▶️ {t('home.inProgressFilter')}</button>
+			<button class="tab" class:active={onlyInProgress} onclick={() => onlyInProgress = !onlyInProgress}><Play /> {t('home.inProgressFilter')}</button>
 		</div>
 		{/if}
 
 		<!-- Search + sort (now shown on all screen sizes in filter zone) -->
 		<div class="search-row">
 			<div class="search">
-				<span class="ico">🔍</span>
+				<span class="ico"><Search /></span>
 				<input type="search" bind:value={searchQuery} placeholder={t('home.searchPlaceholder')} />
 			</div>
 			<select class="sort" bind:value={sortOrder}>
@@ -1019,7 +1021,7 @@ $effect(() => {
 			<div class="tabs tabs-compact">
 				<button class="tab" class:active={activeCollection === null} onclick={() => activeCollection = null}>{t('home.allCollections')}</button>
 				{#each collections as col}
-					<button class="tab" class:active={activeCollection === col} onclick={() => activeCollection = activeCollection === col ? null : col}>📁 {col}</button>
+					<button class="tab" class:active={activeCollection === col} onclick={() => activeCollection = activeCollection === col ? null : col}><Folder /> {col}</button>
 				{/each}
 			</div>
 		{/if}
@@ -1044,7 +1046,7 @@ $effect(() => {
 		<p class="muted center">{t('common.loading')}</p>
 	{:else if contents.length === 0}
 		<div class="empty">
-			<span class="icon">🏛️</span>
+			<span class="icon"><Landmark /></span>
 			<p>{searchQuery ? t('home.noResultsFor', { query: searchQuery }) : t('home.vaultEmpty')}</p>
 		</div>
 	{:else}
@@ -1081,9 +1083,9 @@ $effect(() => {
 							{#if c.thumbnail}
 								<img src={c.thumbnail} alt=""
 									onerror={(e) => { const img = e.currentTarget as HTMLElement; img.style.display='none'; const ph = img.nextElementSibling as HTMLElement; if (ph) ph.style.display='flex'; }} />
-								<div class="ph" style="display:none">{TYPE_ICONS[c.content_type] || '📄'}</div>
+								<div class="ph" style="display:none"><TypeIcon type={c.content_type} /></div>
 							{:else}
-								<div class="ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
+								<div class="ph"><TypeIcon type={c.content_type} /></div>
 							{/if}
 						</div>
 					{:else if c.thumbnail}
@@ -1098,7 +1100,7 @@ $effect(() => {
 						<!-- svelte-ignore a11y_click_events_have_key_events -->
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div class="title" onclick={() => detailItem = c} style="cursor:pointer;" title={t('home.detail.viewDetail')}>
-							{#if c.pinned}<span title={t('home.priority')}>📌</span>{/if}
+							{#if c.pinned}<span title={t('home.priority')}><Pin fill="currentColor" /></span>{/if}
 							{c.title}
 						</div>
 						<div class="meta">
@@ -1106,11 +1108,11 @@ $effect(() => {
 							{#if upcomingRelease(c)}
 								{@const up = upcomingRelease(c)}
 								<span class="soon-badge" title={t('home.comingSoonTitle')}>
-									🔜 {up instanceof Date ? fmtDateI18n(up, { day: 'numeric', month: 'short', year: 'numeric' }) : t('home.comingSoon')}
+									<CalendarClock /> {up instanceof Date ? fmtDateI18n(up, { day: 'numeric', month: 'short', year: 'numeric' }) : t('home.comingSoon')}
 								</span>
 							{/if}
 							{#if c.rating}
-								<span class="rating-badge">★ {c.rating.toFixed(1)}</span>
+								<span class="rating-badge"><Star fill="currentColor" /> {c.rating.toFixed(1)}</span>
 							{/if}
 							{#if c.streaming_providers}
 								{@const provList = (() => { try { return JSON.parse(c.streaming_providers) as string[]; } catch { return []; } })()}
@@ -1125,25 +1127,25 @@ $effect(() => {
 								<span class="provider-badge provider-{prov}">{PROVIDER_LABELS[prov] ?? prov}</span>
 							{/if}
 							{#if c.collection}
-								<span style="font-size:10px; color:var(--text-muted);">📁 {c.collection}</span>
+								<span style="font-size:10px; color:var(--text-muted);"><Folder /> {c.collection}</span>
 							{/if}
 							{#if c.content_type === 'manga'}
-								{#if c.seasons && c.seasons > 0}<span>🗾 {c.seasons}</span>{/if}
+								{#if c.seasons && c.seasons > 0}<span><Library /> {c.seasons}</span>{/if}
 								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} cap</span>{/if}
-								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/cap</span>{/if}
+								{#if c.duration_minutes > 0}<span><Timer /> {formatDuration(c.duration_minutes)}/cap</span>{/if}
 							{:else if c.content_type === 'series'}
-								{#if c.seasons && c.seasons > 0}<span>📺 {c.seasons}T</span>{/if}
+								{#if c.seasons && c.seasons > 0}<span><Tv /> {c.seasons}T</span>{/if}
 								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} ep</span>{/if}
-								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>{/if}
+								{#if c.duration_minutes > 0}<span><Timer /> {formatDuration(c.duration_minutes)}/ep</span>{/if}
 								{#if c.next_episode_date}
 									{@const epDate = new Date(c.next_episode_date)}
 									{@const aired = epDate < new Date()}
-									<span class="next-ep" class:aired title={t('home.nextEpisode')}>{aired ? '⏰' : '🟢'} {fmtDateI18n(epDate,{day:'numeric',month:'short'})}</span>
+									<span class="next-ep" class:aired title={t('home.nextEpisode')}>{#if aired}<AlarmClock />{:else}<CircleDot />{/if} {fmtDateI18n(epDate,{day:'numeric',month:'short'})}</span>
 								{/if}
 							{:else}
-								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}</span>{/if}
+								{#if c.duration_minutes > 0}<span><Timer /> {formatDuration(c.duration_minutes)}</span>{/if}
 								{#if c.content_type === 'book' && c.page_count && Number(c.page_count) > 0}
-									<span>📚 {t('home.pagesAbbrev', { count: c.page_count })}</span>
+									<span><BookOpen /> {t('home.pagesAbbrev', { count: c.page_count })}</span>
 								{/if}
 								<!-- Si aún no se ha estrenado, la fecha ya va en la marca de Próximamente -->
 								{#if c.content_type === 'movie' && c.next_episode_date && !upcomingRelease(c)}
@@ -1151,7 +1153,7 @@ $effect(() => {
 									{#if !isNaN(relDate.getTime())}
 										{@const released = relDate < new Date()}
 										<span class="next-ep" class:aired={released} title={released ? t('home.releaseDate') : t('home.upcomingRelease')}>
-											{released ? '📅' : '🎬'} {fmtDateI18n(relDate,{day:'numeric',month:'short',year:'numeric'})}
+											{#if released}<Calendar />{:else}<Clapperboard />{/if} {fmtDateI18n(relDate,{day:'numeric',month:'short',year:'numeric'})}
 										</span>
 									{/if}
 								{/if}
@@ -1181,7 +1183,7 @@ $effect(() => {
 											onkeydown={(e) => e.key === 'Enter' && saveProgress(c)}
 											autofocus
 										/>
-										<button class="btn" onclick={() => saveProgress(c)}>✓</button>
+										<button class="btn" onclick={() => saveProgress(c)}><Check /></button>
 									</div>
 									{#if progressValue > 0}
 										<span style="font-size:10px; color:var(--game);">
@@ -1220,19 +1222,19 @@ $effect(() => {
 											onkeydown={(e) => { if (e.key === 'Enter') saveStartedAt(c); if (e.key === 'Escape') editingStartedAtCardId = null; }}
 											autofocus
 										/>
-										<button class="btn" onclick={() => saveStartedAt(c)}>✓</button>
-										<button class="btn" onclick={() => editingStartedAtCardId = null}>✕</button>
+										<button class="btn" onclick={() => saveStartedAt(c)}><Check /></button>
+										<button class="btn" onclick={() => editingStartedAtCardId = null}><X /></button>
 									</div>
 								</div>
 							{:else if c.started_at}
 								<div class="started-row">
 									<button class="started-badge" onclick={() => startEditStartedAt(c)} title={t('home.editStartDate')}>
-										{TYPE_ICONS[c.content_type] ?? '▶'} {t('home.started', { date: fmtDateI18n(new Date(c.started_at), {day:'numeric', month:'short', year:'numeric'}) })} <span class="started-edit-ico">✏️</span>
+										<TypeIcon type={c.content_type} /> {t('home.started', { date: fmtDateI18n(new Date(c.started_at), {day:'numeric', month:'short', year:'numeric'}) })} <span class="started-edit-ico"><Pencil /></span>
 									</button>
 									<button class="started-clear" onclick={() => clearStarted(c)} title={t('home.removeStart')}>×</button>
 								</div>
 							{:else}
-								<button class="btn btn-start-game" onclick={() => markStarted(c)} title={t('home.markAsStarted')}>{t('home.startPlaying')}</button>
+								<button class="btn btn-start-game" onclick={() => markStarted(c)} title={t('home.markAsStarted')}><Play /> {t('home.startPlaying')}</button>
 							{/if}
 						{/if}
 
@@ -1280,7 +1282,7 @@ $effect(() => {
 							{/if}
 							{#if c.trailer_url}
 								<a href={c.trailer_url} target="_blank" rel="noopener" title={t('home.watchTrailer')}>
-									<button class="btn btn-trailer">{t('home.trailerBtn')}</button>
+									<button class="btn btn-trailer"><Play /> {t('home.trailerBtn')}</button>
 								</a>
 							{/if}
 							{#if canRefresh(c)}
@@ -1290,7 +1292,7 @@ $effect(() => {
 									disabled={refreshingId !== null}
 									title={t('home.updateMetadata')}
 									style={refreshingId === c.id ? 'animation: spin 0.8s linear infinite; opacity:0.7;' : ''}
-								>↻</button>
+								><RefreshCw /></button>
 							{/if}
 							<button
 								class="btn"
@@ -1298,17 +1300,17 @@ $effect(() => {
 								onclick={() => togglePin(c)}
 								title={c.pinned ? t('home.removePriority') : t('home.markPriority')}
 								style="opacity:{c.pinned ? 1 : 0.5};"
-							>{c.pinned ? '📌' : '📍'}</button>
-							<button class="btn" onclick={() => startEdit(c)} title={t('common.edit')}>✏️</button>
-							<button class="btn btn-consume" onclick={() => consume(c.id)} title={t('home.markConsumed')}>✓</button>
-							<button class="btn btn-abandon" onclick={() => abandon(c.id)} title={t('home.abandonBtn')}>🚫</button>
+							><Pin fill={c.pinned ? 'currentColor' : 'none'} /></button>
+							<button class="btn" onclick={() => startEdit(c)} title={t('common.edit')}><Pencil /></button>
+							<button class="btn btn-consume" onclick={() => consume(c.id)} title={t('home.markConsumed')}><Check /></button>
+							<button class="btn btn-abandon" onclick={() => abandon(c.id)} title={t('home.abandonBtn')}><Ban /></button>
 							{#if deletingId === c.id}
 								<span style="display:flex; gap:4px;">
 									<button class="btn btn-danger" onclick={() => remove(c.id)}>{t('common.yes')}</button>
 									<button class="btn" onclick={() => deletingId = null}>{t('common.no')}</button>
 								</span>
 							{:else}
-								<button class="btn btn-danger" onclick={() => deletingId = c.id}>✕</button>
+								<button class="btn btn-danger" onclick={() => deletingId = c.id}><X /></button>
 							{/if}
 						</div>
 					</div>
@@ -1326,10 +1328,10 @@ $effect(() => {
 				{@const collapsed = collapsedTypes.has(type)}
 				<div class="type-section">
 					<button class="type-section-head" onclick={() => toggleSection(type)} style="--section-accent:{TYPE_COLOR[type] ?? 'var(--primary)'}">
-						<span class="type-section-icon">{TYPE_ICONS[type]}</span>
+						<span class="type-section-icon"><TypeIcon {type} /></span>
 						<h3>{typeLabel(type)}</h3>
 						<span class="type-section-count">{items.length}</span>
-						<span class="type-section-chevron" class:collapsed>{collapsed ? '▶' : '▼'}</span>
+						<span class="type-section-chevron" class:collapsed>{#if collapsed}<ChevronRight />{:else}<ChevronDown />{/if}</span>
 					</button>
 					{#if !collapsed}
 						<div class="content-grid {isLandscape(type) ? 'grid-landscape' : 'grid-portrait'}">
@@ -1465,7 +1467,7 @@ $effect(() => {
 				<div class="field">
 					<label style="display:flex; align-items:center; gap:8px; text-transform:none; font-size:13px; cursor:pointer;">
 						<input type="checkbox" bind:checked={editPinned} />
-						{t('home.markPriorityCheckbox')}
+						{t('home.markPriorityCheckbox')} <Pin />
 					</label>
 				</div>
 				{#if editError}<p class="error-msg">{editError}</p>{/if}
@@ -1489,7 +1491,7 @@ $effect(() => {
 					<div class="row">
 						<input id="add-url" class="text" bind:value={addUrl} placeholder="https://..." style="flex:1;" />
 						<button class="btn" onclick={() => lookupUrl()} disabled={lookupLoading}>
-							{lookupLoading ? '…' : '🔍'}
+							{#if lookupLoading}…{:else}<Search />{/if}
 						</button>
 					</div>
 					{#if lookupLoading}
@@ -1499,15 +1501,15 @@ $effect(() => {
 						</p>
 					{:else if !addUrl.trim()}
 						<p style="font-size:11px; color:var(--text-dim); margin:4px 0 0; display:flex; align-items:center; gap:4px;">
-							{t('home.noUrlHint')}
+							<Search /> {t('home.noUrlHint')}
 						</p>
 					{/if}
 					{#if duplicateChecked && duplicateItem}
 						<div class="dup-banner" class:dup-pending={!duplicateItem.consumed && !duplicateItem.abandoned} class:dup-consumed={duplicateItem.consumed || duplicateItem.abandoned}>
 							{#if !duplicateItem.consumed && !duplicateItem.abandoned}
-								{@html t('home.alreadyPending', { title: duplicateItem.title })}
+								<TriangleAlert /> {@html t('home.alreadyPending', { title: duplicateItem.title })}
 							{:else}
-								{t('home.alreadyConsumedInfo', {
+								<Info /> {t('home.alreadyConsumedInfo', {
 									verb: duplicateItem.consumed ? t('home.consumedVerb') : t('home.abandonedVerb'),
 									times: duplicateItem.times_consumed && duplicateItem.times_consumed > 1 ? t('home.timesCount', { count: duplicateItem.times_consumed }) : t('home.onceSuffix')
 								})}
@@ -1532,13 +1534,13 @@ $effect(() => {
 				<div class="field">
 					<label for="add-type">{t('home.typeLabel')}</label>
 					<select id="add-type" class="text" bind:value={addType}>
-						<option value="youtube">▶️ {t('types.youtube')}</option>
-						<option value="movie">🎬 {t('home.typeSingular.movie')}</option>
-						<option value="series">📺 {t('home.typeSingular.series')}</option>
-						<option value="music">🎵 {t('types.music')}</option>
-						<option value="book">📖 {t('types.book')}</option>
-						<option value="manga">🗾 {t('types.manga')}</option>
-						<option value="game">🎮 {t('types.game')}</option>
+						<option value="youtube">{t('types.youtube')}</option>
+						<option value="movie">{t('home.typeSingular.movie')}</option>
+						<option value="series">{t('home.typeSingular.series')}</option>
+						<option value="music">{t('types.music')}</option>
+						<option value="book">{t('types.book')}</option>
+						<option value="manga">{t('types.manga')}</option>
+						<option value="game">{t('types.game')}</option>
 					</select>
 				</div>
 				<div class="field">
@@ -1568,7 +1570,7 @@ $effect(() => {
 									{#if result.thumbnail}
 										<img src={result.thumbnail} alt="" class="tmdb-thumb" />
 									{:else}
-										<div class="tmdb-thumb tmdb-thumb-ph">{result.kind === 'manga' ? '🗾' : result.media_type === 'tv' ? '📺' : '🎬'}</div>
+										<div class="tmdb-thumb tmdb-thumb-ph"><TypeIcon type={result.kind === 'manga' ? 'manga' : result.media_type === 'tv' ? 'series' : 'movie'} /></div>
 									{/if}
 									<div class="tmdb-info">
 										<span class="tmdb-title">{result.title}</span>
@@ -1635,7 +1637,7 @@ $effect(() => {
 					{/if}
 					{#if addNextEpisodeDate}
 						<p class="muted" style="font-size:12px; margin-top:-4px;">
-							{t('home.nextEpPrefix', { date: fmtDateI18n(new Date(addNextEpisodeDate + 'T00:00:00'), {day:'numeric',month:'long',year:'numeric'}) })}
+							<CircleDot /> {t('home.nextEpPrefix', { date: fmtDateI18n(new Date(addNextEpisodeDate + 'T00:00:00'), {day:'numeric',month:'long',year:'numeric'}) })}
 						</p>
 					{/if}
 				{/if}
@@ -1680,7 +1682,7 @@ $effect(() => {
 						onclick={() => addPinned = !addPinned}
 						type="button"
 					>
-						<span class="toggle-ico">📌</span>
+						<span class="toggle-ico"><Pin /></span>
 						<span>{t('home.priorityToggle')}</span>
 					</button>
 					<button
@@ -1689,7 +1691,7 @@ $effect(() => {
 						onclick={() => addAlreadyConsumed = !addAlreadyConsumed}
 						type="button"
 					>
-						<span class="toggle-ico">✅</span>
+						<span class="toggle-ico"><CircleCheck /></span>
 						<span>{t('home.alreadyConsumedToggle')}</span>
 					</button>
 				</div>

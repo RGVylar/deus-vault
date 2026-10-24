@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { Content, ContentType } from '$lib/types';
-	import { TYPE_ICONS, TYPE_COLOR, typeLabel } from '$lib/utils';
+	import { TYPE_COLOR, typeLabel } from '$lib/utils';
+	import TypeIcon from '$lib/components/TypeIcon.svelte';
+	import { ArrowUpDown, Dices } from '@lucide/svelte';
 
 	let { type, items, onSelect }: { type: ContentType | 'all'; items: Content[]; onSelect: (c: Content) => void } = $props();
 
@@ -195,7 +197,7 @@
 <div class="rolodex-col" style="--col-accent: {TYPE_COLOR[type] ?? 'var(--primary)'}">
 	<div class="rolodex-col-head">
 		<div class="icn-wrap">
-			<div class="icn">{TYPE_ICONS[type] ?? '📄'}</div>
+			<div class="icn"><TypeIcon {type} /></div>
 			<button
 				type="button"
 				class="icn-dice"
@@ -204,7 +206,7 @@
 				disabled={N <= 1}
 				onclick={spinRandom}
 			>
-				🎲
+				<Dices />
 			</button>
 		</div>
 		<div class="lbl">{typeLabel(type)}</div>
@@ -248,7 +250,7 @@
 		</div>
 	</div>
 
-	<div class="rolodex-hint">↕</div>
+	<div class="rolodex-hint"><ArrowUpDown /></div>
 </div>
 
 <style>

@@ -1,4 +1,6 @@
 import { t, type TKey } from './i18n/index.svelte';
+import type { Component } from 'svelte';
+import { BookOpen, Clapperboard, Gamepad2, LayoutGrid, Library, Music, Play, Tv } from '@lucide/svelte';
 
 export function isLookupCandidate(url: string): boolean {
 	try {
@@ -57,15 +59,16 @@ export function isLandscape(type: string): boolean {
 	return type === 'youtube' || type === 'game';
 }
 
-export const TYPE_ICONS: Record<string, string> = {
-	all: '🗂️',
-	youtube: '▶️',
-	movie: '🎬',
-	series: '📺',
-	music: '🎵',
-	book: '📖',
-	manga: '🗾',
-	game: '🎮'
+/** Icono Lucide por tipo; para pintarlo, `<TypeIcon type={...} />`. */
+export const TYPE_ICONS: Record<string, Component> = {
+	all: LayoutGrid,
+	youtube: Play,
+	movie: Clapperboard,
+	series: Tv,
+	music: Music,
+	book: BookOpen,
+	manga: Library,
+	game: Gamepad2
 };
 
 // Type accent colors matching CSS vars

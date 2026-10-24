@@ -2142,3 +2142,14 @@ h2 {
   .azar-filters .flt-block:first-of-type { padding-top: 0; border-top: none; }
 }
 
+
+/* ─── Iconos Lucide ───
+   A 1em para que ocupen lo que ocupaban los emoji y escalen con el texto que
+   acompañan (el CSS manda sobre los width/height del <svg>). El vertical-align
+   los asienta en la línea base y el flex-shrink evita que un flex los aplaste. */
+.lucide-icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+}

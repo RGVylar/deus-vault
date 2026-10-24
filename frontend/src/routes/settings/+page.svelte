@@ -7,8 +7,9 @@
 	import { t, tc, i18n, setLocale, fmtCurrency, fmtDate, type Locale, type TKey } from '$lib/i18n/index.svelte';
 	import { privacy, toggleChannel } from '$lib/stores/privacy.svelte';
 	import { isFeatureEnabled, setFeatureEnabled } from '$lib/stores/features.svelte';
+	import { BookOpen, Check, Play, CircleCheck, Coffee, Eye, EyeOff, Gamepad2, Hourglass, Link, Lock, Moon, Palette, Plug, Puzzle, RefreshCw, Star, Sun, TriangleAlert, Wrench } from '@lucide/svelte';
 
-	const LANGUAGES: [Locale, string][] = [['es', '🇪🇸 Español'], ['en', '🇬🇧 English'], ['pt', '🇧🇷 Português']];
+	const LANGUAGES: [Locale, string][] = [['es', 'Español'], ['en', 'English'], ['pt', 'Português']];
 
 	let readingWpm = $state(200);
 	let readingWordsPerPage = $state(300);
@@ -383,7 +384,7 @@
 		<!-- Apariencia (full width) -->
 		<div class="glass cx-card cx-span2" style="--accent: var(--primary);">
 			<div class="cx-card-head">
-				<div class="cx-ico">🎨</div>
+				<div class="cx-ico"><Palette /></div>
 				<div class="cx-htxt">
 					<div class="cx-title">{t('settings.appearance.title')}</div>
 					<div class="cx-sub">{t('settings.appearance.subtitle')}</div>
@@ -396,11 +397,11 @@
 					<div class="cx-theme-row">
 						<button class="cx-theme dark" class:on={theme === 'dark'} onclick={() => { theme = 'dark'; applyAppearance(); }}>
 							<div class="cx-theme-prev"><div class="swatch"></div><div class="lines"><i></i><i></i><i></i></div></div>
-							<div class="cx-theme-tag"><span>{t('settings.appearance.dark')}</span><span class="chk">✓</span></div>
+							<div class="cx-theme-tag"><span><Moon /> {t('settings.appearance.dark')}</span><span class="chk"><Check /></span></div>
 						</button>
 						<button class="cx-theme light" class:on={theme === 'light'} onclick={() => { theme = 'light'; applyAppearance(); }}>
 							<div class="cx-theme-prev"><div class="swatch"></div><div class="lines"><i></i><i></i><i></i></div></div>
-							<div class="cx-theme-tag"><span>{t('settings.appearance.light')}</span><span class="chk">✓</span></div>
+							<div class="cx-theme-tag"><span><Sun /> {t('settings.appearance.light')}</span><span class="chk"><Check /></span></div>
 						</button>
 					</div>
 				</div>
@@ -430,7 +431,7 @@
 									{#each wp.colors as c}
 										<i style="background:{c};"></i>
 									{/each}
-									<span class="chk">✓</span>
+									<span class="chk"><Check /></span>
 								</div>
 								<span>{t(wp.labelKey)}</span>
 							</button>
@@ -462,7 +463,7 @@
 		<!-- Funciones opcionales -->
 		<div class="glass cx-card cx-span2" style="--accent: var(--primary);">
 			<div class="cx-card-head">
-				<div class="cx-ico">🧩</div>
+				<div class="cx-ico"><Puzzle /></div>
 				<div class="cx-htxt">
 					<div class="cx-title">{t('settings.features.title')}</div>
 					<div class="cx-sub">{t('settings.features.subtitle')}</div>
@@ -484,7 +485,7 @@
 		<!-- Lectura -->
 		<div class="glass cx-card" style="--accent: var(--book);">
 			<div class="cx-card-head">
-				<div class="cx-ico">📖</div>
+				<div class="cx-ico"><BookOpen /></div>
 				<div class="cx-htxt">
 					<div class="cx-title">{t('settings.reading.title')}</div>
 					<div class="cx-sub">{t('settings.reading.subtitle')}</div>
@@ -511,10 +512,10 @@
 					<span class="cx-label">{t('settings.reading.speedTest')}</span>
 					{#if testPhase === 'idle'}
 						<p class="cx-hint">{t('settings.reading.speedTestHint')}</p>
-						<button class="btn" onclick={startSpeedTest} style="margin-top:4px;">{t('settings.reading.startTest')}</button>
+						<button class="btn" onclick={startSpeedTest} style="margin-top:4px;"><Play /> {t('settings.reading.startTest')}</button>
 					{:else if testPhase === 'reading'}
 						<div class="cx-test-text">{testText}</div>
-						<button class="btn btn-primary" onclick={stopSpeedTest} style="justify-content:center;">{t('settings.reading.doneReading')}</button>
+						<button class="btn btn-primary" onclick={stopSpeedTest} style="justify-content:center;"><Check /> {t('settings.reading.doneReading')}</button>
 					{:else if testPhase === 'result'}
 						<div class="cx-test-result">
 							<span class="cx-test-wpm">{testResultWpm}</span>
@@ -540,7 +541,7 @@
 		<!-- Bóveda de Deseos — sueldo -->
 		<div class="glass cx-card" id="salary" style="--accent: oklch(0.82 0.18 75);">
 			<div class="cx-card-head">
-				<div class="cx-ico">⭐</div>
+				<div class="cx-ico"><Star /></div>
 				<div class="cx-htxt">
 					<div class="cx-title">{t('settings.wishlist.title')}</div>
 					<div class="cx-sub">{t('settings.wishlist.subtitle')}</div>
@@ -591,7 +592,7 @@
 		<!-- APIs externas -->
 		<div class="glass cx-card" style="--accent: var(--movie);">
 			<div class="cx-card-head">
-				<div class="cx-ico">🔌</div>
+				<div class="cx-ico"><Plug /></div>
 				<div class="cx-htxt">
 					<div class="cx-title">{t('settings.apis.title')}</div>
 					<div class="cx-sub">{t('settings.apis.subtitle')}</div>
@@ -619,7 +620,7 @@
 						{:else}
 							<input class="text" type="password" bind:value={spotifyClientSecret} placeholder={t('settings.apis.spotifyClientSecret')} autocomplete="off" />
 						{/if}
-						<button class="btn" type="button" onclick={() => showSpotifySecret = !showSpotifySecret}>{showSpotifySecret ? '🙈' : '👁'}</button>
+						<button class="btn" type="button" onclick={() => showSpotifySecret = !showSpotifySecret}>{#if showSpotifySecret}<EyeOff />{:else}<Eye />{/if}</button>
 					</div>
 					<p class="cx-hint">{@html t('settings.apis.spotifyHint')}</p>
 				</div>
@@ -629,7 +630,7 @@
 		<!-- Steam (full width) -->
 		<div class="glass cx-card cx-span2" style="--accent: var(--game);">
 			<div class="cx-card-head">
-				<div class="cx-ico">🎮</div>
+				<div class="cx-ico"><Gamepad2 /></div>
 				<div class="cx-htxt">
 					<div class="cx-title">Steam</div>
 					<div class="cx-sub">{t('settings.steam.subtitle')}</div>
@@ -651,21 +652,21 @@
 						</div>
 						<div style="display:flex; gap:8px; flex-wrap:wrap;">
 							<button class="btn cx-btn-steam" onclick={steamSync} disabled={steamSyncState === 'syncing'} style="flex:1; justify-content:center;">
-								{steamSyncState === 'syncing' ? t('settings.steam.syncing') : t('settings.steam.syncButton')}
+								{#if steamSyncState === 'syncing'}<Hourglass /> {t('settings.steam.syncing')}{:else}<Gamepad2 /> {t('settings.steam.syncButton')}{/if}
 							</button>
 							<button class="btn" onclick={steamDisconnect} style="opacity:0.6; font-size:12px;">{t('settings.steam.disconnect')}</button>
 						</div>
 						{#if steamSyncState === 'done' && steamSyncResult}
-							<p class="cx-hint" style="color:var(--game);">{tc('settings.steam.synced', steamSyncResult.synced, { total: steamSyncResult.total_steam_games })}</p>
+							<p class="cx-hint" style="color:var(--game);"><CircleCheck /> {tc('settings.steam.synced', steamSyncResult.synced, { total: steamSyncResult.total_steam_games })}</p>
 						{:else if steamSyncState === 'error'}
-							<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.steam.syncError')}</p>
+							<p class="cx-hint" style="color:var(--red, var(--danger));"><TriangleAlert /> {t('settings.steam.syncError')}</p>
 						{/if}
 					</div>
 				{:else}
 					<div class="cx-steam-connect">
 						<p>{t('settings.steam.connectPrompt')}</p>
 						<button class="btn cx-btn-steam" onclick={() => window.location.href = `/api/auth/steam/login?token=${auth.token}${steamApiKey ? '&steam_api_key=' + encodeURIComponent(steamApiKey) : ''}`}>
-							{t('settings.steam.connectButton')}
+							<Gamepad2 /> {t('settings.steam.connectButton')}
 						</button>
 						<p class="cx-hint">{@html t('settings.steam.connectHint')}</p>
 					</div>
@@ -676,7 +677,7 @@
 		<!-- Bóveda compartida (full width) -->
 		<div class="glass cx-card cx-span2" style="--accent: var(--series);">
 			<div class="cx-card-head">
-				<div class="cx-ico">🔗</div>
+				<div class="cx-ico"><Link /></div>
 				<div class="cx-htxt">
 					<div class="cx-title">{t('settings.link.title')}</div>
 					<div class="cx-sub">{t('settings.link.subtitle')}</div>
@@ -689,7 +690,7 @@
 						{#each partners as p (p.id)}
 							<div class="hc-row">
 								<span class="cx-av cx-av-sm">{p.name.charAt(0).toUpperCase()}</span>
-								<span class="hc-name">{p.name} <span class="cx-hint">· {p.expires_at ? '🌙 ' + t('settings.link.expiresIn', { time: expiresIn(p.expires_at) }) : t('settings.link.since', { date: fmtDate(new Date(p.linked_at), { day: 'numeric', month: 'short', year: 'numeric' }) })}</span></span>
+								<span class="hc-name">{p.name} <span class="cx-hint">· {#if p.expires_at}<Moon /> {t('settings.link.expiresIn', { time: expiresIn(p.expires_at) })}{:else}{t('settings.link.since', { date: fmtDate(new Date(p.linked_at), { day: 'numeric', month: 'short', year: 'numeric' }) })}{/if}</span></span>
 								<button class="btn" onclick={() => unlinkPartner(p.id)} style="opacity:0.7; font-size:12px;">{t('settings.link.unlink')}</button>
 							</div>
 						{/each}
@@ -699,20 +700,20 @@
 					<p>{t('settings.link.explain')}</p>
 					<div style="display:flex; gap:8px; flex-wrap:wrap;">
 						<button class="btn btn-primary" onclick={() => inviteByLink()} disabled={inviteState === 'creating'} style="flex:1; justify-content:center;">
-							{inviteState === 'creating' ? t('settings.link.creating') : t('settings.link.invite')}
+							{#if inviteState === 'creating'}<Hourglass /> {t('settings.link.creating')}{:else}<Link /> {t('settings.link.invite')}{/if}
 						</button>
 						<button class="btn" onclick={() => inviteByLink(NIGHT_HOURS)} disabled={inviteState === 'creating'} style="flex:1; justify-content:center;">
-							{inviteState === 'creating' ? t('settings.link.creating') : t('settings.link.inviteNight')}
+							{#if inviteState === 'creating'}<Hourglass /> {t('settings.link.creating')}{:else}<Moon /> {t('settings.link.inviteNight')}{/if}
 						</button>
 					</div>
 					<p class="cx-hint">{t('settings.link.nightHint', { hours: NIGHT_HOURS })}</p>
 					{#if inviteState === 'shared'}
-						<p class="cx-hint" style="color:var(--game);">✅ {t('settings.link.shared')}</p>
+						<p class="cx-hint" style="color:var(--game);"><CircleCheck /> {t('settings.link.shared')}</p>
 					{:else if inviteState === 'copied'}
-						<p class="cx-hint" style="color:var(--game);">✅ {t('settings.link.copied')}</p>
+						<p class="cx-hint" style="color:var(--game);"><CircleCheck /> {t('settings.link.copied')}</p>
 						<code class="cx-link-url">{inviteUrl}</code>
 					{:else if inviteState === 'error'}
-						<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.link.error')}</p>
+						<p class="cx-hint" style="color:var(--red, var(--danger));"><TriangleAlert /> {t('settings.link.error')}</p>
 					{/if}
 				</div>
 			</div>
@@ -721,7 +722,7 @@
 		<!-- Canales ocultos -->
 		<div class="glass cx-card cx-span2" style="--accent: var(--youtube);">
 			<div class="cx-card-head">
-				<div class="cx-ico">🙈</div>
+				<div class="cx-ico"><EyeOff /></div>
 				<div class="cx-htxt">
 					<div class="cx-title">{t('privacy.hiddenChannels')}</div>
 					<div class="cx-sub">{t('privacy.hiddenChannelsHint')}</div>
@@ -750,13 +751,13 @@
 	<div class="glass-strong cx-savebar">
 		<button class="btn btn-primary" onclick={saveLocalSettings}>{t('settings.save')}</button>
 		<button class="btn" onclick={resetLocalSettings}>{t('settings.resetReading')}</button>
-		{#if saved}<span class="cx-saved">{t('settings.saved')}</span>{/if}
+		{#if saved}<span class="cx-saved"><Check /> {t('settings.saved')}</span>{/if}
 	</div>
 
 	<!-- Sesión -->
 	<div class="glass cx-card cx-session" style="--accent: var(--danger); margin-top:14px;">
 		<div class="cx-card-head">
-			<div class="cx-ico">🔐</div>
+			<div class="cx-ico"><Lock /></div>
 			<div class="cx-htxt">
 				<div class="cx-title">{t('settings.session.title')}</div>
 				<div class="cx-sub">{t('settings.session.connectedAs', { name: auth.user?.name ?? '' })}</div>
@@ -768,7 +769,7 @@
 	<!-- Mantenimiento -->
 	<details class="glass cx-card cx-maint" style="margin-top:14px;">
 		<summary>
-			<span>🛠️</span><span>{t('settings.maintenance.title')}</span><span class="chev">›</span>
+			<span><Wrench /></span><span>{t('settings.maintenance.title')}</span><span class="chev">›</span>
 		</summary>
 		<div class="cx-body" style="padding-top:0;">
 			<p class="cx-hint" style="color:var(--text-muted); line-height:1.5;">
@@ -776,16 +777,16 @@
 			</p>
 			<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
 				<button class="btn" onclick={() => runTmdbBackfill(false)} disabled={backfillState === 'running'}>
-					{backfillState === 'running' ? t('settings.maintenance.updating') : t('settings.maintenance.updateButton')}
+					{#if backfillState === 'running'}<Hourglass /> {t('settings.maintenance.updating')}{:else}<RefreshCw /> {t('settings.maintenance.updateButton')}{/if}
 				</button>
 				<button class="btn" onclick={() => runTmdbBackfill(true)} disabled={backfillState === 'running'} style="opacity:0.6; font-size:11px;">{t('settings.maintenance.forceAll')}</button>
 			</div>
 			{#if backfillState === 'running'}
-				<p class="cx-hint" style="color:var(--text-muted);">{t('settings.maintenance.stillRunning')}</p>
+				<p class="cx-hint" style="color:var(--text-muted);"><Hourglass /> {t('settings.maintenance.stillRunning')}</p>
 			{:else if backfillState === 'error'}
-				<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.maintenance.backfillError')}</p>
+				<p class="cx-hint" style="color:var(--red, var(--danger));"><TriangleAlert /> {t('settings.maintenance.backfillError')}</p>
 			{:else if backfillState === 'done' && maintenanceStatus.tmdb}
-				<p class="cx-hint" style="color:var(--game);">✅ {formatBackfillResult(maintenanceStatus.tmdb)}</p>
+				<p class="cx-hint" style="color:var(--game);"><CircleCheck /> {formatBackfillResult(maintenanceStatus.tmdb)}</p>
 			{:else if maintenanceStatus.tmdb}
 				<p class="cx-hint" style="color:var(--text-muted);">{t('settings.maintenance.lastRunLabel')} {formatBackfillResult(maintenanceStatus.tmdb)}</p>
 			{/if}
@@ -795,16 +796,16 @@
 			</p>
 			<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
 				<button class="btn" onclick={() => runBookBackfill(false)} disabled={bookBackfillState === 'running'}>
-					{bookBackfillState === 'running' ? t('settings.maintenance.updating') : t('settings.maintenance.updateBookButton')}
+					{#if bookBackfillState === 'running'}<Hourglass /> {t('settings.maintenance.updating')}{:else}<BookOpen /> {t('settings.maintenance.updateBookButton')}{/if}
 				</button>
 				<button class="btn" onclick={() => runBookBackfill(true)} disabled={bookBackfillState === 'running'} style="opacity:0.6; font-size:11px;">{t('settings.maintenance.forceAll')}</button>
 			</div>
 			{#if bookBackfillState === 'running'}
-				<p class="cx-hint" style="color:var(--text-muted);">{t('settings.maintenance.stillRunning')}</p>
+				<p class="cx-hint" style="color:var(--text-muted);"><Hourglass /> {t('settings.maintenance.stillRunning')}</p>
 			{:else if bookBackfillState === 'error'}
-				<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.maintenance.backfillError')}</p>
+				<p class="cx-hint" style="color:var(--red, var(--danger));"><TriangleAlert /> {t('settings.maintenance.backfillError')}</p>
 			{:else if bookBackfillState === 'done' && maintenanceStatus.book}
-				<p class="cx-hint" style="color:var(--game);">✅ {formatBackfillResult(maintenanceStatus.book)}</p>
+				<p class="cx-hint" style="color:var(--game);"><CircleCheck /> {formatBackfillResult(maintenanceStatus.book)}</p>
 			{:else if maintenanceStatus.book}
 				<p class="cx-hint" style="color:var(--text-muted);">{t('settings.maintenance.lastRunLabel')} {formatBackfillResult(maintenanceStatus.book)}</p>
 			{/if}
@@ -814,16 +815,16 @@
 			</p>
 			<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
 				<button class="btn" onclick={() => runGameBackfill(false)} disabled={gameBackfillState === 'running'}>
-					{gameBackfillState === 'running' ? t('settings.maintenance.updating') : t('settings.maintenance.updateGameButton')}
+					{#if gameBackfillState === 'running'}<Hourglass /> {t('settings.maintenance.updating')}{:else}<Gamepad2 /> {t('settings.maintenance.updateGameButton')}{/if}
 				</button>
 				<button class="btn" onclick={() => runGameBackfill(true)} disabled={gameBackfillState === 'running'} style="opacity:0.6; font-size:11px;">{t('settings.maintenance.forceAll')}</button>
 			</div>
 			{#if gameBackfillState === 'running'}
-				<p class="cx-hint" style="color:var(--text-muted);">{t('settings.maintenance.stillRunning')}</p>
+				<p class="cx-hint" style="color:var(--text-muted);"><Hourglass /> {t('settings.maintenance.stillRunning')}</p>
 			{:else if gameBackfillState === 'error'}
-				<p class="cx-hint" style="color:var(--red, var(--danger));">{t('settings.maintenance.backfillError')}</p>
+				<p class="cx-hint" style="color:var(--red, var(--danger));"><TriangleAlert /> {t('settings.maintenance.backfillError')}</p>
 			{:else if gameBackfillState === 'done' && maintenanceStatus.game}
-				<p class="cx-hint" style="color:var(--game);">✅ {formatBackfillResult(maintenanceStatus.game)}</p>
+				<p class="cx-hint" style="color:var(--game);"><CircleCheck /> {formatBackfillResult(maintenanceStatus.game)}</p>
 			{:else if maintenanceStatus.game}
 				<p class="cx-hint" style="color:var(--text-muted);">{t('settings.maintenance.lastRunLabel')} {formatBackfillResult(maintenanceStatus.game)}</p>
 			{/if}
@@ -831,7 +832,7 @@
 	</details>
 
 	<div class="cx-footer">
-		<a href="https://ko-fi.com/Z8Z81OW7UV" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:12px;">{t('settings.kofi')}</a>
+		<a href="https://ko-fi.com/Z8Z81OW7UV" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:12px;"><Coffee /> {t('settings.kofi')}</a>
 	</div>
 {/if}
 

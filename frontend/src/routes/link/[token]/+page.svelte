@@ -6,6 +6,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { t } from '$lib/i18n/index.svelte';
 	import type { VaultInvitePeek, VaultPartner } from '$lib/types';
+	import { Link, Moon } from '@lucide/svelte';
 
 	// La invitación viaja en la URL (WhatsApp, Telegram…). Esta pantalla es la
 	// única que la canjea: mira quién invita, pide sesión si no la hay y, al
@@ -44,7 +45,7 @@
 
 <div class="link-wrap">
 	<div class="glass link-card">
-		<div class="link-mark">🔗</div>
+		<div class="link-mark"><Link /></div>
 		<h1 class="link-title">{t('link.title')}</h1>
 
 		{#if phase === 'loading'}
@@ -61,7 +62,7 @@
 		{:else if invite}
 			<p class="link-prompt">{@html t('link.prompt', { name: invite.inviter_name })}</p>
 			<p class="muted link-explain">{t('link.explain')}</p>
-			{#if invite.hours}<p class="link-night">🌙 {t('link.night', { hours: invite.hours })}</p>{/if}
+			{#if invite.hours}<p class="link-night"><Moon /> {t('link.night', { hours: invite.hours })}</p>{/if}
 
 			{#if !auth.isLoggedIn}
 				<p class="muted">{t('link.needLogin')}</p>

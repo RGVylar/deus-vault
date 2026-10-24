@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { t, fmtDate as fmtDateI18n } from '$lib/i18n/index.svelte';
 	import {
-		TYPE_ICONS, TYPE_COLOR, PROVIDER_LABELS,
+		TYPE_COLOR, PROVIDER_LABELS,
 		formatDuration, typeLabel, buildConsumeUrl, isLandscape,
 		resolveProvider, shortProviderName, providerNameToKey
 	} from '$lib/utils';
 	import type { Content } from '$lib/types';
+	import TypeIcon from '$lib/components/TypeIcon.svelte';
+	import { Ban, Check, Play, Pencil, Pin, RefreshCw, Repeat, Star, X } from '@lucide/svelte';
 
 	interface Props {
 		content: Content;
@@ -37,7 +39,6 @@
 	);
 
 	const accent = $derived(TYPE_COLOR[content.content_type] ?? 'var(--primary)');
-	const icon = $derived(TYPE_ICONS[content.content_type] ?? '📄');
 	const consumeUrl = $derived(buildConsumeUrl(content));
 
 	// Landscape sources (YouTube 16:9, Steam headers 460x215) fill a banner sized
@@ -74,15 +75,15 @@
 
 		{#if !content.thumbnail}
 			<div class="d-hero d-hero-empty">
-				<div class="d-hero-icon">{icon}</div>
-				<button class="d-close" onclick={onClose} aria-label={t('common.close')}>✕</button>
+				<div class="d-hero-icon"><TypeIcon type={content.content_type} /></div>
+				<button class="d-close" onclick={onClose} aria-label={t('common.close')}><X /></button>
 				<div class="d-hero-title">{content.title}</div>
 			</div>
 		{:else if landscape}
 			<div class="d-hero d-hero-banner" style="aspect-ratio:{heroAspect};">
 				<img src={content.thumbnail} alt="" />
 				<div class="d-hero-veil"></div>
-				<button class="d-close" onclick={onClose} aria-label={t('common.close')}>✕</button>
+				<button class="d-close" onclick={onClose} aria-label={t('common.close')}><X /></button>
 				<div class="d-hero-title">{content.title}</div>
 			</div>
 		{:else}
@@ -91,13 +92,13 @@
 				<div class="d-hero-cartel-veil"></div>
 				<img class="d-hero-cartel-art" src={content.thumbnail} alt="" />
 				<div class="d-hero-cartel-title">{content.title}</div>
-				<button class="d-close" onclick={onClose} aria-label={t('common.close')}>✕</button>
+				<button class="d-close" onclick={onClose} aria-label={t('common.close')}><X /></button>
 			</div>
 		{/if}
 
 		<div class="d-row">
 			<span class="badge">{typeLabel(content.content_type)}</span>
-			{#if content.rating}<span class="d-rating">★ {content.rating.toFixed(1)}</span>{/if}
+			{#if content.rating}<span class="d-rating"><Star fill="currentColor" /> {content.rating.toFixed(1)}</span>{/if}
 			{#each providerList.slice(0, 4) as p}
 				<span class="provider-badge provider-{providerNameToKey(p.name)}" class:provider-paid={p.paid}>
 					{shortProviderName(p.name)}{p.paid ? ' €' : ''}
@@ -152,7 +153,7 @@
 				{#if content.times_consumed && content.times_consumed > 1}
 					<div class="d-meta-item">
 						<div class="d-meta-k">{t('consumed.timesConsumed', { count: content.times_consumed })}</div>
-						<div class="d-meta-v">↻</div>
+						<div class="d-meta-v"><Repeat /></div>
 					</div>
 				{/if}
 			</div>
@@ -169,7 +170,7 @@
 			<div class="d-section">
 				<div class="d-label">{t('home.detail.trailerSection')}</div>
 				<a class="d-trailer" href={content.trailer_url} target="_blank" rel="noopener">
-					<span class="d-play">▶</span> {t('home.trailerBtn')}
+					<span class="d-play"><Play /></span> {t('home.trailerBtn')}
 				</a>
 			</div>
 		{/if}
@@ -187,22 +188,22 @@
 		{/if}
 
 		<div class="d-actions">
-			<button class="btn btn-primary" onclick={() => onConsume(content.id)}>✓ {t('home.markConsumed')}</button>
+			<button class="btn btn-primary" onclick={() => onConsume(content.id)}><Check /> {t('home.markConsumed')}</button>
 			{#if consumeUrl}
 				<a href={consumeUrl} target="_blank" rel="noopener"><button class="btn">{t('consumed.open')}</button></a>
 			{/if}
 			<span class="d-cold-actions">
-				<button class="btn" class:pin-active={content.pinned} onclick={() => onTogglePin(content)} title={content.pinned ? t('home.removePriority') : t('home.markPriority')} style="opacity:{content.pinned ? 1 : 0.5};">{content.pinned ? '📌' : '📍'}</button>
-				<button class="btn" onclick={() => onEdit(content)} title={t('common.edit')}>✏️</button>
+				<button class="btn" class:pin-active={content.pinned} onclick={() => onTogglePin(content)} title={content.pinned ? t('home.removePriority') : t('home.markPriority')} style="opacity:{content.pinned ? 1 : 0.5};"><Pin fill={content.pinned ? 'currentColor' : 'none'} /></button>
+				<button class="btn" onclick={() => onEdit(content)} title={t('common.edit')}><Pencil /></button>
 				{#if canRefresh(content)}
-					<button class="btn" onclick={() => onRefresh(content)} disabled={refreshingId !== null} title={t('home.updateMetadata')} style={refreshingId === content.id ? 'animation: spin 0.8s linear infinite; opacity:0.7;' : ''}>↻</button>
+					<button class="btn" onclick={() => onRefresh(content)} disabled={refreshingId !== null} title={t('home.updateMetadata')} style={refreshingId === content.id ? 'animation: spin 0.8s linear infinite; opacity:0.7;' : ''}><RefreshCw /></button>
 				{/if}
-				<button class="btn btn-abandon" onclick={() => onAbandon(content.id)} title={t('home.abandonBtn')}>🚫</button>
+				<button class="btn btn-abandon" onclick={() => onAbandon(content.id)} title={t('home.abandonBtn')}><Ban /></button>
 				{#if confirmingDelete}
 					<button class="btn btn-danger" onclick={() => onDelete(content.id)}>{t('common.yes')}</button>
 					<button class="btn" onclick={() => confirmingDelete = false}>{t('common.no')}</button>
 				{:else}
-					<button class="btn btn-danger" onclick={() => confirmingDelete = true}>✕</button>
+					<button class="btn btn-danger" onclick={() => confirmingDelete = true}><X /></button>
 				{/if}
 			</span>
 		</div>

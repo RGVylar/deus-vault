@@ -3,7 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration, TYPE_ICONS, typeLabel, buildConsumeUrl } from '$lib/utils';
+	import { formatDuration, typeLabel, buildConsumeUrl } from '$lib/utils';
+	import TypeIcon from '$lib/components/TypeIcon.svelte';
+	import { Ban, Calendar, Play, CalendarX, Check, CircleCheck, Cross, EyeOff, FaceSlightlyFrowning, Hourglass, MapPin, Package, ChartColumn, Scale, Skull, Star, Target, Timer, TriangleAlert, Undo2 } from '@lucide/svelte';
 	import { t, tc, fmtDate } from '$lib/i18n/index.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import { privacy, setActive, toggleChannel, isMarked, filterYoutubeItems } from '$lib/stores/privacy.svelte';
@@ -188,7 +190,7 @@
 
 	{#if loadError}
 		<div class="load-error">
-			⚠️ {t('consumed.loadErrorPrefix')} <code>{loadError}</code>
+			<TriangleAlert /> {t('consumed.loadErrorPrefix')} <code>{loadError}</code>
 			<button onclick={load}>{t('consumed.retry')}</button>
 		</div>
 	{/if}
@@ -213,25 +215,25 @@
 				{#if tab === 'consumed'}
 					<h3>{t('consumed.achievements')}</h3>
 					<div class="dq-row">
-						<span class="lbl">{t('consumed.totalConsumedLbl')}</span>
+						<span class="lbl"><CircleCheck /> {t('consumed.totalConsumedLbl')}</span>
 						<span class="val">{stats.consumed_count}</span>
 					</div>
 					<div class="dq-row">
-						<span class="lbl">{t('consumed.totalTime')}</span>
+						<span class="lbl"><Timer /> {t('consumed.totalTime')}</span>
 						<span class="val" style="font-size:13px;">{formatDuration(stats.total_consumed_minutes)}</span>
 					</div>
 					{#if stats.consumed_count > 0}
 						<div class="dq-row">
-							<span class="lbl">{t('consumed.avgPerItem')}</span>
+							<span class="lbl"><ChartColumn /> {t('consumed.avgPerItem')}</span>
 							<span class="val" style="font-size:13px;">{formatDuration(Math.round(stats.total_consumed_minutes / stats.consumed_count))}</span>
 						</div>
 					{/if}
 					<div class="dq-row">
-						<span class="lbl">{t('consumed.stillPending')}</span>
+						<span class="lbl"><Package /> {t('consumed.stillPending')}</span>
 						<span class="val">{stats.pending_count}</span>
 					</div>
 					<div class="dq-row" style="border-bottom:none;">
-						<span class="lbl">{t('consumed.abandonedLbl')}</span>
+						<span class="lbl"><Ban /> {t('consumed.abandonedLbl')}</span>
 						<span class="val">{stats.abandoned_count}</span>
 					</div>
 
@@ -243,7 +245,7 @@
 							{#each byTypeSorted as [type, ts]}
 								{@const avgMin = ts.count > 0 ? Math.round(ts.minutes / ts.count) : 0}
 								<div class="tb-row" style="--tc:{TYPE_COLOR[type] ?? 'var(--primary)'}">
-									<span class="tb-icon">{TYPE_ICONS[type] ?? '📄'}</span>
+									<span class="tb-icon"><TypeIcon {type} /></span>
 									<span class="tb-label">{typeLabel(type)}</span>
 									<span class="tb-count">{ts.count}</span>
 									<span class="tb-time">{formatDuration(ts.minutes)}</span>
@@ -293,7 +295,7 @@
 						<span class="val">{stats.abandoned_count}</span>
 					</div>
 					<div class="dq-row" style="border-bottom:none;">
-						<span class="lbl">{t('consumed.pending')}</span>
+						<span class="lbl"><Package /> {t('consumed.pending')}</span>
 						<span class="val">{stats.pending_count}</span>
 					</div>
 				{/if}
@@ -311,19 +313,19 @@
 			<!-- 4 stat cards -->
 			<div class="ab-stat-row">
 				<div class="ab-stat glass-card">
-					<div class="ab-stat-ico">⏱</div>
+					<div class="ab-stat-ico"><Timer /></div>
 					<div class="ab-stat-val" style="color:var(--red)">{formatDuration(stats.abandoned_minutes)}</div>
 					<div class="ab-stat-lbl">{t('consumed.timeInvestedAbandoned')}</div>
 					<div class="ab-stat-sub">{t('consumed.neverWatchAgain')}</div>
 				</div>
 				<div class="ab-stat glass-card">
-					<div class="ab-stat-ico">📍</div>
+					<div class="ab-stat-ico"><MapPin /></div>
 					<div class="ab-stat-val" style="color:var(--red)">{stats.abandoned_avg_pct != null ? `${stats.abandoned_avg_pct}%` : '—'}</div>
 					<div class="ab-stat-lbl">{t('consumed.abandonPoint')}</div>
 					<div class="ab-stat-sub">{stats.abandoned_avg_pct != null && stats.abandoned_avg_pct < 30 ? t('consumed.giveUpEarly') : stats.abandoned_avg_pct != null && stats.abandoned_avg_pct < 60 ? t('consumed.giveUpMiddle') : t('consumed.giveUpLate')}</div>
 				</div>
 				<div class="ab-stat glass-card">
-					<div class="ab-stat-ico">😬</div>
+					<div class="ab-stat-ico"><FaceSlightlyFrowning /></div>
 					{#if stats.abandoned_top_items.length > 0}
 						<div class="ab-stat-val" style="color:oklch(0.70 0.18 25)">{stats.abandoned_top_items[0].progress}%</div>
 						<div class="ab-stat-lbl">{t('consumed.closestOne')}</div>
@@ -334,7 +336,7 @@
 					{/if}
 				</div>
 				<div class="ab-stat glass-card">
-					<div class="ab-stat-ico">⚖️</div>
+					<div class="ab-stat-ico"><Scale /></div>
 					<div class="ab-stat-val" style="color:{ratio != null && ratio >= 70 ? 'var(--green)' : 'oklch(0.70 0.18 25)'}">{ratio != null ? `${ratio}%` : '—'}</div>
 					<div class="ab-stat-lbl">{t('consumed.completionRate')}</div>
 					<div class="ab-stat-sub">{t('consumed.completedVsAbandoned', { completed: stats.consumed_count, abandoned: stats.abandoned_count })}</div>
@@ -347,14 +349,14 @@
 				<!-- Cementerio top 5 -->
 				{#if (stats.abandoned_top_items ?? []).length > 0}
 				<div class="glass-card ab-cemetery">
-					<div class="ab-section-title">{t('consumed.cemetery')}</div>
+					<div class="ab-section-title"><Cross /> {t('consumed.cemetery')}</div>
 					{#each (stats.abandoned_top_items ?? []) as item}
 						<div class="ab-grave">
 							<div class="ab-grave-thumb">
 								{#if item.thumbnail}
 									<img src={item.thumbnail} alt="" />
 								{:else}
-									<span>{TYPE_ICONS[item.content_type as ContentType] ?? '📄'}</span>
+									<span><TypeIcon type={item.content_type} /></span>
 								{/if}
 							</div>
 							<div class="ab-grave-info">
@@ -377,11 +379,11 @@
 					<!-- Tasa de abandono por tipo -->
 					{#if typeRateSorted.length > 0}
 					<div class="glass-card ab-type-rates">
-						<div class="ab-section-title">{t('consumed.abandonRateByType')}</div>
+						<div class="ab-section-title"><Target /> {t('consumed.abandonRateByType')}</div>
 						{#each typeRateSorted as [type, rate]}
 							<div class="ab-bar-row">
 								<span class="ab-bar-label" style="color:{TYPE_COLOR[type] ?? 'var(--text-muted)'}">
-									{TYPE_ICONS[type as ContentType] ?? '📄'} {typeLabel(type)}
+									<TypeIcon {type} /> {typeLabel(type)}
 								</span>
 								<div class="ab-bar-track">
 									<div class="ab-bar-fill" style="width:{rate}%; background:{TYPE_COLOR[type] ?? 'var(--primary)'}"></div>
@@ -395,13 +397,13 @@
 					<!-- En el limbo -->
 					{#if stats.abandoned_stale_count > 0}
 					<div class="glass-card ab-limbo">
-						<div class="ab-section-title">{t('consumed.limbo')}
+						<div class="ab-section-title"><Hourglass /> {t('consumed.limbo')}
 							<span class="ab-limbo-badge">{stats.abandoned_stale_count}</span>
 						</div>
 						<div class="ab-limbo-sub">{t('consumed.limboSub')}</div>
 						{#each limbo.slice(0, 3) as c}
 							<div class="ab-limbo-row">
-								<span class="ab-limbo-title">{TYPE_ICONS[c.content_type] ?? '📄'} {c.title}</span>
+								<span class="ab-limbo-title"><TypeIcon type={c.content_type} /> {c.title}</span>
 								<span class="ab-limbo-age" style="color:{
 									(Date.now() - new Date(c.abandoned_at!).getTime()) > 365 * 24 * 60 * 60 * 1000
 										? 'var(--red)' : 'oklch(0.70 0.18 55)'}">
@@ -418,7 +420,7 @@
 			<!-- Quote card -->
 			{#if stats.abandoned_minutes > 0}
 				<div class="glass-card ab-quote">
-					<span class="ab-quote-ico">💀</span>
+					<span class="ab-quote-ico"><Skull /></span>
 					<div class="ab-quote-text">
 						{t('consumed.quoteText')}
 						<strong style="color:oklch(0.70 0.18 25)">{t('consumed.quoteMore', { time: formatDuration(stats.abandoned_minutes) })}</strong>
@@ -433,11 +435,11 @@
 		<div class="pill-row mobile-only">
 			{#if tab === 'consumed'}
 				<div class="pill">
-					<span>✅</span> <span class="val">{stats.consumed_count}</span> <span class="lbl">{t('consumed.completedPill')}</span>
+					<span><CircleCheck /></span> <span class="val">{stats.consumed_count}</span> <span class="lbl">{t('consumed.completedPill')}</span>
 				</div>
 			{:else}
 				<div class="pill">
-					<span>🚫</span> <span class="val">{stats.abandoned_count}</span> <span class="lbl">{t('consumed.abandonedPill')}</span>
+					<span><Ban /></span> <span class="val">{stats.abandoned_count}</span> <span class="lbl">{t('consumed.abandonedPill')}</span>
 				</div>
 			{/if}
 		</div>
@@ -445,27 +447,27 @@
 
 	<!-- Tab switcher: Consumido / Abandonado -->
 	<div class="seg" style="margin-bottom: 12px;">
-		<button class:active={tab === 'consumed'} onclick={() => tab = 'consumed'}>{t('consumed.completedTab')}</button>
-		<button class:active={tab === 'abandoned'} onclick={() => tab = 'abandoned'}>{t('consumed.abandonedTabBtn')}</button>
+		<button class:active={tab === 'consumed'} onclick={() => tab = 'consumed'}><CircleCheck /> {t('consumed.completedTab')}</button>
+		<button class:active={tab === 'abandoned'} onclick={() => tab = 'abandoned'}><Ban /> {t('consumed.abandonedTabBtn')}</button>
 	</div>
 
 	<!-- Type filter -->
 	<div class="tabs desk-tabs">
 		<button class="tab" class:active={filter === 'all'} onclick={() => filter = 'all'}>{t('consumed.all')}</button>
-		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}>▶️</button>
-		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}>🎬</button>
-		<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}>📺</button>
-		<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}>📖</button>
-		<button class="tab" class:active={filter === 'manga'} onclick={() => filter = 'manga'}>🗾</button>
-		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}>🎮</button>
-		<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}>🎵</button>
+		<button class="tab" class:active={filter === 'youtube'} onclick={() => filter = 'youtube'}><TypeIcon type="youtube" /></button>
+		<button class="tab" class:active={filter === 'movie'} onclick={() => filter = 'movie'}><TypeIcon type="movie" /></button>
+		<button class="tab" class:active={filter === 'series'} onclick={() => filter = 'series'}><TypeIcon type="series" /></button>
+		<button class="tab" class:active={filter === 'book'} onclick={() => filter = 'book'}><TypeIcon type="book" /></button>
+		<button class="tab" class:active={filter === 'manga'} onclick={() => filter = 'manga'}><TypeIcon type="manga" /></button>
+		<button class="tab" class:active={filter === 'game'} onclick={() => filter = 'game'}><TypeIcon type="game" /></button>
+		<button class="tab" class:active={filter === 'music'} onclick={() => filter = 'music'}><TypeIcon type="music" /></button>
 	</div>
 
 	{#if loading}
 		<p class="muted center">{t('consumed.loading')}</p>
 	{:else if visible.length === 0}
 		<div class="empty">
-			<span class="icon">{contents.length > 0 ? '🙈' : tab === 'consumed' ? '✅' : '🚫'}</span>
+			<span class="icon">{#if contents.length > 0}<EyeOff />{:else if tab === 'consumed'}<CircleCheck />{:else}<Ban />{/if}</span>
 			<p>
 				{#if contents.length > 0}
 					{t('privacy.allHiddenHere')}
@@ -490,7 +492,7 @@
 							{#if c.thumbnail}
 								<img src={c.thumbnail} alt="" />
 							{:else}
-								<div class="ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
+								<div class="ph"><TypeIcon type={c.content_type} /></div>
 							{/if}
 						</div>
 					{:else}
@@ -498,7 +500,7 @@
 							{#if c.thumbnail}
 								<img src={c.thumbnail} alt="" />
 							{:else}
-								<div class="ph">{TYPE_ICONS[c.content_type] || '📄'}</div>
+								<div class="ph"><TypeIcon type={c.content_type} /></div>
 							{/if}
 						</div>
 					{/if}
@@ -512,24 +514,24 @@
 						<div class="meta">
 							<span class="badge">{typeLabel(c.content_type)}</span>
 							{#if c.rating}
-								<span class="rating-badge">★ {c.rating.toFixed(1)}</span>
+								<span class="rating-badge"><Star fill="currentColor" /> {c.rating.toFixed(1)}</span>
 							{/if}
 							{#if c.content_type === 'manga'}
-								{#if c.seasons && c.seasons > 0}<span>🗾 {c.seasons}</span>{/if}
+								{#if c.seasons && c.seasons > 0}<span><TypeIcon type="manga" /> {c.seasons}</span>{/if}
 								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} cap</span>{/if}
-								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/cap</span>{/if}
+								{#if c.duration_minutes > 0}<span><Timer /> {formatDuration(c.duration_minutes)}/cap</span>{/if}
 								{#if c.episode_count && c.episode_count > 0 && c.duration_minutes > 0}
 									<span style="font-size:10px; font-weight:600; color:var(--manga);">~{formatDuration(c.duration_minutes * c.episode_count)} total</span>
 								{/if}
 							{:else if c.content_type === 'series'}
-								{#if c.seasons && c.seasons > 0}<span>📺 {c.seasons}T</span>{/if}
+								{#if c.seasons && c.seasons > 0}<span><TypeIcon type="series" /> {c.seasons}T</span>{/if}
 								{#if c.episode_count && c.episode_count > 0}<span>{c.episode_count} ep</span>{/if}
-								{#if c.duration_minutes > 0}<span>⏱ {formatDuration(c.duration_minutes)}/ep</span>{/if}
+								{#if c.duration_minutes > 0}<span><Timer /> {formatDuration(c.duration_minutes)}/ep</span>{/if}
 								{#if c.episode_count && c.episode_count > 0 && c.duration_minutes > 0}
 									<span style="font-size:10px; font-weight:600; color:var(--series);">~{formatDuration(c.duration_minutes * c.episode_count)} total</span>
 								{/if}
 							{:else if c.duration_minutes > 0}
-								<span>⏱ {formatDuration(c.duration_minutes)}</span>
+								<span><Timer /> {formatDuration(c.duration_minutes)}</span>
 							{/if}
 							<!-- Date -->
 							{#if tab === 'consumed'}
@@ -544,15 +546,15 @@
 											onkeydown={(e) => { if (e.key === 'Enter') saveDate(c); if (e.key === 'Escape') editingDateId = null; }}
 											autofocus
 										/>
-										<button class="btn" onclick={() => saveDate(c)}>✓</button>
+										<button class="btn" onclick={() => saveDate(c)}><Check /></button>
 									</span>
 								{:else if c.consumed_at}
 									<button class="date-btn" onclick={() => startEditDate(c)} title={t('consumed.editDate')}>
-										📅 {fmtDate(new Date(c.consumed_at), {day:'numeric', month:'short', year:'numeric'})}
+										<Calendar /> {fmtDate(new Date(c.consumed_at), {day:'numeric', month:'short', year:'numeric'})}
 									</button>
 								{:else}
 									<button class="date-btn date-btn-empty" onclick={() => startEditDate(c)} title={t('consumed.addDate')}>
-										{t('consumed.noDate')}
+										<CalendarX /> {t('consumed.noDate')}
 									</button>
 								{/if}
 
@@ -569,23 +571,23 @@
 												onkeydown={(e) => { if (e.key === 'Enter') saveStart(c); if (e.key === 'Escape') editingStartId = null; }}
 												autofocus
 											/>
-											<button class="btn" onclick={() => saveStart(c)}>✓</button>
+											<button class="btn" onclick={() => saveStart(c)}><Check /></button>
 										</span>
 									{:else if c.started_at}
 										<span class="date-edit-wrap">
 											<button class="date-btn" onclick={() => startEditStart(c)} title={t('consumed.editStartDate')}>
-												▶ {fmtDate(new Date(c.started_at), {day:'numeric', month:'short', year:'numeric'})}
+												<Play /> {fmtDate(new Date(c.started_at), {day:'numeric', month:'short', year:'numeric'})}
 											</button>
 											<button class="date-btn date-btn-empty" onclick={() => clearStart(c)} title={t('consumed.removeStartDate')}>×</button>
 										</span>
 									{:else}
 										<button class="date-btn date-btn-empty" onclick={() => startEditStart(c)} title={t('consumed.addStartDate')}>
-											{t('consumed.noStartDate')}
+											<Play /> {t('consumed.noStartDate')}
 										</button>
 									{/if}
 								{/if}
 							{:else if c.abandoned_at}
-								<span class="date-btn" style="cursor:default;">🚫 {fmtDate(new Date(c.abandoned_at), {day:'numeric', month:'short', year:'numeric'})}</span>
+								<span class="date-btn" style="cursor:default;"><Ban /> {fmtDate(new Date(c.abandoned_at), {day:'numeric', month:'short', year:'numeric'})}</span>
 							{/if}
 						</div>
 						{#if tab === 'abandoned' && c.progress != null && c.progress > 0}
@@ -603,10 +605,10 @@
 								</a>
 							{/if}
 							{#if tab === 'consumed'}
-								<button class="btn" onclick={() => unconsume(c.id)}>{t('consumed.giveBack')}</button>
+								<button class="btn" onclick={() => unconsume(c.id)}><Undo2 /> {t('consumed.giveBack')}</button>
 							{:else}
-								<button class="btn btn-consume" onclick={() => consume(c.id)} title={t('consumed.markComplete')}>{t('consumed.complete')}</button>
-								<button class="btn" onclick={() => restore(c.id)} title={t('consumed.resume')}>{t('consumed.resumeBtn')}</button>
+								<button class="btn btn-consume" onclick={() => consume(c.id)} title={t('consumed.markComplete')}><Check /> {t('consumed.complete')}</button>
+								<button class="btn" onclick={() => restore(c.id)} title={t('consumed.resume')}><Undo2 /> {t('consumed.resumeBtn')}</button>
 							{/if}
 							<!-- El Rewind solo deja marcar los canales del top; aquí llega
 							     cualquiera que hayas visto. -->

@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",
-    "@capacitor/core": "^8.3.0"
+    "@capacitor/core": "^8.3.0",
+    "@lucide/svelte": "1.54.0"
   }
 }

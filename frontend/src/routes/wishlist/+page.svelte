@@ -5,6 +5,7 @@
 	import { t, tc, fmtCurrency } from '$lib/i18n/index.svelte';
 	import { isFeatureEnabled } from '$lib/stores/features.svelte';
 	import type { WishlistItem, WishlistStats, ProductLookupResult } from '$lib/types';
+	import { Check, Gamepad2, Gift, Pencil, Search, ShoppingBag, Timer, Undo2, X } from '@lucide/svelte';
 
 	// ── State ──────────────────────────────────────────────────────────────
 	let items = $state<WishlistItem[]>([]);
@@ -284,7 +285,7 @@
 					{#if item.image_url}
 						<img class="item-thumb" src={item.image_url} alt={item.title} loading="lazy" />
 					{:else}
-						<div class="item-thumb item-thumb-placeholder">{item.store === 'Steam' ? '🎮' : '🛍️'}</div>
+						<div class="item-thumb item-thumb-placeholder">{#if item.store === 'Steam'}<Gamepad2 />{:else}<ShoppingBag />{/if}</div>
 					{/if}
 
 					<div class="item-body">
@@ -300,7 +301,7 @@
 							</div>
 						{/if}
 						{#if item.price && hourlyRate && !item.purchased}
-							<div class="item-work">{t('wishlist.workTime', { time: hoursForPrice(item.price) })}</div>
+							<div class="item-work"><Timer /> {t('wishlist.workTime', { time: hoursForPrice(item.price) })}</div>
 						{/if}
 						{#if item.notes}
 							<div class="item-notes">{item.notes}</div>
@@ -311,21 +312,21 @@
 						<div class="item-price" class:muted={item.purchased || item.gifted}>{fmtPrice(item.price)}</div>
 						<div class="item-actions">
 							{#if item.gifted}
-								<span class="badge-gifted">{t('wishlist.gifted')}</span>
-								<button class="icon-btn" title={t('wishlist.undoGift')} onclick={() => toggleGift(item)}>↩</button>
+								<span class="badge-gifted"><Gift /> {t('wishlist.gifted')}</span>
+								<button class="icon-btn" title={t('wishlist.undoGift')} onclick={() => toggleGift(item)}><Undo2 /></button>
 							{:else if item.purchased}
 								{#if item.source_id && item.store === 'Steam'}
-									<span class="badge-vault">{t('wishlist.inVault')}</span>
+									<span class="badge-vault"><Gamepad2 /> {t('wishlist.inVault')}</span>
 								{:else}
-									<span class="badge-bought">{t('wishlist.bought')}</span>
+									<span class="badge-bought"><Check /> {t('wishlist.bought')}</span>
 								{/if}
-								<button class="icon-btn" title={t('wishlist.undoPurchase')} onclick={() => togglePurchase(item)}>↩</button>
+								<button class="icon-btn" title={t('wishlist.undoPurchase')} onclick={() => togglePurchase(item)}><Undo2 /></button>
 							{:else}
-								<button class="icon-btn icon-btn-edit" title={t('wishlist.edit')} onclick={() => openEdit(item)}>✎</button>
-								<button class="icon-btn icon-btn-buy"  title={t('wishlist.markPurchased')} onclick={() => togglePurchase(item)}>✓</button>
-								<button class="icon-btn icon-btn-gift" title={t('wishlist.giftedToMe')}  onclick={() => toggleGift(item)}>🎁</button>
+								<button class="icon-btn icon-btn-edit" title={t('wishlist.edit')} onclick={() => openEdit(item)}><Pencil /></button>
+								<button class="icon-btn icon-btn-buy"  title={t('wishlist.markPurchased')} onclick={() => togglePurchase(item)}><Check /></button>
+								<button class="icon-btn icon-btn-gift" title={t('wishlist.giftedToMe')}  onclick={() => toggleGift(item)}><Gift /></button>
 							{/if}
-							<button class="icon-btn icon-btn-del" title={t('wishlist.delete')} onclick={() => deleteItem(item)}>✕</button>
+							<button class="icon-btn icon-btn-del" title={t('wishlist.delete')} onclick={() => deleteItem(item)}><X /></button>
 						</div>
 					</div>
 				</div>
@@ -355,7 +356,7 @@
 						onkeydown={(e) => e.key === 'Enter' && lookupUrl()}
 					/>
 					<button class="btn btn-primary" onclick={lookupUrl} disabled={modalLooking || !modalUrl.trim()}>
-						{modalLooking ? '…' : '🔍'}
+						{#if modalLooking}…{:else}<Search />{/if}
 					</button>
 				</div>
 			</div>
@@ -398,7 +399,7 @@
 			</div>
 
 			{#if modalLookupResult?.content_type_hint === 'game'}
-				<div class="steam-hint">{t('wishlist.steamHint')}</div>
+				<div class="steam-hint"><Gamepad2 /> {t('wishlist.steamHint')}</div>
 			{/if}
 
 			{#if modalTitle.trim() && modalPrice && hourlyRate}

@@ -5,6 +5,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { formatDuration, typeLabel, buildConsumeUrl, releaseYear } from '$lib/utils';
 	import Icon from '$lib/components/Icon.svelte';
+	import { SearchX, Star } from '@lucide/svelte';
 	import RolodexRoller from '$lib/components/RolodexRoller.svelte';
 	import { t, tc, type TKey } from '$lib/i18n/index.svelte';
 	import {
@@ -353,7 +354,7 @@
 		<div class="result-slot">
 			{#if error}
 				<div class="stage-error">
-					<p class="muted">😶 {error === t('errors.noPendingContent') ? t('random.noResultsInRange') : error}</p>
+					<p class="muted"><SearchX /> {error === t('errors.noPendingContent') ? t('random.noResultsInRange') : error}</p>
 				</div>
 			{:else if pick && !spinning}
 				{@const item = pick}
@@ -381,7 +382,7 @@
 							<div class="meta">
 								<span class="badge">{typeLabel(item.content_type)}</span>
 								{#if pickYear}<span class="pick-year">{pickYear}</span>{/if}
-								{#if item.rating}<span class="pick-rating">★ {item.rating.toFixed(1)}</span>{/if}
+								{#if item.rating}<span class="pick-rating"><Star fill="currentColor" /> {item.rating.toFixed(1)}</span>{/if}
 								{#if item.content_type === 'manga'}
 									{#if item.seasons && item.seasons > 0}<span><Icon name="layers" size={13} /> {item.seasons}</span>{/if}
 									{#if item.episode_count && item.episode_count > 0}<span>{item.episode_count} cap</span>{/if}

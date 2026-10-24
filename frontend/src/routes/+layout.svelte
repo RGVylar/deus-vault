@@ -8,26 +8,28 @@
 	import { goto } from '$app/navigation';
 	import { t, type TKey } from '$lib/i18n/index.svelte';
 	import { features } from '$lib/stores/features.svelte';
+	import type { Component } from 'svelte';
+	import { ChartColumn, CircleCheck, Dices, Landmark, LogOut, Puzzle, Settings, Skull, Star } from '@lucide/svelte';
 
 	let { children } = $props();
 
-	const navMainAll: { href: string; labelKey: TKey; icon: string }[] = [
-		{ href: '/',         labelKey: 'nav.vault',    icon: '🏛️' },
-		{ href: '/consumed', labelKey: 'nav.consumed', icon: '✓'  },
-		{ href: '/random',   labelKey: 'nav.random',   icon: '🎲' },
-		{ href: '/rewind',   labelKey: 'nav.rewind',   icon: '📊' },
-		{ href: '/wishlist', labelKey: 'nav.wishlist', icon: '⭐' },
-		{ href: '/wasted',   labelKey: 'nav.wasted',   icon: '💀' },
+	const navMainAll: { href: string; labelKey: TKey; icon: Component }[] = [
+		{ href: '/',         labelKey: 'nav.vault',    icon: Landmark },
+		{ href: '/consumed', labelKey: 'nav.consumed', icon: CircleCheck },
+		{ href: '/random',   labelKey: 'nav.random',   icon: Dices },
+		{ href: '/rewind',   labelKey: 'nav.rewind',   icon: ChartColumn },
+		{ href: '/wishlist', labelKey: 'nav.wishlist', icon: Star },
+		{ href: '/wasted',   labelKey: 'nav.wasted',   icon: Skull },
 	];
 
-	const navBottomAll: { href: string; labelKey: TKey; icon: string }[] = [
-		{ href: '/',         labelKey: 'nav.vault',    icon: '🏛️' },
-		{ href: '/consumed', labelKey: 'nav.consumed', icon: '✅' },
-		{ href: '/wishlist', labelKey: 'nav.wishlist', icon: '⭐' },
-		{ href: '/random',   labelKey: 'nav.random',   icon: '🎲' },
-		{ href: '/rewind',   labelKey: 'nav.rewind',   icon: '📊' },
-		{ href: '/wasted',   labelKey: 'nav.wasted',   icon: '💀' },
-		{ href: '/settings', labelKey: 'nav.settings', icon: '⚙️' },
+	const navBottomAll: { href: string; labelKey: TKey; icon: Component }[] = [
+		{ href: '/',         labelKey: 'nav.vault',    icon: Landmark },
+		{ href: '/consumed', labelKey: 'nav.consumed', icon: CircleCheck },
+		{ href: '/wishlist', labelKey: 'nav.wishlist', icon: Star },
+		{ href: '/random',   labelKey: 'nav.random',   icon: Dices },
+		{ href: '/rewind',   labelKey: 'nav.rewind',   icon: ChartColumn },
+		{ href: '/wasted',   labelKey: 'nav.wasted',   icon: Skull },
+		{ href: '/settings', labelKey: 'nav.settings', icon: Settings },
 	];
 
 	const navMain = $derived(navMainAll.filter((item) => item.href !== '/wishlist' || features.disabled.indexOf('wishlist') < 0));
@@ -139,17 +141,17 @@
 			<div class="sb-section">{t('layout.yourVault')}</div>
 			{#each navMain as item}
 				<a href={item.href} class="sb-item" class:active={page.url.pathname === item.href}>
-					<span class="sbi-ico">{item.icon}</span>
+					<span class="sbi-ico"><item.icon /></span>
 					<span>{t(item.labelKey)}</span>
 				</a>
 			{/each}
 
 			<div class="sb-section">{t('layout.account')}</div>
 			<a href="/settings" class="sb-item" class:active={page.url.pathname === '/settings'}>
-				<span class="sbi-ico">⚙️</span><span>{t('nav.settings')}</span>
+				<span class="sbi-ico"><Settings /></span><span>{t('nav.settings')}</span>
 			</a>
 			<button class="sb-item" onclick={logout}>
-				<span class="sbi-ico">↪</span><span>{t('nav.logout')}</span>
+				<span class="sbi-ico"><LogOut /></span><span>{t('nav.logout')}</span>
 			</button>
 
 			<div class="sb-spacer"></div>
@@ -167,7 +169,7 @@
 		<div class="page-scroll">
 			{#if auth.isLoggedIn && showExtBanner}
 				<div class="ext-banner">
-					<span class="ext-banner-ico">🧩</span>
+					<span class="ext-banner-ico"><Puzzle /></span>
 					<div class="ext-banner-text">
 						<strong>{t('layout.extBanner.title')}</strong>
 						<span>{t('layout.extBanner.text')}</span>
@@ -198,7 +200,7 @@
 		<nav class="tab-bar">
 			{#each navBottom as item}
 				<a href={item.href} class="tab-item" class:active={page.url.pathname === item.href}>
-					<span class="ti-ico">{item.icon}</span>
+					<span class="ti-ico"><item.icon /></span>
 					{t(item.labelKey)}
 				</a>
 			{/each}

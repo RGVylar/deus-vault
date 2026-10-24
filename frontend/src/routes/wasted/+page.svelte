@@ -5,6 +5,8 @@
 	import type { DistractionStats } from '$lib/types';
 	import { exportWastedImage } from '$lib/wastedShare';
 	import type { ShareFormat } from '$lib/shareCanvas';
+	import type { Component } from 'svelte';
+	import { Camera, CircleDashed, MessageCircle, Music, Smartphone } from '@lucide/svelte';
 
 	let stats = $state<DistractionStats | null>(null);
 	let loading = $state(true);
@@ -40,15 +42,15 @@
 		}
 	}
 
-	const PLATFORM_META: Record<string, { label: string; icon: string; color: string }> = {
-		shorts:  { label: 'YouTube Shorts',  icon: '📱', color: 'oklch(0.65 0.22 25)'  },
-		tiktok:  { label: 'TikTok',          icon: '🎵', color: 'oklch(0.75 0.15 190)' },
-		twitter: { label: 'Twitter / X',     icon: '🐦', color: 'oklch(0.70 0.14 240)' },
-		reels:   { label: 'Instagram Reels', icon: '📸', color: 'oklch(0.70 0.20 340)' }
+	const PLATFORM_META: Record<string, { label: string; icon: Component; color: string }> = {
+		shorts:  { label: 'YouTube Shorts',  icon: Smartphone, color: 'oklch(0.65 0.22 25)'  },
+		tiktok:  { label: 'TikTok',          icon: Music, color: 'oklch(0.75 0.15 190)' },
+		twitter: { label: 'Twitter / X',     icon: MessageCircle, color: 'oklch(0.70 0.14 240)' },
+		reels:   { label: 'Instagram Reels', icon: Camera, color: 'oklch(0.70 0.20 340)' }
 	};
 
 	function meta(platform: string) {
-		return PLATFORM_META[platform] ?? { label: platform, icon: '🕳️', color: 'var(--primary)' };
+		return PLATFORM_META[platform] ?? { label: platform, icon: CircleDashed, color: 'var(--primary)' };
 	}
 
 	function fmtDur(seconds: number): string {
@@ -213,8 +215,9 @@
 				{:else}
 					<div class="platform-list">
 						{#each stats.platforms as p (p.platform)}
+							{@const PlatformIcon = meta(p.platform).icon}
 							<div class="platform-row">
-								<span class="platform-ico">{meta(p.platform).icon}</span>
+								<span class="platform-ico"><PlatformIcon /></span>
 								<div class="platform-info">
 									<div class="platform-head">
 										<span class="platform-name">{meta(p.platform).label}</span>
@@ -241,7 +244,7 @@
 
 		{#if stats.total_seconds === 0}
 			<div class="empty-state">
-				<div class="empty-icon">🕳️</div>
+				<div class="empty-icon"><CircleDashed /></div>
 				{t('wasted.nothingLostYet')}
 			</div>
 		{:else}
