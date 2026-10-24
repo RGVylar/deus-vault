@@ -1177,7 +1177,7 @@ async def _run_tmdb_backfill(user_id: int, force: bool) -> None:
                 Content.source_id.like("tmdb:%"),
             )
             if not force:
-                q = q.where(Content.streaming_providers.is_(None))
+                q = q.where(or_(Content.streaming_providers.is_(None), _release_unsettled()))
             items = list(db.scalars(q).all())
 
             if not items:
@@ -1275,7 +1275,11 @@ async def backfill_tmdb_metadata(
 
 
 async def _run_book_backfill(user_id: int, force: bool) -> None:
-    """Background task: re-fetches page_count/duration for book items via their stored URL."""
+    """Background task: re-fetches page_count/duration and release for book items via their stored URL.
+
+    Páginas y duración solo se tocan si faltaban (o con force): ahora un libro
+    también vuelve a pasar por aquí para revisar su fecha de salida, y eso no
+    debe pisar un recuento corregido a mano."""
     from app.routers.lookup import lookup_book
     from app.database import SessionLocal
 
@@ -1289,7 +1293,7 @@ async def _run_book_backfill(user_id: int, force: bool) -> None:
                 Content.url.isnot(None),
             )
             if not force:
-                q = q.where(or_(Content.page_count.is_(None), Content.page_count == 0))
+                q = q.where(or_(Content.page_count.is_(None), Content.page_count == 0, _release_unsettled()))
             items = list(db.scalars(q).all())
 
             if not items:
@@ -1304,9 +1308,10 @@ async def _run_book_backfill(user_id: int, force: bool) -> None:
             for item in items:
                 try:
                     info = await lookup_book(item.url)
+                    _apply_release(item, info)
                     page_count = int(info.get("page_count") or 0)
                     duration = int(info.get("duration_minutes") or 0)
-                    if page_count > 0:
+                    if page_count > 0 and (force or not item.page_count):
                         item.page_count = page_count
                         if duration > 0:
                             item.duration_minutes = duration
@@ -1320,6 +1325,9 @@ async def _run_book_backfill(user_id: int, force: bool) -> None:
                             item.synopsis = info["synopsis"]
                         updated += 1
                         logger.info("book-backfill: [OK] %s — %d pages", item.title[:50], page_count)
+                    elif page_count > 0 or info.get("release_date") or info.get("coming_soon"):
+                        updated += 1
+                        logger.info("book-backfill: [OK] %s — solo lanzamiento", item.title[:50])
                     else:
                         failed += 1
                         logger.warning("book-backfill: [MISS] %s", item.title[:50])
@@ -1346,6 +1354,16 @@ async def backfill_book_page_counts(
     return {"status": "started", "message": "Backfill de libros en curso — revisa los logs del servidor"}
 
 
+def _release_unsettled():
+    """Pendientes cuyo lanzamiento hay que (re)mirar: sin fecha, anunciados o con
+    fecha futura (las fechas se mueven). Lo ya estrenado no se vuelve a pedir."""
+    return Content.consumed.is_(False) & or_(
+        Content.release_date.is_(None),
+        Content.coming_soon.is_(True),
+        Content.release_date > date.today(),
+    )
+
+
 def _apply_release(item: Content, info: dict) -> None:
     """Copia el payload común de lanzamiento de lookup.py al item."""
     raw = info.get("release_date")
@@ -1354,10 +1372,10 @@ def _apply_release(item: Content, info: dict) -> None:
 
 
 async def _run_game_backfill(user_id: int, force: bool) -> None:
-    """Background task: refreshes Steam metadata (genres/rating/synopsis/release) for game items.
+    """Background task: refreshes Steam metadata (genres/rating/synopsis/release/duration) for game items.
 
-    Deliberately never touches duration_minutes — HowLongToBeat matches are fuzzy and
-    duration is hand-editable, so a bad match on re-fetch shouldn't clobber a user correction.
+    La duración de HowLongToBeat solo se escribe si el juego tiene 0: el emparejado
+    es aproximado y la duración se edita a mano, así que no debe pisar una corrección.
     """
     from app.routers.lookup import lookup_steam
     from app.database import SessionLocal
@@ -1371,7 +1389,11 @@ async def _run_game_backfill(user_id: int, force: bool) -> None:
                 Content.content_type == ContentType.game,
             ).where(or_(Content.source_id.isnot(None), Content.url.isnot(None)))
             if not force:
-                q = q.where(Content.synopsis.is_(None))
+                q = q.where(or_(
+                    Content.synopsis.is_(None),
+                    Content.duration_minutes == 0,
+                    _release_unsettled(),
+                ))
             items = list(db.scalars(q).all())
 
             if not items:
@@ -1404,6 +1426,8 @@ async def _run_game_backfill(user_id: int, force: bool) -> None:
                         item.thumbnail = info["thumbnail"]
                     if info.get("author") and not item.author:
                         item.author = info["author"]
+                    if not item.duration_minutes and info.get("duration_minutes"):
+                        item.duration_minutes = info["duration_minutes"]
                     _apply_release(item, info)
 
                     updated += 1
